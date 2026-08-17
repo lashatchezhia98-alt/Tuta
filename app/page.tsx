@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const features = [
   { number: "01", title: "იცოდე, რას გეუბნება სხეული", text: "პერიოდის, ოვულაციისა და ნაყოფიერი დღეების ზუსტი პროგნოზი — შენი ციკლის მიხედვით.", tone: "yellow", icon: "◔" },
@@ -13,15 +13,55 @@ const steps = [
   ["03", "მიიღე შენზე მორგებული ხედვა", "დროთა განმავლობაში დაინახე შენი სხეულის უნიკალური რიტმი."],
 ];
 
+const english: Record<string, string> = {
+  "თუთას შესახებ": "About TUTA", "შესაძლებლობები": "Features", "როგორ მუშაობს": "How it works", "ჯანმრთელობის ბიბლიოთეკა": "Health library", "შესვლა": "Sign in", "რეგისტრაცია": "Sign up",
+  "შენი სხეული. შენი რიტმი.": "Your body. Your rhythm.", "შენი ჯანმრთელობის": "Your health", "ცნობიერება": "awareness", "იწყება აქ": "starts here",
+  "თუთა გეხმარება უკეთ გაიგო შენი ციკლი, სხეულის სიგნალები და ყოველდღიური ცვლილებები — მშვიდად და პირადად.": "TUTA helps you understand your cycle, body signals and everyday changes — calmly and privately.",
+  "დაიწყე უფასოდ": "Start for free", "გამოიყენე ანონიმურად": "Use anonymously", "შენი ჯანმრთელობის მონაცემები შენ გეკუთვნის": "Your health data belongs to you",
+  "დილა მშვიდობისა, ნინო": "Good morning, Nino", "ციკლის მე-14 დღე": "Cycle day 14", "დღე": "day", "დღევანდელი ფაზა": "Today's phase", "ოვულაცია": "Ovulation", "ნაყოფიერი ფანჯარა": "Fertile window", "კიდევ 2 დღე": "2 days remaining", "პირადი და დაცული": "Private and secure", "შენი მონაცემები": "Your data", "გაიგე მეტი": "Learn more",
+  "კონფიდენციალური": "Confidential", "რეკლამის გარეშე": "Ad-free", "შექმნილია ქალებისთვის": "Made for women", "ქართულად": "In Georgian",
+  "გაიცანი თუთა": "Meet TUTA", "შენი სხეული ყოველდღე": "Your body speaks", "გელაპარაკება.": "to you every day.", "თუთა გეხმარება მოუსმინო.": "TUTA helps you listen.",
+  "ციკლი მხოლოდ თარიღები არ არის. ის გავლენას ახდენს შენს ენერგიაზე, განწყობაზე, ძილსა და კეთილდღეობაზე.": "Your cycle is more than dates. It affects your energy, mood, sleep and wellbeing.",
+  "თუთა აერთიანებს შენს ჩანაწერებს ერთ მშვიდ, გასაგებ სივრცეში — განსჯის გარეშე.": "TUTA brings your logs together in one calm, clear space — without judgment.", "ჩვენი ისტორია": "Our story",
+  "შენთვის შექმნილი": "Made for you", "ყველაფერი, რაც შენი": "Everything you need to", "რიტმის გაგებაში": "understand your rhythm", "გჭირდება": "",
+  "იცოდე, რას გეუბნება სხეული": "Know what your body is telling you", "პერიოდის, ოვულაციისა და ნაყოფიერი დღეების ზუსტი პროგნოზი — შენი ციკლის მიხედვით.": "Accurate period, ovulation and fertile-day predictions based on your cycle.",
+  "შეამჩნიე შენი რიტმი": "Notice your rhythm", "მონიშნე განწყობა, ენერგია და სიმპტომები. თუთა დაგეხმარება განმეორებადი პატერნების აღმოჩენაში.": "Log mood, energy and symptoms. TUTA helps reveal patterns that repeat over time.",
+  "მიიღე მშვიდი მხარდაჭერა": "Get calm support", "ფაზაზე მორგებული რჩევები და სანდო ჯანმრთელობის ინფორმაცია — მარტივად, ქართულად.": "Phase-specific guidance and trusted health information, explained simply.",
+  "დღეს როგორ გრძნობ თავს?": "How do you feel today?", "ენერგიის დონე": "Energy level", "შენახვა": "Save", "მარტივი ყოველდღიური ჩვევა": "A simple daily habit", "რამდენიმე წუთი დღეში.": "A few minutes a day.", "მეტი ცოდნა საკუთარ თავზე.": "More insight into yourself.",
+  "მოგვიყევი შენს ციკლზე": "Tell us about your cycle", "შეიყვანე ბოლო პერიოდის თარიღი და საშუალო ხანგრძლივობა.": "Enter the date of your last period and average cycle length.",
+  "მონიშნე დღიური შეგრძნებები": "Log how you feel each day", "რამდენიმე შეხებით შეინახე განწყობა, ენერგია, ტკივილი და ნაკადი.": "Save your mood, energy, pain and flow in a few taps.",
+  "მიიღე შენზე მორგებული ხედვა": "Get insights tailored to you", "დროთა განმავლობაში დაინახე შენი სხეულის უნიკალური რიტმი.": "Over time, discover your body's unique rhythm.", "დაიწყე შენი გზა": "Start your journey",
+  "შენი სივრცე, შენი წესები": "Your space, your rules", "პირადი ნიშნავს": "Private means", "ნამდვილად პირადს.": "truly private.",
+  "თუთა არასდროს ყიდის შენს მონაცემებს და არასდროს გაჩვენებს რეკლამას. ციკლის გამოთვლები შენს მოწყობილობაზე სრულდება.": "TUTA never sells your data and never shows ads. Cycle calculations happen on your device.", "ანონიმური რეჟიმი": "Anonymous mode", "დაცული მონაცემები": "Protected data", "სრული კონტროლი": "Full control",
+  "დაიწყე დღესვე": "Start today", "დაუმეგობრდი": "Become friends with", "შენს რიტმს.": "your rhythm.", "პერიოდისა და ოვულაციის პროგნოზი უფასოდ.": "Period and ovulation predictions are free.", "ბარათის მიბმა არ არის საჭირო.": "No payment card required.", "შექმენი უფასო ანგარიში": "Create a free account", "ან გააგრძელე ანონიმურად": "Or continue anonymously",
+  "შენი ჯანმრთელობის ცნობიერება": "Your health awareness", "თუთა": "TUTA", "ჩვენს შესახებ": "About us", "რესურსები": "Resources", "პერიოდის კალკულატორი": "Period calculator", "ოვულაციის კალკულატორი": "Ovulation calculator", "დახმარება": "Support", "ხშირი კითხვები": "FAQ", "კონტაქტი": "Contact", "კონფიდენციალურობა": "Privacy", "© 2026 თუთა. ყველა უფლება დაცულია.": "© 2026 TUTA. All rights reserved.", "შექმნილია სიყვარულით საქართველოში ♡": "Made with love in Georgia ♡"
+};
+
+function translatePage(language: "ka" | "en") {
+  const reverse = Object.fromEntries(Object.entries(english).map(([ka, en]) => [en, ka]));
+  const walker = document.createTreeWalker(document.querySelector("main")!, NodeFilter.SHOW_TEXT);
+  let node: Node | null;
+  while ((node = walker.nextNode())) {
+    const raw = node.textContent ?? "";
+    const trimmed = raw.trim();
+    const value = language === "en" ? english[trimmed] : reverse[trimmed];
+    if (value !== undefined) node.textContent = raw.replace(trimmed, value);
+  }
+  document.documentElement.lang = language;
+}
+
 function BrandMark({ light = false }: { light?: boolean }) {
   return <a className={`brand ${light ? "brand-light" : ""}`} href="#top" aria-label="TUTA — მთავარი"><span className="brand-moon" aria-hidden="true"><i /></span><span className="brand-name">TUTA</span></a>;
 }
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lang, setLang] = useState<"ka" | "en">("ka");
+  useEffect(() => { const saved = localStorage.getItem("tuta-language"); if (saved === "en") setLang("en"); }, []);
+  useEffect(() => { translatePage(lang); localStorage.setItem("tuta-language", lang); }, [lang]);
   return (
     <main id="top">
-      <header className="site-header"><div className="nav-shell"><BrandMark /><nav id="mobile-menu" className={`nav-links ${menuOpen ? "open" : ""}`} aria-label="მთავარი ნავიგაცია"><a href="#about" onClick={() => setMenuOpen(false)}>თუთას შესახებ</a><a href="#features" onClick={() => setMenuOpen(false)}>შესაძლებლობები</a><a href="#how" onClick={() => setMenuOpen(false)}>როგორ მუშაობს</a><a href="#library" onClick={() => setMenuOpen(false)}>ჯანმრთელობის ბიბლიოთეკა</a><a className="nav-login" href="/login">შესვლა</a><a className="button button-dark nav-register" href="/register">რეგისტრაცია <span>↗</span></a></nav><button className={`menu-button ${menuOpen ? "active" : ""}`} type="button" aria-expanded={menuOpen} aria-controls="mobile-menu" aria-label={menuOpen ? "მენიუს დახურვა" : "მენიუს გახსნა"} onClick={() => setMenuOpen(!menuOpen)}><span /><span /></button></div></header>
+      <header className="site-header"><div className="nav-shell"><BrandMark /><nav id="mobile-menu" className={`nav-links ${menuOpen ? "open" : ""}`} aria-label="მთავარი ნავიგაცია"><a href="#about" onClick={() => setMenuOpen(false)}>თუთას შესახებ</a><a href="#features" onClick={() => setMenuOpen(false)}>შესაძლებლობები</a><a href="#how" onClick={() => setMenuOpen(false)}>როგორ მუშაობს</a><a href="#library" onClick={() => setMenuOpen(false)}>ჯანმრთელობის ბიბლიოთეკა</a><button className="language-toggle" type="button" onClick={() => setLang(lang === "ka" ? "en" : "ka")} aria-label={lang === "ka" ? "Switch to English" : "ქართულზე გადართვა"}>{lang === "ka" ? "EN" : "KA"}</button><a className="nav-login" href="/login">შესვლა</a><a className="button button-dark nav-register" href="/register">რეგისტრაცია <span>↗</span></a></nav><button className={`menu-button ${menuOpen ? "active" : ""}`} type="button" aria-expanded={menuOpen} aria-controls="mobile-menu" aria-label={menuOpen ? "მენიუს დახურვა" : "მენიუს გახსნა"} onClick={() => setMenuOpen(!menuOpen)}><span /><span /></button></div></header>
 
       <section className="hero" aria-labelledby="hero-title"><div className="hero-orbit orbit-one" aria-hidden="true" /><div className="hero-orbit orbit-two" aria-hidden="true" /><div className="flower flower-one" aria-hidden="true">✣</div><div className="flower flower-two" aria-hidden="true">✿</div><div className="hero-content"><p className="eyebrow"><span /> შენი სხეული. შენი რიტმი.</p><h1 id="hero-title">შენი ჯანმრთელობის<br /><em>ცნობიერება</em> იწყება აქ</h1><p className="hero-copy">თუთა გეხმარება უკეთ გაიგო შენი ციკლი, სხეულის სიგნალები და ყოველდღიური ცვლილებები — მშვიდად და პირადად.</p><div className="hero-actions"><a className="button button-dark" href="/register">დაიწყე უფასოდ <span>↗</span></a><a className="text-link" href="/app/dashboard">გამოიყენე ანონიმურად <span>→</span></a></div><div className="privacy-note"><span>⌾</span> შენი ჯანმრთელობის მონაცემები შენ გეკუთვნის</div></div>
         <div className="hero-visual" aria-label="თუთას ციკლის კალენდრის მაგალითი"><div className="moon-large"><span className="moon-stars">✦<i>✦</i></span></div><div className="phone-card"><div className="phone-top"><span>9:41</span><span>● ●</span></div><div className="phone-brand"><BrandMark /><span className="avatar">ნ</span></div><p className="phone-greeting">დილა მშვიდობისა, ნინო</p><h2>ციკლის მე-14 დღე</h2><div className="cycle-ring"><div><strong>14</strong><span>დღე</span></div><b className="ring-dot dot-a" /><b className="ring-dot dot-b" /><b className="ring-dot dot-c" /></div><div className="phase-pill"><span>✦</span><div><small>დღევანდელი ფაზა</small><strong>ოვულაცია</strong></div><b>→</b></div><div className="week-strip"><span>ო<small>11</small></span><span>ს<small>12</small></span><span>ო<small>13</small></span><span className="active">ხ<small>14</small></span><span>პ<small>15</small></span></div></div><div className="floating-card fertility"><span>✣</span><div><small>ნაყოფიერი ფანჯარა</small><strong>კიდევ 2 დღე</strong></div></div><div className="floating-card secure"><span>✓</span><div><small>პირადი და დაცული</small><strong>შენი მონაცემები</strong></div></div></div><div className="hero-scroll" aria-hidden="true"><span>გაიგე მეტი</span><i>↓</i></div></section>
