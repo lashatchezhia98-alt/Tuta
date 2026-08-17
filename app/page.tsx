@@ -14,7 +14,7 @@ const steps = [
 ];
 
 function BrandMark({ light = false }: { light?: boolean }) {
-  return <a className={`brand ${light ? "brand-light" : ""}`} href="#top" aria-label="თუთა — მთავარი"><span className="brand-moon" aria-hidden="true"><i /></span><span className="brand-name">თუთა</span></a>;
+  return <a className={`brand ${light ? "brand-light" : ""}`} href="#top" aria-label="TUTA — მთავარი"><span className="brand-moon" aria-hidden="true"><i /></span><span className="brand-name">TUTA</span></a>;
 }
 
 export default function Home() {
