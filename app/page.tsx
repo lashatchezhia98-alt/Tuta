@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
-import BarChart3 from "lucide-react/dist/esm/icons/chart-no-axes-column-increasing";
-import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
-import Check from "lucide-react/dist/esm/icons/check";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import CircleUserRound from "lucide-react/dist/esm/icons/circle-user-round";
-import HeartPulse from "lucide-react/dist/esm/icons/heart-pulse";
-import LockKeyhole from "lucide-react/dist/esm/icons/lock-keyhole";
-import Menu from "lucide-react/dist/esm/icons/menu";
-import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
-import Moon from "lucide-react/dist/esm/icons/moon";
-import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
-import Stethoscope from "lucide-react/dist/esm/icons/stethoscope";
+import {
+  ArrowRight,
+  BarChart3,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CircleUserRound,
+  HeartPulse,
+  LockKeyhole,
+  Menu,
+  MessageCircle,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
