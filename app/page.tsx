@@ -10,12 +10,12 @@ const copy = {
     signIn: "შესვლა", signUp: "რეგისტრაცია",
     eyebrow: "შენი სხეული. შენი რიტმი.",
     heroTitle: <>გაიგე შენი ციკლი.<br /><span>იცხოვრე უფრო გაცნობიერებულად.</span></>,
-    heroText: "პირადი სივრცე ციკლის, სიმპტომებისა და ყოველდღიური ცვლილებების გასაგებად — ზუსტად, მშვიდად და შენს ენაზე.",
+    heroText: "პირადი სივრცე ციკლის, სიმპტომებისა და ყოველდღიური ცვლილებების გასაგებად. ზუსტად, მშვიდად და შენს ენაზე.",
     start: "დაიწყე უფასოდ", anonymous: "გამოიყენე ანონიმურად", noCard: "ბარათი არ არის საჭირო",
     trusted: ["მონაცემები შენ გეკუთვნის", "რეკლამის გარეშე", "გამოთვლები მოწყობილობაზე"],
     greeting: "დილა მშვიდობისა, ნინო", cycleDay: "ციკლის მე-14 დღე", phase: "ოვულაციის ფაზა", next: "შემდეგი პერიოდი", nextDate: "12 სექტემბერი", fertile: "ნაყოფიერი ფანჯარა", fertileValue: "კიდევ 2 დღე", energy: "ენერგია", energyValue: "მაღალი",
     introLabel: "რატომ თუთა", introTitle: <>ჯანმრთელობაზე ზრუნვა იწყება<br /><span>საკუთარი სხეულის გაგებით.</span></>, introText: "ციკლი მხოლოდ კალენდარში მონიშნული დღეები არ არის. ის გავლენას ახდენს ენერგიაზე, ძილზე, განწყობასა და ყოველდღიურ კეთილდღეობაზე. თუთა ამ ცვლილებებს ერთ გასაგებ სურათად აერთიანებს.",
-    featuresLabel: "ძირითადი შესაძლებლობები", featuresTitle: "ყველაფერი მნიშვნელოვანი — ერთ ადგილას.",
+    featuresLabel: "ძირითადი შესაძლებლობები", featuresTitle: "ყველაფერი მნიშვნელოვანი ერთ ადგილას.",
     features: [
       ["01", "ზუსტი პროგნოზები", "პერიოდის, ოვულაციისა და ნაყოფიერი დღეების პროგნოზი შენი რეალური ციკლის მიხედვით."],
       ["02", "დღიური ჩანაწერები", "განწყობა, ენერგია, ტკივილი, ნაკადი და 80-ზე მეტი სიმპტომი რამდენიმე წამში."],
@@ -30,7 +30,7 @@ const copy = {
   },
   en: {
     nav: ["About TUTA", "Features", "How it works", "Library"], signIn: "Sign in", signUp: "Sign up",
-    eyebrow: "Your body. Your rhythm.", heroTitle: <>Understand your cycle.<br /><span>Live with more awareness.</span></>, heroText: "A private space to understand your cycle, symptoms and everyday changes — accurately, calmly and in your language.", start: "Start for free", anonymous: "Use anonymously", noCard: "No payment card required",
+    eyebrow: "Your body. Your rhythm.", heroTitle: <>Understand your cycle.<br /><span>Live with more awareness.</span></>, heroText: "A private space to understand your cycle, symptoms and everyday changes. Accurate, calm and in your language.", start: "Start for free", anonymous: "Use anonymously", noCard: "No payment card required",
     trusted: ["Your data belongs to you", "Always ad-free", "On-device calculations"],
     greeting: "Good morning, Nino", cycleDay: "Cycle day 14", phase: "Ovulation phase", next: "Next period", nextDate: "September 12", fertile: "Fertile window", fertileValue: "2 days remaining", energy: "Energy", energyValue: "High",
     introLabel: "Why TUTA", introTitle: <>Better health starts with<br /><span>understanding your body.</span></>, introText: "Your cycle is more than dates on a calendar. It shapes your energy, sleep, mood and daily wellbeing. TUTA brings those changes together into one clear picture.",
@@ -44,26 +44,26 @@ const copy = {
   },
 };
 
-function Logo({ inverse = false }: { inverse?: boolean }) {
-  return <a href="#top" className={`logo ${inverse ? "logo-inverse" : ""}`} aria-label="TUTA home"><span className="logo-mark" aria-hidden="true" /><strong>TUTA</strong></a>;
+function Logo({ lang, inverse = false }: { lang: Language; inverse?: boolean }) {
+  return <a href="/" className={`logo ${inverse ? "logo-inverse" : ""}`} aria-label="TUTA home"><span className="logo-mark" aria-hidden="true" /><strong>{lang === "ka" ? "თუთა" : "TUTA"}</strong></a>;
 }
 
 export default function Home() {
   const [lang, setLang] = useState<Language>("ka");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [consultationEnabled, setConsultationEnabled] = useState(true);
   useEffect(() => { if (localStorage.getItem("tuta-language") === "en") setLang("en"); }, []);
   useEffect(() => { localStorage.setItem("tuta-language", lang); document.documentElement.lang = lang; }, [lang]);
+  useEffect(() => { setConsultationEnabled(localStorage.getItem("tuta-doctor-consultation") !== "false"); }, []);
   const t = copy[lang];
 
   return (
     <main id="top">
-      <header className="header"><div className="container nav"><Logo /><nav className={menuOpen ? "nav-links open" : "nav-links"} aria-label="Main navigation"><a href="#about">{t.nav[0]}</a><a href="#features">{t.nav[1]}</a><a href="#how">{t.nav[2]}</a><a href="/blog">{t.nav[3]}</a><button className="lang" onClick={() => setLang(lang === "ka" ? "en" : "ka")} aria-label={lang === "ka" ? "Switch to English" : "ქართულზე გადართვა"}>{lang === "ka" ? "EN" : "KA"}</button><a className="sign-in" href="/login">{t.signIn}</a><a className="btn btn-primary btn-small" href="/register">{t.signUp}</a></nav><button className={`hamburger ${menuOpen ? "active" : ""}`} aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><i /><i /></button></div></header>
+      <header className="header"><div className="container nav"><Logo lang={lang} /><nav className={menuOpen ? "nav-links open" : "nav-links"} aria-label="Main navigation"><a href="/about">{t.nav[0]}</a><a href="#features">{t.nav[1]}</a><a href="#how">{t.nav[2]}</a><a href="/blog">{t.nav[3]}</a>{consultationEnabled && <a href="/consultation">{lang === "ka" ? "ექიმთან კონსულტაცია" : "Consult a doctor"}</a>}<button className="lang" onClick={() => setLang(lang === "ka" ? "en" : "ka")} aria-label={lang === "ka" ? "Switch to English" : "ქართულზე გადართვა"}>{lang === "ka" ? "EN" : "KA"}</button><a className="sign-in" href="/login">{t.signIn}</a><a className="btn btn-primary btn-small" href="/register">{t.signUp}</a></nav><button className={`hamburger ${menuOpen ? "active" : ""}`} aria-label="Menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><i /><i /></button></div></header>
 
       <section className="hero"><div className="container hero-grid"><div className="hero-copy"><div className="overline"><i />{t.eyebrow}</div><h1>{t.heroTitle}</h1><p>{t.heroText}</p><div className="hero-actions"><a className="btn btn-primary" href="/register">{t.start}<b>→</b></a><a className="secondary-link" href="/app/dashboard">{t.anonymous}<b>↗</b></a></div><small>{t.noCard}</small></div>
-        <div className="product-preview"><div className="preview-glow" /><div className="app-window"><div className="app-top"><Logo /><div className="app-user">NN</div></div><div className="app-greeting"><p>{t.greeting}</p><strong>{t.cycleDay}</strong></div><div className="cycle-panel"><div className="cycle-dial"><div><small>{t.phase}</small><strong>14</strong><span>/ 28</span></div></div><div className="cycle-stats"><div><small>{t.next}</small><strong>{t.nextDate}</strong></div><div><small>{t.fertile}</small><strong>{t.fertileValue}</strong></div></div></div><div className="mini-stat-row"><div><span className="stat-icon pulse" /><p><small>{t.energy}</small><strong>{t.energyValue}</strong></p></div><div className="week-days"><span>11</span><span>12</span><span>13</span><span className="today">14</span><span>15</span></div></div></div><div className="status-card"><span>✓</span><div><small>{t.trusted[0]}</small><strong>Private by default</strong></div></div></div>
+        <div className="product-preview"><div className="preview-glow" /><div className="app-window"><div className="app-top"><Logo lang={lang} /><div className="app-user">NN</div></div><div className="app-greeting"><p>{t.greeting}</p><strong>{t.cycleDay}</strong></div><div className="cycle-panel"><div className="cycle-dial"><div><small>{t.phase}</small><strong>14</strong><span>/ 28</span></div></div><div className="cycle-stats"><div><small>{t.next}</small><strong>{t.nextDate}</strong></div><div><small>{t.fertile}</small><strong>{t.fertileValue}</strong></div></div></div><div className="mini-stat-row"><div><span className="stat-icon pulse" /><p><small>{t.energy}</small><strong>{t.energyValue}</strong></p></div><div className="week-days"><span>11</span><span>12</span><span>13</span><span className="today">14</span><span>15</span></div></div></div><div className="status-card"><span>✓</span><div><small>{t.trusted[0]}</small><strong>{lang === "ka" ? "კონფიდენციალური" : "Private by default"}</strong></div></div></div>
       </div></section>
-
-      <section className="trust"><div className="container">{t.trusted.map((item, index) => <div key={item}><span>{index === 0 ? "01" : index === 1 ? "02" : "03"}</span><p>{item}</p></div>)}</div></section>
 
       <section className="intro container" id="about"><div className="section-label">{t.introLabel}</div><div className="intro-content"><h2>{t.introTitle}</h2><div><p>{t.introText}</p><a className="inline-link" href="/about">{lang === "ka" ? "გაიგე მეტი" : "Learn more"}<span>→</span></a></div></div></section>
 
@@ -75,7 +75,7 @@ export default function Home() {
 
       <section className="final-cta"><div className="container"><div className="cta-orbit" aria-hidden="true"><i /></div><div className="cta-copy"><h2>{t.ctaTitle}</h2><p>{t.ctaText}</p><a className="btn btn-primary" href="/register">{t.ctaButton}<b>→</b></a><a className="secondary-link" href="/app/dashboard">{t.ctaAnon}</a></div></div></section>
 
-      <footer><div className="container footer-grid"><div className="footer-brand"><Logo inverse /><p>{t.footerText}</p></div><div><h3>{t.product}</h3><a href="#features">{t.footerLinks[0]}</a><a href="/premium">{t.footerLinks[1]}</a><a href="/tools/period-calculator">{t.footerLinks[2]}</a></div><div><h3>{t.resources}</h3><a href="/blog">{t.footerLinks[3]}</a><a href="#">{t.footerLinks[4]}</a><a href="/about">{t.footerLinks[5]}</a></div><div><h3>{t.company}</h3><a href="#">{t.footerLinks[6]}</a><a href="#">{t.footerLinks[7]}</a></div></div><div className="container footer-bottom"><span>{t.rights}</span><span>{t.made}</span></div></footer>
+      <footer><div className="container footer-grid"><div className="footer-brand"><Logo lang={lang} inverse /><p>{t.footerText}</p></div><div><h3>{t.product}</h3><a href="#features">{t.footerLinks[0]}</a><a href="/premium">{t.footerLinks[1]}</a><a href="/tools/period-calculator">{t.footerLinks[2]}</a></div><div><h3>{t.resources}</h3><a href="/blog">{t.footerLinks[3]}</a><a href="#">{t.footerLinks[4]}</a><a href="/about">{t.footerLinks[5]}</a></div><div><h3>{t.company}</h3><a href="#">{t.footerLinks[6]}</a><a href="#">{t.footerLinks[7]}</a></div></div><div className="container footer-bottom"><span>{t.rights}</span><span>{t.made}</span></div></footer>
     </main>
   );
 }
