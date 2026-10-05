@@ -1,0 +1,30 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {stamp,addDays,validSetup,cycleAt,history,averages,predictions} from '../src/cycle.mjs';
+test('rejects rolled-over dates and future starting dates',()=>{
+  assert.throws(()=>stamp('2026-02-30'));
+  assert.equal(validSetup('2026-10-03',28,5,'2026-10-02'),false);
+  assert.equal(validSetup('2026-10-01',28,5,'2026-10-02'),true);
+});
+test('date arithmetic crosses leap days and DST independently of timezone',()=>{
+  assert.equal(addDays('2024-02-28',2),'2024-03-01');
+  assert.equal(addDays('2026-03-07',3),'2026-03-10');
+});
+test('ovulation phase aligns to the actual predicted date',()=>{
+  const p=[{start:'2026-10-01',duration:5}];
+  const c=cycleAt(p,28,'2026-10-15');
+  assert.equal(c.next,'2026-10-29');assert.equal(c.ovulation,'2026-10-15');
+  assert.equal(c.day,15);assert.equal(c.phase,'ovulation');
+  assert.equal(c.fertileStart,'2026-10-10');assert.equal(c.fertileEnd,'2026-10-16');
+  assert.equal(cycleAt(p,28,'2026-10-30').day,30);
+  assert.equal(cycleAt(p,28,'2026-10-30').phase,'unknown');
+  assert.equal(cycleAt(p,28,'2026-09-30'),null);
+});
+test('history measures actual starts, averages require three completed cycles',()=>{
+  const p=['2026-06-01','2026-06-28','2026-07-27','2026-08-24'].map(start=>({start,duration:5}));
+  assert.deepEqual(history(p).map(p=>p.length),[27,29,28]);
+  assert.equal(averages(p,30).length,28);
+  assert.equal(averages(p.slice(0,3),30).length,30);
+  assert.equal(predictions(p,30,'2026-08-24').length,6);
+  assert.equal(predictions(p,30,'2026-08-24')[0],'2026-09-21');
+});

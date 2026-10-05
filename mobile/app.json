@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "თუთა • Tuta",
+    "slug": "tuta-moon-mood",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tutahealth.app"
+    },
+    "android": {
+      "package": "com.tutahealth.app",
+      "versionCode": 2
+    },
+    "web": {
+      "name": "Tuta · Moon Mood"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}

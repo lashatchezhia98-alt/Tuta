@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+*.tsbuildinfo
+*.apk
+*.aab
 /.vinext/
 /out/
 
