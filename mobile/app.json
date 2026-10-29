@@ -2,11 +2,14 @@
   "expo": {
     "name": "თუთა • Tuta",
     "slug": "tuta-moon-mood",
+    "scheme": "com.tutahealth.app",
     "version": "1.0.1",
+    "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "deploymentTarget": "26.6",
       "bundleIdentifier": "com.tutahealth.app"
     },
     "android": {
@@ -17,7 +20,9 @@
       "name": "Tuta · Moon Mood"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "./plugins/with-ios-scene-lifecycle",
+      ["expo-image-picker", {"photosPermission": "აირჩიე ერთი ფოტო თუთას საჯარო პოსტისთვის."}]
     ]
   }
 }

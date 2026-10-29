@@ -9,8 +9,20 @@ export function MoonFlower({size=240}:{size?:number}){
     <Path d="M209 18q0 18-15 21 15 4 15 22 2-18 16-22-14-3-16-21M237 81q0 10-9 12 9 2 9 13 2-11 10-13-8-2-10-12M59 40q0 9-7 11 7 2 7 11 2-9 8-11-6-2-8-11" fill="#FDF0CC"/>
   </Svg>;
 }
+export function CycleOrbit({day,length,size=156}:{day:number;length:number;size?:number}){
+ const radius=62;
+ const circumference=2*Math.PI*radius;
+ const progress=Math.max(0,Math.min(1,day/Math.max(1,length)));
+ return <Svg width={size} height={size} viewBox="0 0 156 156" accessible={false}>
+  <Circle cx="78" cy="78" r={radius} stroke="#D8C9EA" strokeWidth="11" fill="none"/>
+  <Circle cx="78" cy="78" r={radius} stroke="#1E1B2E" strokeWidth="11" strokeLinecap="round" fill="none" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference*(1-progress)} rotation="-90" origin="78, 78"/>
+  <Circle cx="78" cy="78" r="48" fill="#F9F8FC"/>
+  <Path d="M93 44a28 28 0 1 0 21 49A30 30 0 0 1 93 44Z" fill="#FDF0CC"/>
+  <Circle cx="111" cy="49" r="3" fill="#B7A0D8"/>
+ </Svg>;
+}
 export function Icon({name,size=24,color='#1E1B2E'}:{name:string;size?:number;color?:string}){
- const paths:Record<string,string>={home:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',calendar:'M4 5h16v16H4ZM4 10h16M8 2v6m8-6v6',log:'M12 5v14M5 12h14',insights:'M5 20V12m7 8V4m7 16V8',profile:'M4 21v-3c0-6 16-6 16 0v3M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',spark:'m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z',lock:'M6 10h12v11H6ZM8 10V6a4 4 0 0 1 8 0v4',check:'m5 12 4 4 10-10',moon:'M19 16A9 9 0 0 1 8 3a9 9 0 1 0 11 13'};
+ const paths:Record<string,string>={home:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',cycle:'M20 7a9 9 0 1 0 1 7M20 2v5h-5',calendar:'M4 5h16v16H4ZM4 10h16M8 2v6m8-6v6',log:'M12 5v14M5 12h14',insights:'M5 20V12m7 8V4m7 16V8',profile:'M4 21v-3c0-6 16-6 16 0v3M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',spark:'m12 2 3 7 7 3-7 3-3 7-7-3 7-3Z',lock:'M6 10h12v11H6ZM8 10V6a4 4 0 0 1 8 0v4',check:'m5 12 4 4 10-10',moon:'M19 16A9 9 0 0 1 8 3a9 9 0 1 0 11 13',menu:'M4 6h16M4 12h16M4 18h16',image:'M3 4h18v16H3ZM6 16l4-4 3 3 3-4 4 6M8 8h.01',more:'M5 12h.01M12 12h.01M19 12h.01',close:'M5 5l14 14M19 5 5 19'};
  return <Svg width={size} height={size} viewBox="0 0 24 24" accessible={false}><Path d={paths[name]||paths.spark} stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none"/></Svg>;
 }
 export function Face({mood,size=52}:{mood:string;size?:number}){

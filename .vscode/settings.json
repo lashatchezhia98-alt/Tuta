@@ -1,0 +1,15 @@
+{
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/.expo": true,
+    "**/.next": true,
+    "**/.openai": true,
+    "**/.vinext": true,
+    "**/.wrangler": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/node_modules": true,
+    "mobile/android": true,
+    "mobile/ios": true
+  }
+}

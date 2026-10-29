@@ -1,6 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {stamp,addDays,validSetup,cycleAt,history,averages,predictions} from '../src/cycle.mjs';
+import {stamp,addDays,validSetup,validBirthDate,cycleAt,history,averages,predictions,calendarState} from '../src/cycle.mjs';
+test('birth date must be a real calendar date and an age between 1 and 120',()=>{
+  assert.equal(validBirthDate('2000-02-29','2026-10-26'),true);
+  assert.equal(validBirthDate('2001-02-29','2026-10-26'),false);
+  assert.equal(validBirthDate('2026-10-25','2026-10-26'),false);
+  assert.equal(validBirthDate('1900-01-01','2026-10-26'),false);
+});
 test('rejects rolled-over dates and future starting dates',()=>{
   assert.throws(()=>stamp('2026-02-30'));
   assert.equal(validSetup('2026-10-03',28,5,'2026-10-02'),false);
@@ -9,6 +15,11 @@ test('rejects rolled-over dates and future starting dates',()=>{
 test('date arithmetic crosses leap days and DST independently of timezone',()=>{
   assert.equal(addDays('2024-02-28',2),'2024-03-01');
   assert.equal(addDays('2026-03-07',3),'2026-03-10');
+});
+test('a recorded duration never marks future bleeding as confirmed',()=>{
+  const periods=[{start:'2026-10-22',duration:5}];
+  assert.equal(calendarState(periods,28,'2026-10-25','2026-10-25'),'period');
+  assert.notEqual(calendarState(periods,28,'2026-10-26','2026-10-25'),'period');
 });
 test('ovulation phase aligns to the actual predicted date',()=>{
   const p=[{start:'2026-10-01',duration:5}];

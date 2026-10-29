@@ -15,6 +15,13 @@ export function stamp(value) {
 }
 export function addDays(value, days) { return new Date(stamp(value) + days * DAY).toISOString().slice(0,10); }
 export function distance(a, b) { return Math.round((stamp(b) - stamp(a)) / DAY); }
+export function validBirthDate(value, today = dateKey()) {
+  try {
+    stamp(value);stamp(today);
+    const age = Number(today.slice(0,4))-Number(value.slice(0,4))-(today.slice(5)<value.slice(5)?1:0);
+    return age>=1 && age<=120 && value<=today;
+  } catch { return false; }
+}
 export function validSetup(start, length, duration, today = dateKey()) {
   try { return stamp(start) <= stamp(today) && Number.isInteger(length) && length >= 21 && length <= 45 && Number.isInteger(duration) && duration >= 1 && duration <= 10; } catch { return false; }
 }
@@ -82,7 +89,7 @@ export function forecast(periods, fallback, asOf=dateKey()) {
 export function calendarState(periods, fallback, date, asOf=dateKey()) {
   stamp(date);
   const recorded=ordered(periods).filter(p=>p.start<=asOf);
-  const known=recorded.some(p=>date>=p.start && date<addDays(p.start,p.duration));
+  const known=date<=asOf&&recorded.some(p=>date>=p.start && date<addDays(p.start,p.duration));
   if(known)return 'period';
   const current=cycleAt(recorded,fallback,date,asOf);
   if(!current)return '';
@@ -102,4 +109,29 @@ export function calendarState(periods, fallback, date, asOf=dateKey()) {
 }
 export function predictions(periods, fallback, asOf=dateKey()) {
   return forecast(periods,fallback,asOf).starts;
+}
+
+// Count a symptom only once per completed cycle and phase. Daily repeats in one
+// cycle must not look like a recurring pattern across several cycles.
+export function symptomPatterns(periods, logs) {
+  const completed=history(periods);
+  const seen=new Map();
+  for (const [index, period] of completed.entries()) {
+    const next=addDays(period.start,period.length);
+    const ovulationDay=period.length-13;
+    for (const log of logs) {
+      if(log.date<period.start||log.date>=next)continue;
+      const day=distance(period.start,log.date)+1;
+      const phase=day<=period.duration?'menstruation':Math.abs(day-ovulationDay)<=1?'ovulation':day<ovulationDay-1?'follicular':'luteal';
+      for(const symptom of new Set(log.symptoms)) {
+        const key=`${symptom}\u0000${phase}`;
+        if(!seen.has(key))seen.set(key,new Set());
+        seen.get(key).add(index);
+      }
+    }
+  }
+  return [...seen.entries()].filter(([,cycles])=>cycles.size>=3).map(([key,cycles])=>{
+    const [symptom,phase]=key.split('\u0000');
+    return {symptom,phase,count:cycles.size,total:completed.length};
+  }).sort((a,b)=>b.count-a.count||a.symptom.localeCompare(b.symptom));
 }

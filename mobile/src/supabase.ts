@@ -6,7 +6,17 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
 const supabasePublishableKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
+function isValidSupabaseUrl(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && Boolean(parsed.hostname);
+  } catch {
+    return false;
+  }
+}
+
+export const isSupabaseConfigured = isValidSupabaseUrl(supabaseUrl) && Boolean(supabasePublishableKey);
 
 // EXPO_PUBLIC_* values are bundled into the app. Only use Supabase's
 // publishable key here; never put a secret/service_role key in a mobile app.

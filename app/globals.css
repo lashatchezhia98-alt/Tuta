@@ -45,3 +45,7 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
     @apply bg-background text-foreground;}
   html {
     @apply font-sans;}}
+
+.auth-notice{border:1px solid #a8ceb9;background:#edf8f1;color:#214d34;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.55;margin:0}
+.auth-panel form button:focus-visible,.auth-panel input:focus-visible{outline:3px solid #9a82c2;outline-offset:2px}
+.account-settings{max-width:680px;margin-top:28px}.account-settings h2{font-size:24px;overflow-wrap:anywhere;margin:12px 0}.account-settings p{line-height:1.65}.account-settings button,.account-settings-links a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:0;border-radius:9px;background:var(--ink);color:#fff;font-weight:700;cursor:pointer;text-decoration:none}.account-settings button:disabled{opacity:.55;cursor:wait}.account-settings-links{display:flex;flex-wrap:wrap;gap:10px}.account-settings-links a+ a{background:var(--lav);color:var(--ink)}

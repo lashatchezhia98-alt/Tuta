@@ -1,91 +1,87 @@
 import assert from "node:assert/strict";
-import { access, readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
-const templateRoot = new URL("../", import.meta.url);
-const previewRoot = new URL("../app/_sites-preview/", import.meta.url);
+const appRoot = new URL("../.next/server/app/", import.meta.url);
+const sourceRoot = new URL("../", import.meta.url);
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
-}
-
-test("server-renders the starter loading skeleton", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
-  const html = await response.text();
-  assert.match(html, developmentPreviewMeta);
-  assert.match(html, /<title>Your site is taking shape<\/title>/i);
-  assert.match(html, /Building your site/);
-  assert.match(html, /Your site is taking shape/);
-  assert.match(
-    html,
-    /Your first version will appear here automatically when it’s ready\./,
-  );
-  assert.doesNotMatch(html, /Codex/);
-  assert.match(html, /react-loading-skeleton/);
-  assert.match(html, /role="status"/);
-});
-
-test("keeps the loading skeleton scoped and disposable", async () => {
-  const [preview, css, page, layout, packageJson, files] = await Promise.all([
-    readFile(new URL("SkeletonPreview.tsx", previewRoot), "utf8"),
-    readFile(new URL("preview.css", previewRoot), "utf8"),
-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readdir(previewRoot),
+test("registration, login and recovery routes render usable auth forms", async () => {
+  const [register, login, forgot, reset] = await Promise.all([
+    readFile(new URL("register.html", appRoot), "utf8"),
+    readFile(new URL("login.html", appRoot), "utf8"),
+    readFile(new URL("forgot-password.html", appRoot), "utf8"),
+    readFile(new URL("reset-password.html", appRoot), "utf8"),
   ]);
 
-  assert.deepEqual(files.sort(), ["SkeletonPreview.tsx", "preview.css"]);
-  assert.match(preview, /from "react-loading-skeleton"/);
-  assert.match(preview, /baseColor="#eceae7"/);
-  assert.match(preview, /highlightColor="#f9f8f6"/);
-  assert.match(preview, /duration=\{2\.8\}/);
-  assert.match(preview, /sites-skeleton-search-placeholder/);
-  assert.match(packageJson, /"react-loading-skeleton": "3\.5\.0"/);
+  assert.match(register, /შექმენი ანგარიში|Create your account/);
+  assert.match(register, /name@example\.com/);
+  assert.match(register, /ანგარიშის შექმნა|Create account/);
+  assert.match(register, /ელფოსტა \(მომხმარებლის სახელი\)|Email \(username\)/);
+  assert.match(register, /სახელი|First name/);
+  assert.match(register, /გვარი|Last name/);
+  assert.match(register, /ნიკნეიმი|Nickname/);
+  assert.match(register, /დაბადების თარიღი|Date of birth/);
+  assert.match(login, /კეთილი იყოს შენი დაბრუნება|Welcome back/);
+  assert.match(login, /ელფოსტა|Email/);
+  assert.match(login, /შესვლა|Sign in/);
+  assert.match(login, /forgot-password/);
+  assert.match(forgot, /პაროლის აღდგენა|Reset your password/);
+  assert.match(forgot, /name@example\.com/);
+  assert.match(reset, /ახალი პაროლი|Choose a new password/);
+  assert.match(reset, /გაიმეორე ახალი პაროლი|Confirm new password/);
+});
 
-  const shellIndex = preview.indexOf('className="sites-skeleton-shell"');
-  const statusIndex = preview.indexOf('className="sites-skeleton-status"');
-  assert.ok(shellIndex >= 0 && statusIndex > shellIndex);
-  assert.match(css, /position:\s*fixed/);
-  assert.match(css, /inset:\s*0/);
-  assert.match(css, /opacity:\s*0\.52/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.doesNotMatch(css, /#020617|canvas|pets|progress/i);
-  assert.doesNotMatch(
-    preview,
-    /loading-spinner|status-mark|status-progress|canvas|cookie|random/i,
-  );
+test("auth forms call Supabase sign-up, password sign-in and recovery", async () => {
+  const page = await readFile(new URL("app/inner-page.tsx", sourceRoot), "utf8");
+  const mobile = await readFile(new URL("mobile/App.tsx", sourceRoot), "utf8");
+  const client = await readFile(new URL("lib/supabase-browser.ts", sourceRoot), "utf8");
 
-  assert.match(page, /export const metadata:\s*Metadata/);
-  assert.match(page, /"codex-preview": "development"/);
-  assert.match(page, /<SkeletonPreview \/>/);
-  assert.match(layout, /title:\s*"Starter Project"/);
-  assert.doesNotMatch(layout, /codex-preview|_sites-preview|themeColor|\bViewport\b/);
-  assert.doesNotMatch(css, /(^|\s)(html|body)\s*\{/m);
+  assert.match(page, /onSubmit=\{submit\}/);
+  assert.match(page, /signUp\(\{email:email\.trim\(\)\.toLowerCase\(\),password/);
+  for (const source of [page, mobile]) {
+    assert.match(source, /first_name:firstName\.trim\(\)/);
+    assert.match(source, /last_name:lastName\.trim\(\)/);
+    assert.match(source, /nickname:nickname\.trim\(\)/);
+    assert.match(source, /date_of_birth:birthDate/);
+    assert.match(source, /validBirthDate\(birthDate\)/);
+  }
+  assert.match(page, /signInWithPassword\(\{email:email\.trim\(\)\.toLowerCase\(\),password\}\)/);
+  assert.match(page, /resetPasswordForEmail\(/);
+  assert.match(page, /updateUser\(\{password\}\)/);
+  assert.match(page, /type="submit"/);
+  assert.match(page, /Confirm your email|გამოგზავნილი ბმული/);
+  assert.match(client, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
+});
 
-  await assert.rejects(
-    access(new URL("public/_sites-preview", templateRoot)),
-  );
+test("all expected primary platform routes are present in the production build", async () => {
+  const routes = [
+    "index.html",
+    "register.html",
+    "login.html",
+    "forgot-password.html",
+    "reset-password.html",
+    "app/dashboard.html",
+    "app/log.html",
+    "app/insights.html",
+    "app/report.html",
+    "app/settings.html",
+    "premium.html",
+    "blog.html",
+    "community.html",
+    "tools/period-calculator.html",
+    "tools/ovulation-calculator.html",
+  ];
+
+  await Promise.all(routes.map((route) => readFile(new URL(route, appRoot))));
+});
+
+test("community page exposes topics and the post composer", async () => {
+  const html = await readFile(new URL("community.html", appRoot), "utf8");
+  const source = await readFile(new URL("app/community/community-page.tsx", sourceRoot), "utf8");
+  assert.match(html, /TUTA COMMUNITY/);
+  assert.match(source, /community_posts/);
+  assert.match(source, /community_comments/);
+  assert.match(source, /verified_doctors/);
+  assert.match(source, /რედაქტირება/);
+  assert.match(source, /წაშლა/);
 });

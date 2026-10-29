@@ -1,0 +1,13 @@
+.env*
+!.env.example
+mobile/
+android/
+ios/
+supabase/
+tests/
+examples/
+.vscode/
+.openai/
+.wrangler/
+.vinext/
+*.log
