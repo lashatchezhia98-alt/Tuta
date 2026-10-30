@@ -1,10 +1,10 @@
 # TUTA Health
 
-TUTA is a bilingual Georgian and English cycle-awareness product prototype. It includes a responsive marketing site, private local tracking mode, period and ovulation calculators, doctor consultation UI, insights, reports, and a protected administration area.
+TUTA is a Georgian and English cycle-awareness and members-only community prototype. The repository contains a responsive website, a shared iOS/Android app, cycle tracking, member community, health articles, calculators, and a protected administration area. Some listed screens are previews and are not yet connected to live services.
 
 ## Current status
 
-This repository is an early product prototype intended for design review and usability feedback. Supabase email/password registration, sign-in and password recovery are implemented, but the product does not yet provide medical diagnosis, payments, or cloud storage for health records. Cycle entries still stay in browser/device storage.
+This is a beta prototype, not a production medical service. Supabase email/password registration, sign-in and password recovery are implemented. Signed-in health records are shared through the Supabase `health_state` record and scoped by RLS; cycle predictions are calculated on the client. The community requires a signed-in, non-anonymous account. The Flitt flow is configured for testing and does not constitute a live charge. Mail delivery, Cloudinary uploads, and service availability depend on correct environment configuration. There is no medical diagnosis, live doctor chat, or connected doctor booking service.
 
 ## Stack
 
@@ -48,7 +48,7 @@ In Supabase **Authentication → URL Configuration**, set the Site URL to the de
 The mobile scheme is declared in `mobile/app.json`, so rebuild/reinstall the native app after changing it. In Supabase **Authentication → Providers**, enable email/password authentication and choose whether signups require email confirmation. Configure Supabase Auth's SMTP in the Supabase dashboard for reliable delivery. Mailtrap values in this repository's `.env.local` do **not** automatically configure Supabase's confirmation or recovery emails.
 
 Website routes: `/register`, `/login`, `/forgot-password`, and `/reset-password`. The reset URL requires a valid emailed recovery session. Password reset requests intentionally show the same response whether the account exists or not.
-Registration requires email (also the sign-in username), first name, last name, nickname, age (1–120), and password. Profile details are stored in Supabase Auth user metadata; the email and password remain the sign-in credentials. Nicknames are not unique.
+Registration requires email (also the sign-in username), first name, last name, nickname, date of birth, and password. Profile details are stored in Supabase Auth user metadata; the email and password remain the sign-in credentials. Nicknames are not unique. A minimum-age policy has not yet been established; decide and implement it before public launch.
 
 ## Admin access
 
@@ -72,7 +72,7 @@ npm run lint
 
 ## Privacy note
 
-Cycle and symptom data is sensitive health information. Signed-in cycle and journal records now use a shared Supabase account record with row-level access controls; predictions remain client-side. This is still a prototype: review encryption, retention and deletion rules, consent, backups, operational access, and all providers' data-processing terms before accepting real patient data. Existing device/browser health records are retained only until a successful user-initiated import into the account.
+Cycle and symptom data is sensitive health information. Signed-in cycle and journal records use a shared Supabase account record with row-level access controls; predictions remain client-side. This is still a prototype: review encryption, retention and deletion rules, consent, backups, operational access, account deletion (including uploaded photos), and all providers' data-processing terms before accepting real patient data. Existing device/browser health records are offered for one-time import and removed only after a successful database save.
 
 ## Feedback
 

@@ -47,6 +47,8 @@ export default function CommunityPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [anonymousPost, setAnonymousPost] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reportingPost, setReportingPost] = useState<string | null>(null);
+  const [reportBusy, setReportBusy] = useState<string | null>(null);
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -115,6 +117,17 @@ export default function CommunityPage() {
     if (error) setNotice(t("კომენტარი ვერ გამოქვეყნდა.", "Could not publish the comment."));
     else { setDrafts(current => ({ ...current, [postId]: "" })); setReplyTo(current => ({ ...current, [postId]: null })); await loadComments(postId); }
   };
+  const reportPost = async (post: Post, reason: "spam" | "abuse" | "privacy" | "medical_misinformation") => {
+    if (!client || !session || !isMember) return;
+    setReportBusy(post.id);
+    const { error } = await client.from("community_reports").insert({ post_id: post.id, reporter_id: session.user.id, reason });
+    setReportBusy(null);
+    setReportingPost(null);
+    setNotice(error?.code === "23505"
+      ? t("ეს პოსტი უკვე დაარეპორტე.", "You have already reported this post.")
+      : error ? t("საჩივარი ვერ გაიგზავნა. სცადე მოგვიანებით.", "Could not submit the report. Please try again.")
+      : t("მადლობა — საჩივარი მოდერაციისთვის გაიგზავნა.", "Thank you — your report was sent for review."));
+  };
   const openNew = () => { setEditing(null); setBody(""); setTopic(""); setPhoto(null); setAnonymousPost(false); setCompose(true); setNotice(""); };
   const edit = (post: Post) => { setEditing(post.id); setBody(post.body); setTopic(post.topic); setPhoto(null); setAnonymousPost(post.is_anonymous); setCompose(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const remove = async (post: Post) => {
@@ -175,7 +188,8 @@ export default function CommunityPage() {
         </div> : null}
         {notice ? <p role="status" className="mb-5 rounded-2xl bg-[#FDF0CC] p-4 text-sm">{notice}</p> : null}
         {loading ? <p className="py-12 text-center">{t("იტვირთება…", "Loading…")}</p> : feedError ? <div role="status" className="rounded-3xl border border-[#E9DDBB] bg-[#FDF0CC] p-8">{t("ლენტი ახლა მიუწვდომელია. გთხოვ, მოგვიანებით სცადე.", "The feed is unavailable right now. Please try again later.")}<button type="button" onClick={() => void loadPosts()} className="mt-4 block min-h-11 rounded-full bg-[#1E1B2E] px-5 text-white">{t("ხელახლა ცდა", "Try again")}</button></div> : posts.length === 0 ? <div className="rounded-3xl border bg-white p-8">{t("ჯერ პოსტები არ არის.", "No posts yet.")}</div> : <div className="space-y-5">{posts.map(post => <article key={post.id} className="rounded-3xl border border-[#E6E2EC] bg-white p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-3"><div><div className="font-semibold">{author(post.public_author_id, post.display_name, post.is_anonymous)}{post.public_author_id && doctors[post.public_author_id] ? <span aria-label={t("დადასტურებული ექიმი", "Verified doctor")} title={t("დადასტურებული ექიმი", "Verified doctor")} className="ml-1 text-[#5E4780]">✓</span> : null}</div><div className="mt-1 text-xs text-[#6F687D]">{date(post.created_at)} · {names[post.topic] ? t(...names[post.topic]) : post.topic}</div></div>{ownedPostIds.includes(post.id) ? <div className="flex gap-2 text-sm"><button type="button" onClick={() => edit(post)} className="min-h-11 px-2">{t("რედაქტირება", "Edit")}</button><button type="button" onClick={() => void remove(post)} className="min-h-11 px-2 text-red-700">{t("წაშლა", "Delete")}</button></div> : null}</div>
+          <div className="flex items-start justify-between gap-3"><div><div className="font-semibold">{author(post.public_author_id, post.display_name, post.is_anonymous)}{post.public_author_id && doctors[post.public_author_id] ? <span aria-label={t("დადასტურებული ექიმი", "Verified doctor")} title={t("დადასტურებული ექიმი", "Verified doctor")} className="ml-1 text-[#5E4780]">✓</span> : null}</div><div className="mt-1 text-xs text-[#6F687D]">{date(post.created_at)} · {names[post.topic] ? t(...names[post.topic]) : post.topic}</div></div><div className="flex flex-wrap items-center justify-end gap-2 text-sm">{ownedPostIds.includes(post.id) ? <><button type="button" onClick={() => edit(post)} className="min-h-11 px-2">{t("რედაქტირება", "Edit")}</button><button type="button" onClick={() => void remove(post)} className="min-h-11 px-2 text-red-700">{t("წაშლა", "Delete")}</button></> : <button type="button" onClick={() => setReportingPost(current => current === post.id ? null : post.id)} className="min-h-11 px-2 text-[#5E4780]">{t("საჩივარი", "Report")}</button>}</div></div>
+          {reportingPost === post.id ? <div className="mt-3 rounded-2xl bg-[#F9F8FC] p-3"><p className="mb-2 text-sm font-semibold">{t("მიზეზი აირჩიე", "Choose a reason")}</p><div className="flex flex-wrap gap-2">{([["spam", "სპამი", "Spam"], ["abuse", "შეურაცხმყოფელი შინაარსი", "Abuse"], ["privacy", "პირადი ინფორმაციის გამჟღავნება", "Privacy violation"], ["medical_misinformation", "ჯანმრთელობის მცდარი ინფორმაცია", "Medical misinformation"]] as const).map(([reason, ka, en]) => <button key={reason} type="button" disabled={reportBusy === post.id} onClick={() => void reportPost(post, reason)} className="min-h-11 rounded-full border border-[#DCD7E5] bg-white px-3 text-xs disabled:opacity-50">{t(ka, en)}</button>)}<button type="button" onClick={() => setReportingPost(null)} className="min-h-11 px-3 text-xs underline">{t("გაუქმება", "Cancel")}</button></div></div> : null}
           <p className="mt-5 whitespace-pre-wrap break-words leading-7">{post.body}</p>{photoUrl(post.image_public_id) ? <img src={photoUrl(post.image_public_id)!} alt={t("პოსტს დართული ფოტო", "Post attachment")} loading="lazy" className="mt-5 max-h-[520px] w-full rounded-2xl object-cover"/> : null}
           <button type="button" onClick={() => toggleComments(post.id)} className="mt-5 min-h-11 rounded-full bg-[#F9F8FC] px-4 text-sm font-semibold">{openComments[post.id] ? t("კომენტარების დამალვა", "Hide comments") : t("კომენტარები", "Comments")}</button>
           {openComments[post.id] ? <div className="mt-4 border-t pt-4">

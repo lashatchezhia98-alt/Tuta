@@ -16,7 +16,7 @@ Scan the QR code using a compatible Expo Go client, or use `npm run ios` / `npm 
 
 - Georgian and English interface, bundled fonts, shared moon/floral artwork.
 - First-run setup with actual user inputs, no fabricated personal cycle data.
-- Community-first home. Public posts can be read without an account; members can write up to 200 words and attach one photo.
+- Community-first home. Posts and comments are visible only to signed-in, non-anonymous members; members can write up to 200 words and attach one photo.
 - Signed Cloudinary uploads keep the API secret on the website server. The mobile app only receives a short-lived signature.
 - A dedicated My Cycle view retains cycle day, estimated phase, week strip, next period and direct daily check-in.
 - The top-right sign-in/account button and full-screen menu open About, Health Library, Premium, Privacy and tracker sections.
@@ -51,7 +51,7 @@ Cycle and journal records are stored in the Supabase `health_state` table, scope
 
 ### Community setup
 
-The community needs an active Tuta Supabase project. Apply [`supabase/migrations/20261025162311_community_feed.sql`](../supabase/migrations/20261025162311_community_feed.sql) to **that** project, not another application's database. The migration adds public-read posts and comments, topic filters, author-only post editing/deletion, a 200-word database check, private report submissions and an admin-managed verified-doctor directory. It does not expose period or symptom records. Doctor verification records must be added only through a trusted administrative process, never from the mobile app or user-editable profile metadata.
+The community needs an active Tuta Supabase project. Apply [`supabase/migrations/20261025162311_community_feed.sql`](../supabase/migrations/20261025162311_community_feed.sql) and the later member-only access migration to **that** project, not another application's database. The migrations add member-only posts and comments, topic filters, author-only post editing/deletion, a 200-word database check, private report submissions and an admin-managed verified-doctor directory. Reports are reviewed in the website admin panel. They do not expose period or symptom records. Doctor verification records must be added only through a trusted administrative process, never from the mobile app or user-editable profile metadata.
 
 Set `CLOUDINARY_CLOUD_NAME`, `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (the same cloud name), `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` in the **website server** environment and deploy its `/api/community/cloudinary-signature` route. Set `EXPO_PUBLIC_TUTA_API_URL` to that website's HTTPS origin and `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` to the same cloud name in `mobile/.env.local`. The API secret must never be put in `EXPO_PUBLIC_*` or `NEXT_PUBLIC_*`. Publishable Supabase URL/key remain required for the feed. Rebuild the native app after adding the image-picker module.
 

@@ -78,10 +78,19 @@ test("all expected primary platform routes are present in the production build",
 test("community page exposes topics and the post composer", async () => {
   const html = await readFile(new URL("community.html", appRoot), "utf8");
   const source = await readFile(new URL("app/community/community-page.tsx", sourceRoot), "utf8");
+  const admin = await readFile(new URL("components/admin-feature-panel.tsx", sourceRoot), "utf8");
+  const moderationApi = await readFile(new URL("app/api/admin/community-reports/route.ts", sourceRoot), "utf8");
   assert.match(html, /TUTA COMMUNITY/);
   assert.match(source, /community_posts/);
   assert.match(source, /community_comments/);
+  assert.match(source, /community_reports/);
+  assert.match(source, /საჩივარი/);
   assert.match(source, /verified_doctors/);
   assert.match(source, /რედაქტირება/);
   assert.match(source, /წაშლა/);
+  assert.match(admin, /საზოგადოების საჩივრები/);
+  assert.match(admin, /reporter identity is kept private/);
+  assert.match(moderationApi, /verifyAdminSession/);
+  assert.match(moderationApi, /SUPABASE_SECRET_KEY/);
+  assert.doesNotMatch(moderationApi, /reporter_id/);
 });

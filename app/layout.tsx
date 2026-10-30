@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://tutahealth.ge"),
   title: "TUTA | შენი სხეული. შენი რიტმი.",
   description: "ქართული ციკლისა და ჯანმრთელობის ტრეკერი. პირადი, მშვიდი და შენზე მორგებული.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
