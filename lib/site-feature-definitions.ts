@@ -1,4 +1,6 @@
+import { extraPages } from './page-directory';
 export type SiteFeatureId =
+  | (typeof extraPages)[number]['slug']
   | "community"
   | "period"
   | "dailyLog"
@@ -15,6 +17,7 @@ export const SITE_FEATURES: Array<{
   en: { title: string; description: string };
   enabledByDefault: boolean;
 }> = [
+  ...extraPages.map(page => ({id:page.slug,group:'სერვისები' as const,ka:{title:page.ka,description:'მოსამზადებელი გვერდის ხილვადობა. ჩართვა სერვისს არ ააქტიურებს.'},en:{title:page.en,description:'Preparation page visibility. Enabling does not activate the service.'},enabledByDefault:true})),
   { id: "community", group: "ძირითადი", ka: { title: "მთავარი / საზოგადოება", description: "პოსტების ნახვა და მომხმარებლების საზოგადოება." }, en: { title: "Home / Community", description: "Community feed and member posts." }, enabledByDefault: true },
   { id: "period", group: "ძირითადი", ka: { title: "პერიოდის კალენდარი", description: "პერიოდისა და ოვულაციის პროგნოზები." }, en: { title: "Period tracker", description: "Period and ovulation predictions." }, enabledByDefault: true },
   { id: "dailyLog", group: "ძირითადი", ka: { title: "დღიური ჩანაწერები", description: "განწყობის, ენერგიის, ტკივილისა და სიმპტომების აღრიცხვა." }, en: { title: "Daily check-in", description: "Mood, energy, pain and symptom tracking." }, enabledByDefault: true },
@@ -32,6 +35,8 @@ export function defaultSiteFeatures(): SiteFeatureSettings {
 }
 
 export function featureForRoute(route: string): SiteFeatureId | null {
+  const extra = extraPages.find(page => route === '/app/' + page.slug);
+  if(extra) return extra.slug;
   if (route === "/community") return "community";
   if (route === "/blog") return "library";
   if (route === "/premium") return "premium";
