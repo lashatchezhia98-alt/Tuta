@@ -19,6 +19,7 @@ export function validHealthData(value: unknown): value is HealthData {
       || !Number.isInteger(d.cycleLength) || d.cycleLength < 21 || d.cycleLength > 45
       || !Array.isArray(d.periods) || !Array.isArray(d.logs)) return false;
     ordered(d.periods); // Checks real dates, unique starts and period durations.
+    if(new Set(d.logs.map(log=>log.date)).size!==d.logs.length)return false;
     return d.logs.every(log => {
       stamp(log.date);
       return typeof log.mood === "string" && typeof log.flow === "string" && typeof log.notes === "string"

@@ -6,17 +6,27 @@ TUTA is a Georgian and English cycle-awareness and members-only community protot
 
 This is a beta prototype, not a production medical service. Supabase email/password registration, sign-in and password recovery are implemented. Signed-in health records are shared through the Supabase `health_state` record and scoped by RLS; cycle predictions are calculated on the client. The community requires a signed-in, non-anonymous account. The Flitt flow is configured for testing and does not constitute a live charge. Mail delivery, Cloudinary uploads, and service availability depend on correct environment configuration. There is no medical diagnosis, live doctor chat, or connected doctor booking service.
 
+## Web workspace update (November 2026)
+
+The website now provides editable period history, dated symptom journals, six-month insights, a premium printable report, and a generic calendar reminder export. Predictions remain estimates, not contraception or diagnosis. Calendar exports do not automatically resynchronize.
+
+The library has a bilingual plain-text editor with draft, published and scheduled states. Doctor profiles, availability, bookings and participant-only messaging have server-side access checks and admin controls. These replace the former consultation preview; actual availability requires verified doctors and published appointment slots. Patient messaging and booking require an active premium membership. Administrators cannot read private chats through the care management interface.
+
+Apply the versioned Supabase migrations before deploying these routes. Care and article tables intentionally deny direct client access; scoped server endpoints use the server-only Supabase key. `tests/platform-db.sql` exercises booking conflicts, message authorization, payment callback idempotency and grants inside a rolled-back transaction. Run only against the intended project.
+
+The new workspace screens are web features; native mobile screens have not been rebuilt or installed as part of this update. Live payment activation, clinical review, qualified doctor onboarding, operational monitoring, and complete production acceptance testing remain launch requirements. Flitt remains in test mode.
+
 ## Stack
 
 - React 19 and TypeScript
-- vinext and Vite
+- Next.js 16
 - Tailwind CSS and shadcn/ui
-- Drizzle ORM prepared for a future database
+- Supabase Auth and Postgres with row-level access controls
 
 ## Repository layout
 
 - `app/`, `components/`, `lib/`, `db/`, `public/`, and `tests/` — the website.
-- `mobile/` — the shared iOS and Android app (Expo / React Native). Open `mobile/ios/Tuta.xcodeproj` in Xcode.
+- `mobile/` — the shared iOS and Android app (Expo / React Native). Open `mobile/ios/Tuta.xcworkspace` in Xcode after installing CocoaPods dependencies.
 - `android/releases/` — locally kept Android preview APKs. They are intentionally ignored by Git because each is about 72 MB.
 - Root `ios/` and `android/` folders contain platform notes and release artifacts only. Generated native projects live under `mobile/ios/` and `mobile/android/` and are ignored by Git; regenerate them from `mobile/` with Expo prebuild.
 

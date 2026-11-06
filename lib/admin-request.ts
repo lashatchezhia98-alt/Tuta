@@ -13,7 +13,7 @@ export function credentialsMatch(actual: unknown, expected: string) {
   return timingSafeEqual(digest(actual), digest(expected));
 }
 
-export async function readAdminJson(request: Request): Promise<Record<string, unknown>> {
+export async function readAdminJson(request: Request, maxBytes=16_384): Promise<Record<string, unknown>> {
   if (request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") throw new Error("JSON required");
   const reader = request.body?.getReader();
   if (!reader) throw new Error("Empty request");
@@ -24,7 +24,7 @@ export async function readAdminJson(request: Request): Promise<Record<string, un
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 16_384) { await reader.cancel(); throw new Error("Request too large"); }
+      if (size > maxBytes) { await reader.cancel(); throw new Error("Request too large"); }
       chunks.push(value);
     }
   } finally { reader.releaseLock(); }

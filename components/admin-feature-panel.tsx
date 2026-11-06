@@ -2,6 +2,8 @@
 
 import { SITE_FEATURES, setSiteFeature, useSiteFeatures } from "@/lib/site-features";
 import { useCallback, useEffect, useState } from "react";
+import Library from './library';
+import AdminCare from './admin-care';
 
 type Lang = "ka" | "en";
 type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; created_at: string } };
@@ -80,6 +82,7 @@ export default function AdminFeaturePanel({ lang }: { lang: Lang }) {
           <a className="active" href="#features">{ka ? "ფუნქციები" : "Features"}</a>
           <a href="#users">{ka ? "მომხმარებლები" : "Users"}</a>
           <a href="#content">{ka ? "კონტენტი" : "Content"}</a>
+          <a href="#care">{ka ? "ექიმები და განრიგი" : "Doctors & availability"}</a>
           <a href="/api/admin/logout">{ka ? "გამოსვლა" : "Sign out"}</a>
         </div>
         <div className="admin-content" id="features">
@@ -148,7 +151,8 @@ export default function AdminFeaturePanel({ lang }: { lang: Lang }) {
           </div>
           <div className="admin-future-sections">
             <section id="users"><h3>{ka ? "მომხმარებლები" : "Users"}</h3><p>{ka ? "მომხმარებლების მართვა დაემატება ცალკე, უსაფრთხო ადმინისტრაციული უფლებებით." : "User management will be added with separate, secure admin permissions."}</p></section>
-            <section id="content"><h3>{ka ? "კონტენტი" : "Content"}</h3><p>{ka ? "სტატიების რედაქტორი და გამოქვეყნების მართვა ჯერ არ არის ჩართული." : "Article editing and publishing controls are not active yet."}</p></section>
+            <Library lang={lang} admin/>
+            <AdminCare lang={lang}/>
           </div>
         </div>
       </section>

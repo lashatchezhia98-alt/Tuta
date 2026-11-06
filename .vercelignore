@@ -1,6 +1,10 @@
 .env*
 !.env.example
-mobile/
+mobile/*
+!mobile/src/
+mobile/src/*
+!mobile/src/cycle.mjs
+!mobile/src/symptoms.mjs
 android/
 ios/
 supabase/
