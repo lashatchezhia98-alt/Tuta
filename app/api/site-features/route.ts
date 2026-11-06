@@ -1,8 +1,9 @@
+import { isSameOrigin, readAdminJson } from "@/lib/admin-request";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { COOKIE_NAME, verifyAdminSession } from "@/lib/admin-auth";
-import { defaultSiteFeatures, SITE_FEATURES, type SiteFeatureId, type SiteFeatureSettings } from "@/lib/site-feature-definitions";
+import { defaultSiteFeatures, SITE_FEATURES, type SiteFeatureSettings } from "@/lib/site-feature-definitions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   const cookieStore = await cookies();
   const authenticated = await verifyAdminSession(cookieStore.get(COOKIE_NAME)?.value);
   if (!authenticated) return NextResponse.json({ error: "ადმინის შესვლა ხელახლა გაიარე." }, { status: 401 });
@@ -32,9 +34,9 @@ export async function PUT(request: Request) {
   const supabase = getSupabase(true);
   if (!supabase) return NextResponse.json({ error: "სერვერის Supabase გასაღები ჯერ დაყენებული არ არის." }, { status: 503 });
 
-  let body: { id?: SiteFeatureId; enabled?: boolean };
+  let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    body = await readAdminJson(request);
   } catch {
     return NextResponse.json({ error: "მოთხოვნის მონაცემები არასწორია." }, { status: 400 });
   }

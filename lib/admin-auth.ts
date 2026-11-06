@@ -30,7 +30,7 @@ export async function createAdminSession(email: string) {
 }
 
 export async function verifyAdminSession(value?: string) {
-  if (!value) return false;
+  if (!value || value.length > 4096 || value.split(".").length !== 2) return false;
   const [payload, signature] = value.split(".");
   if (!payload || !signature) return false;
   const expected = await sign(payload);
@@ -39,7 +39,10 @@ export async function verifyAdminSession(value?: string) {
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
     const decoded = atob(normalized);
     const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(decoded, char => char.charCodeAt(0))));
-    return data.email === process.env.ADMIN_EMAIL && data.expiresAt > Date.now();
+    return typeof data.email === "string" && Boolean(process.env.ADMIN_EMAIL)
+      && data.email === process.env.ADMIN_EMAIL
+      && typeof data.expiresAt === "number" && Number.isSafeInteger(data.expiresAt)
+      && data.expiresAt > Date.now();
   } catch {
     return false;
   }

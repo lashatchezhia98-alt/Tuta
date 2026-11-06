@@ -1,3 +1,4 @@
+import { isSameOrigin, readAdminJson } from "@/lib/admin-request";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
@@ -41,14 +42,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   if (!await isAdmin()) return NextResponse.json({ error: "ადმინის სესია არასწორია ან ვადაგასულია." }, { status: 401 });
   const supabase = getAdminClient();
   if (!supabase) return NextResponse.json({ error: "სერვერის Supabase გასაღები ჯერ დაყენებული არ არის." }, { status: 503 });
 
-  let body: { action?: string; reportId?: string };
-  try { body = await request.json(); }
+  let body: Record<string, unknown>;
+  try { body = await readAdminJson(request); }
   catch { return NextResponse.json({ error: "მოთხოვნის მონაცემები არასწორია." }, { status: 400 }); }
-  if (!body.reportId || !/^[0-9a-f-]{36}$/i.test(body.reportId) || !["dismiss", "remove_post"].includes(body.action || "")) {
+  if (typeof body.reportId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.reportId) || typeof body.action !== "string" || !["dismiss", "remove_post"].includes(body.action)) {
     return NextResponse.json({ error: "საჩივრის მოქმედება არასწორია." }, { status: 400 });
   }
   const { data: report, error: readError } = await supabase.from("community_reports")

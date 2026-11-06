@@ -13,8 +13,18 @@ export function stamp(value) {
   if (!Number.isFinite(result) || new Date(result).toISOString().slice(0,10) !== value) throw new Error('Invalid date');
   return result;
 }
-export function addDays(value, days) { return new Date(stamp(value) + days * DAY).toISOString().slice(0,10); }
+export function addDays(value, days) {
+  if (!Number.isInteger(days)) throw new Error('Days must be an integer');
+  return new Date(stamp(value) + days * DAY).toISOString().slice(0,10);
+}
 export function distance(a, b) { return Math.round((stamp(b) - stamp(a)) / DAY); }
+export function phaseForDay(day, duration, length) {
+  if (!Number.isInteger(day) || day < 1 || day > length) return 'unknown';
+  const ovulationDay = length - 13; // Date offset is zero-based, cycle day is one-based.
+  if (day <= duration) return 'menstruation';
+  if (Math.abs(day - ovulationDay) <= 1) return 'ovulation';
+  return day < ovulationDay - 1 ? 'follicular' : 'luteal';
+}
 export function validBirthDate(value, today = dateKey()) {
   try {
     stamp(value);stamp(today);
@@ -57,8 +67,7 @@ export function cycleAt(periods, fallback, date = dateKey(), asOf = dateKey()) {
   const day = distance(base.start,date)+1;
   const next = addDays(base.start,length), ovulation = addDays(next,-14);
   const fertileStart = addDays(ovulation,-5), fertileEnd=addDays(ovulation,1);
-  const ovDay=distance(base.start,ovulation)+1;
-  const phase=day>length?'unknown':day<=duration?'menstruation':Math.abs(day-ovDay)<=1?'ovulation':day<ovDay-1?'follicular':'luteal';
+  const phase=phaseForDay(day,duration,length);
   return {day,phase,next,ovulation,fertileStart,fertileEnd,overdue:distance(next,date)>0,length,duration,start:base.start};
 }
 export function forecast(periods, fallback, asOf=dateKey()) {
@@ -118,11 +127,10 @@ export function symptomPatterns(periods, logs) {
   const seen=new Map();
   for (const [index, period] of completed.entries()) {
     const next=addDays(period.start,period.length);
-    const ovulationDay=period.length-13;
     for (const log of logs) {
       if(log.date<period.start||log.date>=next)continue;
       const day=distance(period.start,log.date)+1;
-      const phase=day<=period.duration?'menstruation':Math.abs(day-ovulationDay)<=1?'ovulation':day<ovulationDay-1?'follicular':'luteal';
+      const phase=phaseForDay(day,period.duration,period.length);
       for(const symptom of new Set(log.symptoms)) {
         const key=`${symptom}\u0000${phase}`;
         if(!seen.has(key))seen.set(key,new Set());
