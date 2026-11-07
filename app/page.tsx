@@ -11,7 +11,6 @@ import {
   HeartPulse,
   LockKeyhole,
   Menu,
-  Moon,
   ShieldCheck,
   Sparkles,
   Stethoscope,
@@ -23,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSiteFeatures } from "@/lib/site-features";
+import BrandMark from '@/components/brand-mark';
 
 type Lang = "ka" | "en";
 
@@ -54,7 +54,7 @@ const content = {
 };
 
 function Brand({lang,inverse=false}:{lang:Lang,inverse?:boolean}) {
-  return <a href="/" className={`flex items-center gap-2.5 ${inverse?"text-white":"text-[#1E1B2E]"}`} aria-label="TUTA home"><span className={`relative grid size-8 place-items-center overflow-hidden rounded-full ${inverse?"bg-[#FDF0CC] text-[#1E1B2E]":"bg-[#1E1B2E] text-white"}`}><Moon className="size-[18px] fill-current" /></span><strong className="text-[22px] font-black tracking-[-1px]">{lang==="ka"?"თუთა":"TUTA"}</strong></a>
+  return <a href="/" className={`flex items-center gap-2.5 ${inverse?"text-white":"text-[#1E1B2E]"}`} aria-label={lang === 'ka' ? 'თუთა მთავარი' : 'TUTA home'}><BrandMark/><strong className="text-[22px] font-black tracking-[-1px]">{lang==="ka"?"თუთა":"TUTA"}</strong></a>
 }
 
 function NavLinks({lang,consult}:{lang:Lang,consult:boolean}) {const t=content[lang];const features=useSiteFeatures();return <>{features.community&&<a href="/community">{t.community}</a>}<a href="/about">{t.about}</a><a href="#features">{t.featuresNav}</a>{features.library&&<a href="/blog">{t.library}</a>}{features.premium&&<a href="/premium">Premium</a>}{consult&&<a href="/consultation">{t.consultation}</a>}</>}

@@ -7,6 +7,7 @@ import { CycleSettings, getCycle, isoDate } from "../lib/cycle";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import {useHealthState,type HealthData} from "./use-health-state";
 import AdminFeaturePanel from "@/components/admin-feature-panel";
+import BrandMark from '@/components/brand-mark';
 import CycleOverview from "@/components/cycle-overview";
 import { forecast } from "../mobile/src/cycle.mjs";
 import PremiumCheckout from "@/components/premium-checkout";
@@ -39,7 +40,7 @@ const pageInfo: Record<PageKind, {ka:[string,string],en:[string,string]}> = {
 };
 
 function useSiteLanguage(){const [lang,setLang]=useState<Lang>("ka");useEffect(()=>{if(localStorage.getItem("tuta-language")==="en")setLang("en")},[]);useEffect(()=>{localStorage.setItem("tuta-language",lang);document.documentElement.lang=lang},[lang]);return{lang,setLang}}
-function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a href="/" className={`inner-logo ${inverse?"inverse":""}`}><span /><strong>{lang==="ka"?"თუთა":"TUTA"}</strong></a>}
+function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a href="/" className={`inner-logo ${inverse?"inverse":""}`}><BrandMark/><strong>{lang==="ka"?"თუთა":"TUTA"}</strong></a>}
 
 function InnerHeader({lang,setLang,consult}:{lang:Lang,setLang:(v:Lang)=>void,consult:boolean}){const [open,setOpen]=useState(false);const features=useSiteFeatures();return <header className="inner-header"><div className="inner-container inner-nav"><InnerLogo lang={lang}/><nav className={open?"open":""}>{features.community&&<a href="/community">{lang==="ka"?"მთავარი":"Home"}</a>}<a href="/about">{lang==="ka"?"ჩვენ შესახებ":"About"}</a>{features.library&&<a href="/blog">{lang==="ka"?"ბიბლიოთეკა":"Library"}</a>}{features.premium&&<a href="/premium">Premium</a>}{consult&&<a href="/consultation">{lang==="ka"?"ექიმთან კონსულტაცია":"Consult a doctor"}</a>}<button onClick={()=>setLang(lang==="ka"?"en":"ka")}>{lang==="ka"?"EN":"KA"}</button>{features.period&&<a href="/app/dashboard" className="inner-nav-cta">{lang==="ka"?"აპის გახსნა":"Open app"}</a>}</nav><button className="inner-menu" onClick={()=>setOpen(!open)} aria-label="Menu">{open?"×":"☰"}</button></div></header>}
 

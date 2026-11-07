@@ -266,4 +266,4 @@
 .directory-link{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px;min-height:88px;font-size:16px;text-decoration:none;color:#1e1b2e;background:#f9f8fc;border:1px solid #e3d8f1;border-radius:20px}
 .directory-link:hover{background:#e3d8f1}.directory-link:focus-visible{outline:3px solid #1e1b2e;outline-offset:3px}
 .directory-entry{background:#fdf0cc;padding:12px 24px;text-align:center;font-size:16px}.directory-entry a{display:inline-flex;align-items:center;min-height:44px;color:#1e1b2e}@media print{.directory-entry{display:none}}
-.logo .logo-mark,.inner-logo>span{width:44px!important;height:44px!important;flex-shrink:0;background:url('/tuta-icon.png') center/cover no-repeat!important;border-radius:12px!important}.logo .logo-mark:after,.inner-logo>span:after{display:none!important}
+.tuta-brand-mark{display:block;width:44px;height:44px;flex-shrink:0;object-fit:contain;border-radius:12px}

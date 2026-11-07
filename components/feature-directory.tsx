@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import BrandMark from '@/components/brand-mark';
 import { useEffect, useState } from 'react';
 import { extraPages } from '@/lib/page-directory';
 import { featureForRoute, useSiteFeatures } from '@/lib/site-features';
@@ -23,7 +24,7 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
   if(page && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></main>;
   return <div className="inner-container" style={{padding:'24px 16px 80px'}}>
     <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:32}}>
-      <Link href="/">{ka?'თუთა':'TUTA'}</Link>
+      <Link href="/" className="inner-logo"><BrandMark/>{ka?'თუთა':'TUTA'}</Link>
       <button style={{minHeight:44,minWidth:44}} onClick={()=>{const next=ka?'en':'ka';setLang(next);localStorage.setItem('tuta-language',next)}}>{ka?'EN':'KA'}</button>
     </header>
     <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></nav>
