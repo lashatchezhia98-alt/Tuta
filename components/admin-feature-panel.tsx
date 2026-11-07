@@ -167,7 +167,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
         <nav aria-label={ka ? "ადმინის მენიუ" : "Admin navigation"}>
           {nav.map(item => <Link key={item.section} href={item.href} className={section === item.section ? "active" : undefined} aria-current={section === item.section ? "page" : undefined}>{ka ? item.ka : item.en}</Link>)}
         </nav>
-        <Link className="admin-signout" href="/api/admin/logout">{ka ? "გამოსვლა" : "Sign out"}</Link>
+        <form action="/api/admin/logout" method="post"><button className="admin-signout" type="submit">{ka ? "გამოსვლა" : "Sign out"}</button></form>
       </aside>
       <div className="admin-content">
         <header className="admin-page-heading"><div><span className="inner-kicker">TUTA · ADMIN</span><h1>{heading[section][ka ? 0 : 1]}</h1><p>{description[section][ka ? 0 : 1]}</p></div></header>

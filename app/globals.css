@@ -100,6 +100,8 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .admin-nav-disabled{color:#77717e;background:#f9f8fc}
 .admin-nav-disabled small{white-space:nowrap;border-radius:99px;background:#eeeaf3;padding:4px 7px;font-size:9px}
 .admin-signout{justify-content:center;border:1px solid #e9e2ee;color:#51485c;background:#faf9fc}
+.admin-sidebar form{margin:0}
+.admin-sidebar form .admin-signout{width:100%;cursor:pointer}
 .admin-signout:hover{background:#f1edf6}
 .admin-content{min-width:0}
 .admin-page-heading{display:flex;justify-content:space-between;gap:20px;margin:0 0 20px}
