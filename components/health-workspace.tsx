@@ -60,7 +60,6 @@ export default function HealthWorkspace({
         aria-label={ka ? "პირადი სივრცე" : "My space"}
       >
         {[
-          ["/app/features", "ყველა ფუნქცია", "All features"],
           ["/community", "მთავარი", "Home"],
           ["/app/dashboard", "პერიოდი", "Period"],
           ["/app/log", "დღიური", "Journal"],

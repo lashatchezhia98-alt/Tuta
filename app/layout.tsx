@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DirectoryEntry from '@/components/directory-entry';
 import "./globals.css";
 import "./workspace.css";
 
@@ -11,4 +10,4 @@ export const metadata: Metadata = {
   openGraph: { title: "TUTA | შენი სხეული. შენი რიტმი.", description: "ქართული ციკლისა და ჯანმრთელობის ტრეკერი. პირადი, მშვიდი და შენზე მორგებული.", locale: "ka_GE", type: "website", images: [{ url: "/tuta-icon.png", width: 1024, height: 1024, alt: "TUTA | შენი სხეული. შენი რიტმი." }] },
   twitter: { card: "summary", title: "TUTA | შენი სხეული. შენი რიტმი.", description: "ქართული ციკლისა და ჯანმრთელობის ტრეკერი.", images: ["/tuta-icon.png"] },
 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="ka"><body><DirectoryEntry/>{children}</body></html>; }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="ka"><body>{children}</body></html>; }

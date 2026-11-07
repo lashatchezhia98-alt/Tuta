@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link';
 import BrandMark from '@/components/brand-mark';
+import HeaderActions from '@/components/header-actions';
 import { useEffect, useState } from 'react';
 import { extraPages } from '@/lib/page-directory';
 import { featureForRoute, useSiteFeatures } from '@/lib/site-features';
@@ -25,7 +26,7 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
   return <div className="inner-container" style={{padding:'24px 16px 80px'}}>
     <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:32}}>
       <Link href="/" className="inner-logo"><BrandMark/>{ka?'თუთა':'TUTA'}</Link>
-      <button style={{minHeight:44,minWidth:44}} onClick={()=>{const next=ka?'en':'ka';setLang(next);localStorage.setItem('tuta-language',next)}}>{ka?'EN':'KA'}</button>
+      <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
     <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></nav>
     {page ? <main><h1>{ka?page.ka:page.en}</h1><p>{ka?page.description:page.english}</p><section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section></main> : <main>
