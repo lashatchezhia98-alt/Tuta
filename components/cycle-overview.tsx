@@ -13,17 +13,18 @@ export default function CycleOverview({ periods, cycleLength, lang }: {
     day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
   if (!current) return <p>{ka ? "პროგნოზისთვის შეინახე პერიოდის დაწყების თარიღი." : "Save a period start date to see an estimate."}</p>;
+  const phase = (model.status === 'overdue' || model.reliability === 'low') && current.phase !== 'menstruation' ? 'unknown' : current.phase;
   const phases: Record<string, string> = { menstruation: "მენსტრუაცია", follicular: "ფოლიკულური", ovulation: "ოვულაცია", luteal: "ლუთეალური", unknown: "უცნობია" };
   return <section aria-label={ka ? "პერიოდის პროგნოზი" : "Period estimates"}>
     <div className="app-content-cards">
       <article><small>{ka ? "ციკლის დღე" : "Cycle day"}</small><strong>{current.day}</strong></article>
-      <article><small>{ka ? "სავარაუდო ფაზა" : "Estimated phase"}</small><strong>{ka ? phases[current.phase] : current.phase}</strong></article>
+      <article><small>{ka ? "სავარაუდო ფაზა" : "Estimated phase"}</small><strong>{ka ? phases[phase] : phase}</strong></article>
       <article><small>{model.status === "overdue" ? (ka ? "სავარაუდო თარიღმა გაიარა" : "Estimated date has passed") : (ka ? "შემდეგი პერიოდის ვარაუდი" : "Next period estimate")}</small><strong>{model.expected ? format(model.expected) : ""}</strong></article>
     </div>
     <p>{model.reliability === "limited"
-      ? (ka ? "პირველადი შეფასება: საჭიროა სულ მცირე 3 დასრულებული ციკლის ისტორია." : "Initial estimate: at least 3 completed cycles are needed.")
+      ? (ka ? `საწყისი შეფასება: ვიყენებთ შენს მითითებულ ${cycleLength} დღეს. პირადი საშუალოსთვის საჭიროა 3 დასრულებული ციკლი, ანუ 4 დაწყების თარიღი.` : `Initial estimate: using your chosen ${cycleLength} days. A personal average needs 3 completed cycles, meaning 4 start dates.`)
       : model.reliability === "low"
-        ? (ka ? "ციკლის ხანგრძლივობა იცვლება. თარიღების სიზუსტე შეზღუდულია." : "Cycle lengths vary. Date estimates are uncertain.")
+        ? (ka ? "ამ ჩანაწერებით პროგნოზის სიზუსტე შეზღუდულია. ზუსტ ნაყოფიერ დღეებს არ ვაჩვენებთ." : "These entries limit prediction accuracy. Precise fertile-day estimates are not shown.")
         : (ka ? "შეფასება შენს ჩაწერილ ისტორიას ეყრდნობა." : "Estimates use your recorded history.")}</p>
     {model.status === "overdue" ? <p role="status">{ka ? "ახალი პერიოდი ჯერ არ არის ჩაწერილი. მომავალი პროგნოზები დროებით შეჩერებულია." : "No new period is logged. Future predictions are paused."}</p> : <>
       {model.earliest && model.latest ? <p>{ka ? "ისტორიული ხანგრძლივობების დიაპაზონი: " : "Range based on past cycle lengths: "}{format(model.earliest)} – {format(model.latest)}. {ka ? "ეს გარანტირებული თარიღები არ არის." : "These dates are not guaranteed."}</p> : null}

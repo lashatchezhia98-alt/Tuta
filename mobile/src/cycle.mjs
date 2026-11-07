@@ -22,6 +22,8 @@ export function phaseForDay(day, duration, length) {
   if (!Number.isInteger(day) || day < 1 || day > length) return 'unknown';
   const ovulationDay = length - 13; // Date offset is zero-based, cycle day is one-based.
   if (day <= duration) return 'menstruation';
+  // Keep unusual observed intervals, but do not assign calculated hormonal phases.
+  if (length < 21 || length > 45) return 'unknown';
   if (Math.abs(day - ovulationDay) <= 1) return 'ovulation';
   return day < ovulationDay - 1 ? 'follicular' : 'luteal';
 }
@@ -43,6 +45,12 @@ export function ordered(periods) {
     if(i&&sorted[i-1].start===p.start)throw new Error('Duplicate period start');
   });
   return sorted;
+}
+// Close start dates are allowed; only overlapping recorded bleeding is blocked.
+export function overlapsPeriod(periods, candidate, replacingStart = candidate.start) {
+  ordered([candidate]);
+  const end = addDays(candidate.start, candidate.duration);
+  return ordered(periods).some(p => p.start !== replacingStart && candidate.start < addDays(p.start, p.duration) && end > p.start);
 }
 export function history(periods) {
   const sorted = ordered(periods);
@@ -79,7 +87,7 @@ export function forecast(periods, fallback, asOf=dateKey()) {
   const sufficient=lengths.length>=3;
   const irregular=sufficient&&lengths.some(n=>Math.abs(n-avg.length)>7);
   const spread=sufficient?Math.max(...lengths)-Math.min(...lengths):0;
-  const reliability=!sufficient?'limited':irregular||spread>7?'low':'consistent';
+  const reliability=!sufficient?'limited':irregular||spread>7||avg.length<21||avg.length>45?'low':'consistent';
   if(!last)return {status:'empty',source:'manual',reliability:'limited',irregular:false,expected:null,earliest:null,latest:null,starts:[],fertilityAvailable:false,averageLength:avg.length,averageDuration:avg.duration,completed:0};
   const length=Math.round(avg.length);
   const expected=addDays(last.start,length);

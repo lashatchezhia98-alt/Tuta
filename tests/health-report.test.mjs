@@ -56,6 +56,13 @@ test("irregular flag requires 3 completed cycles and more than 7 days deviation"
     [false, false, true],
   );
 });
+test("unusual cycle intervals keep unknown phase totals finite", () => {
+  const report=healthReport({...base,periods:[{start:'2026-06-01',duration:5},{start:'2026-08-01',duration:5}],logs:[]},'2026-08-01');
+  assert.equal(report.cycles[0].length,61);
+  assert.equal(report.phases.find(p=>p.phase==='unknown').days,56);
+  assert.ok(report.phases.every(p=>Number.isFinite(p.days)));
+});
+
 test("calendar export uses generic all-day reminders without health details", () => {
   const result = reminderCalendar(["2026-12-01"]);
   assert.match(result, /DTSTART;VALUE=DATE:20261201/);

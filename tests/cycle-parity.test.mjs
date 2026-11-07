@@ -37,6 +37,11 @@ test('web and mobile agree on every day for supported settings', () => {
   }
 });
 
+test('cloud health payload preserves observed intervals outside the initial setting range', () => {
+  const periods = ['2026-01-01','2026-01-10','2026-04-10'].map(start=>({start,duration:5}));
+  assert.equal(validHealthData({version:1,lang:'ka',name:'',cycleLength:28,periods,logs:[]}),true);
+});
+
 test('invalid dates and fractional settings are rejected', () => {
   for (const date of ['2025-02-29', '2024-02-30', '2024-13-01', 'invalid']) {
     assert.throws(() => getCycle(date));

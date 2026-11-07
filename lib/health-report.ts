@@ -34,6 +34,7 @@ export function healthReport(data: HealthData, today = dateKey()) {
     follicular: 0,
     ovulation: 0,
     luteal: 0,
+    unknown: 0,
   };
   for (const cycle of cycles)
     for (let day = 1; day <= cycle.length; day++)

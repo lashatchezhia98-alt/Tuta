@@ -1,9 +1,51 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { createRequire } from 'node:module';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import ts from 'typescript';
 
 const appRoot = new URL("../.next/server/app/", import.meta.url);
 const sourceRoot = new URL("../", import.meta.url);
+
+async function loadComponent(path, mocks = {}) {
+  const url = new URL(path,sourceRoot);
+  const source = await readFile(url,'utf8');
+  const compiled = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+  const realRequire=createRequire(url);
+  const target={exports:{}};
+  new Function('require','module','exports',compiled)(id=>id in mocks?mocks[id]:realRequire(id),target,target.exports);
+  return target.exports.default;
+}
+
+test('cycle education renders age-specific context and preserves unusual observed intervals',async()=>{
+  const Component=await loadComponent('components/cycle-education.tsx');
+  const periods=['2026-01-01','2026-01-19','2026-04-04'].map(start=>({start,duration:5}));
+  const html=renderToStaticMarkup(createElement(Component,{periods,birthDate:'2000-01-01',lang:'en'}));
+  assert.match(html,/shortest 18 days; longest 75 days/);
+  assert.match(html,/not a definition of normal/);
+  assert.match(html,/FIGO uses a reference interval of 24–38 days/);
+  assert.match(html,/4 start dates/);
+  assert.match(html,/not a diagnosis/);
+});
+
+test('journey enforces sign-in, shows load errors and routes actionable steps',async()=>{
+  let health={loaded:true,session:null,error:'',data:{periods:[],logs:[]}};
+  const Component=await loadComponent('components/guided-journey.tsx',{
+    '@/app/use-health-state':{useHealthState:()=>health},
+    'next/link':{default:({children,...props})=>createElement('a',props,children)},
+  });
+  const render=()=>renderToStaticMarkup(createElement(Component,{lang:'en'}));
+  assert.match(render(),/Sign in to see your journey/);
+  health={...health,session:{user:{id:'test'}}};
+  assert.match(render(),/href="\/app\/dashboard"/);
+  assert.match(render(),/0\/3 completed cycles/);
+  assert.doesNotMatch(render(),/✓ Completed/);
+  health={...health,error:'unavailable'};
+  assert.match(render(),/Could not load your entries/);
+  assert.doesNotMatch(render(),/0\/3/);
+});
 
 test("registration, login and recovery routes render usable auth forms", async () => {
   const [register, login, forgot, reset] = await Promise.all([

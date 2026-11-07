@@ -12,16 +12,19 @@ import {
   forecast,
   symptomPatterns,
   distance,
+  overlapsPeriod,
 } from "../mobile/src/cycle.mjs";
 import { symptoms } from "../mobile/src/symptoms.mjs";
 import { healthReport, reminderCalendar } from "@/lib/health-report";
 import CycleOverview from "./cycle-overview";
+import CycleEducation from "./cycle-education";
 
 type Lang = "ka" | "en";
 type Props = {
   data: HealthData;
   save: (d: HealthData) => Promise<void>;
   lang: Lang;
+  birthDate?: string;
 };
 export const phaseLabels: Record<string, [string, string]> = {
   menstruation: ["მენსტრუაცია", "Menstruation"],
@@ -137,7 +140,7 @@ export default function HealthWorkspace({
               </button>
             )}
             {kind === "dashboard" ? (
-              <PeriodCalendar {...health} lang={lang} />
+              <PeriodCalendar {...health} lang={lang} birthDate={health.session.user.user_metadata?.date_of_birth} />
             ) : kind === "log" ? (
               <Suspense fallback={<p>…</p>}>
                 <Journal {...health} lang={lang} />
@@ -145,7 +148,7 @@ export default function HealthWorkspace({
             ) : kind === "report" ? (
               <PremiumReport data={health.data} lang={lang} />
             ) : (
-              <HealthInsights data={health.data} lang={lang} />
+              <HealthInsights data={health.data} lang={lang} birthDate={health.session.user.user_metadata?.date_of_birth} />
             )}
           </>
         )}
@@ -154,7 +157,7 @@ export default function HealthWorkspace({
   );
 }
 
-function PeriodCalendar({ data, save, lang }: Props) {
+function PeriodCalendar({ data, save, lang, birthDate }: Props) {
   const ka = lang === "ka",
     today = dateKey();
   const [month, setMonth] = useState(today.slice(0, 7)),
@@ -173,6 +176,11 @@ function PeriodCalendar({ data, save, lang }: Props) {
     setBusy(true);
     setMessage("");
     try {
+      if (remove) {
+        await save({ ...data, periods: data.periods.filter(p => p.start !== selected) });
+        setMessage(ka ? "წაშლილია" : "Removed");
+        return;
+      }
       if (
         selected > today ||
         duration < 1 ||
@@ -183,7 +191,7 @@ function PeriodCalendar({ data, save, lang }: Props) {
         length > 45
       )
         throw Error();
-      if (!remove && duration > distance(selected, today) + 1) {
+      if (duration > distance(selected, today) + 1) {
         setMessage(
           ka
             ? "მომავალი სისხლდენის დღეებს დადასტურებულად ნუ მონიშნავ."
@@ -192,13 +200,7 @@ function PeriodCalendar({ data, save, lang }: Props) {
         return;
       }
       if (
-        !remove &&
-        data.periods.some(
-          (p) =>
-            p.start !== selected &&
-            selected < addDays(p.start, p.duration) &&
-            addDays(selected, duration) > p.start,
-        )
+        overlapsPeriod(data.periods, { start: selected, duration })
       ) {
         setMessage(
           ka
@@ -212,7 +214,7 @@ function PeriodCalendar({ data, save, lang }: Props) {
         cycleLength: length,
         periods: [
           ...data.periods.filter((p) => p.start !== selected),
-          ...(remove ? [] : [{ start: selected, duration }]),
+          { start: selected, duration },
         ].sort((a, b) => a.start.localeCompare(b.start)),
       });
       setMessage(ka ? "შენახულია" : "Saved");
@@ -238,6 +240,7 @@ function PeriodCalendar({ data, save, lang }: Props) {
         cycleLength={data.cycleLength}
         lang={lang}
       />
+      <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />
       <div className="workspace-grid">
         <section className="workspace-card">
           <div className="workspace-row">
@@ -356,6 +359,7 @@ function PeriodCalendar({ data, save, lang }: Props) {
                 onChange={(e) => setLength(Number(e.target.value))}
               />
             </label>
+            <p>{ka ? "28 დღე საწყისი ვარაუდია. 21–45 დღე მხოლოდ ამ პარამეტრის ზღვარია; რეალური ციკლები ამ დიაპაზონით არ იზღუდება. 3 დასრულებული ციკლის შემდეგ პროგნოზი შენს ისტორიას ეყრდნობა." : "28 days is a starting assumption. 21–45 days is only this setting’s limit, not a restriction on recorded cycles. After 3 completed cycles, estimates use your history."}</p>
             <button disabled={busy || selected > today}>
               {ka ? "შენახვა" : "Save"}
             </button>
@@ -759,16 +763,19 @@ function HealthInsights({
   data,
   lang,
   report = false,
+  birthDate,
 }: {
   data: HealthData;
   lang: Lang;
   report?: boolean;
+  birthDate?: string;
 }) {
   const ka = lang === "ka",
     summary = healthReport(data),
     patterns = symptomPatterns(data.periods, data.logs);
   return (
     <div className={report ? "health-report" : ""}>
+      {!report && <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />}
       <p>
         {summary.from} / {summary.today}
       </p>
