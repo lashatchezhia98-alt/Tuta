@@ -14,7 +14,9 @@
     },
     "android": {
       "package": "com.tutahealth.app",
-      "versionCode": 2
+      "versionCode": 3,
+      "icon": "./assets/app-icon.png",
+      "adaptiveIcon": { "foregroundImage": "./assets/app-icon.png", "backgroundColor": "#E3D8F1" }
     },
     "web": {
       "name": "Tuta · Moon Mood"
