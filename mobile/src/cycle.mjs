@@ -139,6 +139,7 @@ export function symptomPatterns(periods, logs) {
       if(log.date<period.start||log.date>=next)continue;
       const day=distance(period.start,log.date)+1;
       const phase=phaseForDay(day,period.duration,period.length);
+      if (phase === 'unknown') continue;
       for(const symptom of new Set(log.symptoms)) {
         const key=`${symptom}\u0000${phase}`;
         if(!seen.has(key))seen.set(key,new Set());

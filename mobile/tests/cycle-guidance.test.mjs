@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addDays, averages, cycleAt, forecast, history, overlapsPeriod, validSetup } from '../src/cycle.mjs';
+import { addDays, averages, cycleAt, forecast, history, overlapsPeriod, symptomPatterns, validSetup } from '../src/cycle.mjs';
 import { cycleEducation, cycleReference, trackingJourney } from '../src/cycle-guidance.mjs';
 
 const today = '2026-11-08';
@@ -59,4 +59,10 @@ test('journey is derived from saved entries and check-in completion resets daily
   assert.equal(trackingJourney({...completed,periods:periods.slice(0,3)},'en',today)[1].done,false);
   assert.equal(trackingJourney(completed,'en',addDays(today,1))[2].done,false);
   assert.equal(trackingJourney({...data,periods:[{start:'2027-01-01',duration:5}]},'en',today)[0].done,false);
+});
+
+test('unknown phases are not presented as a recurring hormonal-phase pattern',()=>{
+  const periods=[0,60,120,180].map(offset=>({start:addDays('2025-01-01',offset),duration:5}));
+  const logs=periods.slice(0,3).map(p=>({date:addDays(p.start,10),symptoms:['headache']}));
+  assert.deepEqual(symptomPatterns(periods,logs),[]);
 });
