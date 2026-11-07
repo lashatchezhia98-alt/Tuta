@@ -158,7 +158,7 @@ function Calculator({kind,lang}:{kind:"period"|"ovulation",lang:Lang}){const [da
 
 function Consultation({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA CARE</span><h1>{pageInfo.consultation[lang][0]}</h1><p>{pageInfo.consultation[lang][1]}</p></div></section><section className="inner-container" style={{padding:"60px 20px 100px"}}><div className="calculator-result"><small>{lang==="ka"?"დაგეგმილი სერვისი":"PLANNED SERVICE"}</small><h2 style={{margin:"10px 0"}}>{lang==="ka"?"კონსულტაცია ჯერ მიუწვდომელია":"Consultations are not available yet"}</h2><p>{lang==="ka"?"ექიმების სია, ჩატი და ჯავშანი ამ ვერსიაში არ მუშაობს. Premium გამოწერაც ჯერ არ იყიდება.":"Doctor profiles, chat and booking are not active in this version. Premium subscriptions are not on sale yet."}</p></div></section></>}
 
-function Admin({lang}:{lang:Lang}){return <AdminFeaturePanel lang={lang}/>}
+function Admin({lang}:{lang:Lang}){return <AdminFeaturePanel initialLang={lang}/>}
 
 function AppDashboard({kind,lang}:{kind:PageKind,lang:Lang}){
  const items=["dashboard","log","insights","report","settings"] as PageKind[];
