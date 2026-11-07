@@ -101,6 +101,7 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .admin-market-actions button:disabled,.admin-market-product button:disabled{opacity:.55}
 .admin-market-actions .secondary,.admin-market-product button.secondary{border:1px solid var(--line);background:#fff;color:var(--ink)}
 .admin-market-notice,.admin-market-empty{color:var(--text-muted);font-size:13px;line-height:1.6}
+.admin-market-image-list{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 18px}.admin-market-image-item{position:relative;width:94px;height:94px}.admin-market-image-item img{width:100%;height:100%;object-fit:cover;border-radius:10px;border:1px solid var(--line)}.admin-market-image-item button{position:absolute;right:-6px;top:-6px;width:26px;height:26px;min-height:26px!important;padding:0!important;border-radius:50%!important;background:var(--ink);color:white}
 .admin-market-product{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:16px 0;border-top:1px solid var(--line)}
 .admin-market-product p{margin:5px 0;color:var(--text-muted);font-size:12px;line-height:1.5}
 .admin-market-product small{font-size:11px;color:var(--text-muted)}
@@ -111,6 +112,7 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .market-product-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .market-product-card{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 6px 26px rgba(30,27,46,.035)}
 .market-product-image{height:210px;background-position:center;background-size:cover;background-color:#eee8f4}
+.market-product-gallery{position:relative;min-width:0}.market-gallery-arrow{position:absolute;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:#fff;color:var(--ink);font-size:24px;box-shadow:0 2px 10px #1e1b2e22;cursor:pointer}.market-gallery-arrow.previous{left:9px}.market-gallery-arrow.next{right:9px}.market-gallery-count{position:absolute;right:10px;bottom:10px;padding:4px 8px;border-radius:20px;background:#1e1b2ecc;color:white;font-size:11px}
 .market-product-placeholder{display:grid;place-items:center;background:radial-gradient(circle at 50% 50%,#fff8d9 0 15%,transparent 15.5%),linear-gradient(135deg,#e4d8f2,#f9f8fc)}
 .market-product-placeholder span{display:grid;place-items:center;width:76px;height:76px;border-radius:50%;background:#fff9e9;color:var(--ink);font-size:38px}
 .market-product-info{padding:18px}

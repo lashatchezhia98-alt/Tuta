@@ -19,8 +19,9 @@ test("registration, login and recovery routes render usable auth forms", async (
   assert.match(register, /ელფოსტა \(მომხმარებლის სახელი\)|Email \(username\)/);
   assert.match(register, /სახელი|First name/);
   assert.match(register, /გვარი|Last name/);
-  assert.match(register, /ნიკნეიმი|Nickname/);
+  assert.doesNotMatch(register, /ნიკნეიმი|Nickname/);
   assert.match(register, /დაბადების თარიღი|Date of birth/);
+  assert.match(register, /გაიმეორე პაროლი|Confirm password/);
   assert.match(login, /კეთილი იყოს შენი დაბრუნება|Welcome back/);
   assert.match(login, /ელფოსტა|Email/);
   assert.match(login, /შესვლა|Sign in/);
@@ -41,8 +42,9 @@ test("auth forms call Supabase sign-up, password sign-in and recovery", async ()
   for (const source of [page, mobile]) {
     assert.match(source, /first_name:firstName\.trim\(\)/);
     assert.match(source, /last_name:lastName\.trim\(\)/);
-    assert.match(source, /nickname:nickname\.trim\(\)/);
+    assert.doesNotMatch(source, /nickname:nickname\.trim\(\)/);
     assert.match(source, /date_of_birth:birthDate/);
+    assert.match(source, /პაროლები არ ემთხვევა ერთმანეთს|Passwords do not match/);
     assert.match(source, /validBirthDate\(birthDate\)/);
   }
   assert.match(page, /signInWithPassword\(\{email:email\.trim\(\)\.toLowerCase\(\),password\}\)/);
@@ -89,7 +91,7 @@ test("community page exposes topics and the post composer", async () => {
   assert.match(source, /რედაქტირება/);
   assert.match(source, /წაშლა/);
   assert.match(admin, /საზოგადოების საჩივრები/);
-  assert.match(admin, /reporter identity is kept private/);
+  assert.match(admin, /Reporter identity is not shown to admins/);
   assert.match(moderationApi, /verifyAdminSession/);
   assert.match(moderationApi, /SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(moderationApi, /reporter_id/);

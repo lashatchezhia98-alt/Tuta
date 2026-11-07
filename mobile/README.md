@@ -27,7 +27,7 @@ Scan the QR code using a compatible Expo Go client, or use `npm run ios` / `npm 
 - Same-phase symptom patterns are shown only after they recur in at least three completed cycles.
 - Local storage, unsaved journal warning, explicit health-data export warning, and confirmed local-data deletion.
 - Supabase email/password registration, sign-in, sign-out, email confirmation and in-app password recovery (once the Auth redirect URL is allowlisted).
-- Registration asks for email (the sign-in username), first name, last name, nickname, age (1–120), and password. Profile details are saved in Supabase Auth user metadata; nicknames are not unique.
+- Registration asks for email (the sign-in username), first name, last name, date of birth, password, and matching password confirmation. Profile details are saved in Supabase Auth user metadata.
 - Community posts require one topic, have a 200-word limit, and may include one photo. Readers can filter by topic and comment. Comments show a member's nickname or first name, never their email. A doctor label and verification mark appear only for accounts present in the admin-managed `verified_doctors` table. Post authors can edit their text/topic or delete their post; deleting also removes its comments. The community migration in `../supabase/migrations/` must be applied to the Tuta Supabase project before these features work online. A post's existing photo cannot yet be replaced while editing.
 - Premium doctor messaging is visibly unavailable until authenticated subscriptions and a real service exist. No local switch pretends to authorize paid access.
 

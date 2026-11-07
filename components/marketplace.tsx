@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type Lang = "ka" | "en";
 type Category = "period-care" | "body-care" | "nutrition" | "accessories";
-type Product = { id: string; name: string; description: string; category: Category; price_tetri: number; image_url: string | null };
+type Product = { id: string; name: string; description: string; category: Category; price_tetri: number; image_url: string | null; image_urls?: string[] | null };
 type CartRow = { product: Product; quantity: number };
 const categories: { id: Category; ka: string; en: string }[] = [
   { id: "period-care", ka: "პერიოდის მოვლა", en: "Period care" },
@@ -26,10 +26,19 @@ function unproject(x: number, y: number) {
   return { latitude: Number(latitude.toFixed(6)), longitude: Number(longitude.toFixed(6)) };
 }
 
+function ProductGallery({ product, lang }: { product: Product; lang: Lang }) {
+  const images = product.image_urls?.length ? product.image_urls : product.image_url ? [product.image_url] : [];
+  const [active, setActive] = useState(0);
+  if (!images.length) return <div className="market-product-image market-product-placeholder"><span>✳</span></div>;
+  const current = active % images.length;
+  return <div className="market-product-gallery">
+    <div className="market-product-image" style={{ backgroundImage: `url(${JSON.stringify(images[current])})` }} role="img" aria-label={`${product.name} — ${lang === "ka" ? "ფოტო" : "photo"} ${current + 1} ${lang === "ka" ? "სულ" : "of"} ${images.length}`}/>
+    {images.length > 1 && <><button className="market-gallery-arrow previous" type="button" aria-label={lang === "ka" ? "წინა ფოტო" : "Previous photo"} onClick={() => setActive((current - 1 + images.length) % images.length)}>‹</button><button className="market-gallery-arrow next" type="button" aria-label={lang === "ka" ? "შემდეგი ფოტო" : "Next photo"} onClick={() => setActive((current + 1) % images.length)}>›</button><span className="market-gallery-count">{current + 1} / {images.length}</span></>}
+  </div>;
+}
+
 function PinMap({ lang, pin, onChange }: { lang: Lang; pin: { latitude: number; longitude: number }; onChange: (value: { latitude: number; longitude: number }) => void }) {
-  const [mapCenter, setMapCenter] = useState(pin);
-  useEffect(() => setMapCenter(pin), [pin.latitude, pin.longitude]);
-  const centerPx = project(mapCenter.latitude, mapCenter.longitude);
+  const centerPx = project(pin.latitude, pin.longitude);
   const centerTileX = Math.floor(centerPx.x / 256), centerTileY = Math.floor(centerPx.y / 256);
   const dx = centerPx.x - centerTileX * 256, dy = centerPx.y - centerTileY * 256;
   const tiles = Array.from({ length: 9 }, (_, i) => ({ x: centerTileX + i % 3 - 1, y: centerTileY + Math.floor(i / 3) - 1 }));
@@ -37,16 +46,20 @@ function PinMap({ lang, pin, onChange }: { lang: Lang; pin: { latitude: number; 
     const rect = event.currentTarget.getBoundingClientRect();
     const next = unproject(centerPx.x + event.clientX - rect.left - rect.width / 2, centerPx.y + event.clientY - rect.top - rect.height / 2);
     onChange(next);
-    setMapCenter(next);
+  }
+  function pickWithKeyboard(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onChange(unproject(centerPx.x, centerPx.y));
   }
   function locate() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(position => {
       const next = { latitude: Number(position.coords.latitude.toFixed(6)), longitude: Number(position.coords.longitude.toFixed(6)) };
-      onChange(next); setMapCenter(next);
+      onChange(next);
     }, () => {});
   }
-  return <div className="market-map-wrap"><div role="application" aria-label={lang === "ka" ? "რუკა — დააჭირე მისამართის პინის დასასმელად" : "Map — click to place the address pin"} className="market-map" onClick={pick}>
+  return <div className="market-map-wrap"><div role="button" tabIndex={0} aria-label={lang === "ka" ? "რუკა — დააჭირე ან Enter გამოიყენე პინის დასასმელად" : "Map — click or press Enter to place the pin"} className="market-map" onClick={pick} onKeyDown={pickWithKeyboard}>
     {tiles.map(tile => <div key={`${tile.x}-${tile.y}`} className="market-map-tile" style={{ left: `calc(50% + ${(tile.x - centerTileX) * 256 - dx}px)`, top: `calc(50% + ${(tile.y - centerTileY) * 256 - dy}px)`, backgroundImage: `url(https://tile.openstreetmap.org/${zoom}/${tile.x}/${tile.y}.png)` }}/ >)}
     <span className="market-map-pin" aria-hidden="true">●</span>
     <span className="market-map-help">{lang === "ka" ? "რუკაზე დააჭირე პინის დასასმელად" : "Click the map to place the pin"}</span>
@@ -97,7 +110,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
     <main className="marketplace inner-container">
       <section aria-label={ka ? "პროდუქტის ფილტრები" : "Product filters"} className="market-filters"><button type="button" className={category === "all" ? "active" : ""} aria-pressed={category === "all"} onClick={() => setCategory("all")}>{ka ? "ყველა" : "All"}</button>{categories.map(item => <button type="button" key={item.id} className={category === item.id ? "active" : ""} aria-pressed={category === item.id} onClick={() => setCategory(item.id)}>{item[lang]}</button>)}</section>
       {notice && <p role="status" className="market-notice">{notice}</p>}
-      {loading ? <p className="market-loading">{ka ? "პროდუქტები იტვირთება…" : "Loading products…"}</p> : visibleProducts.length ? <section className="market-product-grid">{visibleProducts.map(product => <article className="market-product-card" key={product.id}>{product.image_url ? <div className="market-product-image" style={{ backgroundImage: `url(${JSON.stringify(product.image_url)})` }} role="img" aria-label={product.name}/> : <div className="market-product-image market-product-placeholder"><span>✳</span></div>}<div className="market-product-info"><small>{categories.find(item => item.id === product.category)?.[lang]}</small><h2>{product.name}</h2><p>{product.description}</p><div><strong>{(product.price_tetri / 100).toFixed(2)} ₾</strong><button type="button" onClick={() => add(product)} aria-label={`${ka ? "კალათაში დამატება" : "Add to cart"}: ${product.name}`}>{ka ? "კალათაში დამატება" : "Add to cart"}</button></div></div></article>)}</section> : <div className="market-empty"><span>✳</span><h2>{ka ? "მარკეტი მალე შეივსება" : "The market is getting ready"}</h2><p>{ka ? "პროდუქტებს ადმინისტრატორი დაამატებს. მოგვიანებით დაბრუნდი." : "Products will appear here once the administrator adds them. Check back soon."}</p></div>}
+      {loading ? <p className="market-loading">{ka ? "პროდუქტები იტვირთება…" : "Loading products…"}</p> : visibleProducts.length ? <section className="market-product-grid">{visibleProducts.map(product => <article className="market-product-card" key={product.id}><ProductGallery product={product} lang={lang}/><div className="market-product-info"><small>{categories.find(item => item.id === product.category)?.[lang]}</small><h2>{product.name}</h2><p>{product.description}</p><div><strong>{(product.price_tetri / 100).toFixed(2)} ₾</strong><button type="button" onClick={() => add(product)} aria-label={`${ka ? "კალათაში დამატება" : "Add to cart"}: ${product.name}`}>{ka ? "კალათაში დამატება" : "Add to cart"}</button></div></div></article>)}</section> : <div className="market-empty"><span>✳</span><h2>{ka ? "მარკეტი მალე შეივსება" : "The market is getting ready"}</h2><p>{ka ? "პროდუქტებს ადმინისტრატორი დაამატებს. მოგვიანებით დაბრუნდი." : "Products will appear here once the administrator adds them. Check back soon."}</p></div>}
       {cart.length > 0 && <section className="market-checkout" id="cart"><div className="market-checkout-heading"><div><span className="inner-kicker">TUTA · CART</span><h2>{ka ? "შენი კალათა" : "Your cart"}</h2></div><span>{cart.reduce((sum, row) => sum + row.quantity, 0)} {ka ? "პროდუქტი" : "items"}</span></div>
         <div className="market-cart-lines">{cart.map(row => <article key={row.product.id}><div><strong>{row.product.name}</strong><small>{(row.product.price_tetri / 100).toFixed(2)} ₾</small></div><div className="market-quantity"><button type="button" aria-label={ka ? "რაოდენობის შემცირება" : "Decrease quantity"} onClick={() => quantity(row.product.id, -1)}>−</button><span>{row.quantity}</span><button type="button" aria-label={ka ? "რაოდენობის გაზრდა" : "Increase quantity"} onClick={() => quantity(row.product.id, 1)}>+</button></div><strong>{(row.product.price_tetri * row.quantity / 100).toFixed(2)} ₾</strong></article>)}</div>
         <div className="market-total"><span>{ka ? "ჯამი" : "Total"}</span><strong>{(total / 100).toFixed(2)} ₾</strong></div>

@@ -223,7 +223,7 @@ function Profile({data,save,session,authEnabled,authBusy,setAuthBusy}:{session:S
 
 function AuthScreen({kind,lang,busy,setBusy,back,forgot,login,register}:{kind:'login'|'register'|'forgot'|'reset';lang:'ka'|'en';busy:boolean;setBusy:(v:boolean)=>void;back:()=>void;forgot:()=>void;login:()=>void;register:()=>void}){
  const ka=lang==='ka';const t=(a:string,b:string)=>ka?a:b;
- const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[firstName,setFirstName]=useState(''),[lastName,setLastName]=useState(''),[nickname,setNickname]=useState(''),[birthDate,setBirthDate]=useState(''),[message,setMessage]=useState('');
+ const [email,setEmail]=useState(''),[password,setPassword]=useState(''),[confirm,setConfirm]=useState(''),[firstName,setFirstName]=useState(''),[lastName,setLastName]=useState(''),[birthDate,setBirthDate]=useState(''),[message,setMessage]=useState('');
  const isReset=kind==='reset',isForgot=kind==='forgot';
  const title=kind==='login'?t('კეთილი დაბრუნება.','Welcome back.'):kind==='register'?t('შექმენი ანგარიში.','Create your account.'):isForgot?t('პაროლის აღდგენა.','Reset your password.'):t('ახალი პაროლი.','Choose a new password.');
  const submit=async()=>{
@@ -231,10 +231,9 @@ function AuthScreen({kind,lang,busy,setBusy,back,forgot,login,register}:{kind:'l
   const normalized=email.trim().toLowerCase();
   if(!isReset&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)){setMessage(t('შეიყვანე სწორი ელფოსტა.','Enter a valid email address.'));return}
   if(kind==='register'&&(!firstName.trim()||!lastName.trim())){setMessage(t('შეიყვანე სახელი და გვარი.','Enter your first and last name.'));return}
-  if(kind==='register'&&(nickname.trim().length<2||nickname.trim().length>30)){setMessage(t('ნიკნეიმი 2–30 სიმბოლოს უნდა შეიცავდეს.','Nickname must be 2–30 characters.'));return}
   if(kind==='register'&&!validBirthDate(birthDate)){setMessage(t('კალენდარში აირჩიე დაბადების სწორი თარიღი.','Choose a valid birth date from the calendar.'));return}
   if(!isForgot&&password.length<8){setMessage(t('პაროლი მინიმუმ 8 სიმბოლოს უნდა შეიცავდეს.','Password must be at least 8 characters.'));return}
-  if(isReset&&password!==confirm){setMessage(t('პაროლები არ ემთხვევა ერთმანეთს.','Passwords do not match.'));return}
+  if((kind==='register'||isReset)&&password!==confirm){setMessage(t('პაროლები არ ემთხვევა ერთმანეთს.','Passwords do not match.'));return}
   setBusy(true);setMessage('');
   try{
    if(isForgot){
@@ -250,7 +249,7 @@ function AuthScreen({kind,lang,busy,setBusy,back,forgot,login,register}:{kind:'l
     setPassword('');setConfirm('');
     setMessage(t('პაროლი შეიცვალა. ახლა შეგიძლია შეხვიდე.','Password updated. You can now sign in.'));
    }else if(kind==='register'){
-    const {data:{session},error}=await supabase.auth.signUp({email:normalized,password,options:{data:{first_name:firstName.trim(),last_name:lastName.trim(),name:`${firstName.trim()} ${lastName.trim()}`,nickname:nickname.trim(),date_of_birth:birthDate},emailRedirectTo:'com.tutahealth.app://auth-callback'}});
+    const {data:{session},error}=await supabase.auth.signUp({email:normalized,password,options:{data:{first_name:firstName.trim(),last_name:lastName.trim(),name:`${firstName.trim()} ${lastName.trim()}`,date_of_birth:birthDate},emailRedirectTo:'com.tutahealth.app://auth-callback'}});
     if(error)throw error;
     setMessage(session?t('ანგარიში შეიქმნა და შესული ხარ ✓','Account created and signed in ✓'):t('ანგარიში შეიქმნა. ელფოსტაზე მოსული ბმულით დაადასტურე.','Account created. Confirm it using the email link.'));
    }else{
@@ -267,10 +266,9 @@ function AuthScreen({kind,lang,busy,setBusy,back,forgot,login,register}:{kind:'l
  {!isReset&&<View style={s.section}><FieldLabel>{t('ელფოსტა (მომხმარებლის სახელი)','Email (username)')}</FieldLabel><TextInput accessibilityLabel={t('ელფოსტა (მომხმარებლის სახელი)','Email (username)')} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} textContentType="emailAddress" style={s.input} value={email} onChangeText={setEmail}/></View>}
  {kind==='register'&&<View style={s.section}><FieldLabel>{t('სახელი','First name')}</FieldLabel><TextInput accessibilityLabel={t('სახელი','First name')} autoCapitalize="words" textContentType="givenName" style={s.input} value={firstName} onChangeText={setFirstName} maxLength={80}/></View>}
  {kind==='register'&&<View style={s.section}><FieldLabel>{t('გვარი','Last name')}</FieldLabel><TextInput accessibilityLabel={t('გვარი','Last name')} autoCapitalize="words" textContentType="familyName" style={s.input} value={lastName} onChangeText={setLastName} maxLength={80}/></View>}
- {kind==='register'&&<View style={s.section}><FieldLabel>{t('ნიკნეიმი','Nickname')}</FieldLabel><TextInput accessibilityLabel={t('ნიკნეიმი','Nickname')} autoCapitalize="none" autoCorrect={false} style={s.input} value={nickname} onChangeText={setNickname} maxLength={30}/></View>}
  {kind==='register'&&<View style={s.section}><FieldLabel>{t('დაბადების თარიღი','Date of birth')}</FieldLabel><DateField label={t('დაბადების თარიღი','Date of birth')} value={birthDate} onChange={setBirthDate} ka={ka} birthDate/></View>}
  {!isForgot&&<View style={s.section}><FieldLabel>{isReset?t('ახალი პაროლი','New password'):t('პაროლი','Password')}</FieldLabel><TextInput accessibilityLabel="Password" secureTextEntry autoCapitalize="none" textContentType={kind==='login'?'password':'newPassword'} style={s.input} value={password} onChangeText={setPassword}/></View>}
- {isReset&&<View style={s.section}><FieldLabel>{t('გაიმეორე ახალი პაროლი','Confirm new password')}</FieldLabel><TextInput accessibilityLabel="Confirm password" secureTextEntry autoCapitalize="none" textContentType="newPassword" style={s.input} value={confirm} onChangeText={setConfirm}/></View>}
+ {(kind==='register'||isReset)&&<View style={s.section}><FieldLabel>{t(isReset?'გაიმეორე ახალი პაროლი':'გაიმეორე პაროლი',isReset?'Confirm new password':'Confirm password')}</FieldLabel><TextInput accessibilityLabel="Confirm password" secureTextEntry autoCapitalize="none" textContentType="newPassword" style={s.input} value={confirm} onChangeText={setConfirm}/></View>}
  {message?<View style={s.banner}><T accessibilityLiveRegion="polite">{message}</T></View>:null}
  <CTA title={busy?t('მუშავდება…','Please wait…'):kind==='login'?t('შესვლა','Sign in'):kind==='register'?t('ანგარიშის შექმნა','Create account'):isForgot?t('ბმულის გაგზავნა','Send recovery link'):t('პაროლის შეცვლა','Update password')} disabled={busy} onPress={()=>void submit()}/>
  {kind==='login'&&<Pressable accessibilityRole="button" disabled={busy} onPress={forgot} style={{minHeight:52,justifyContent:'center',alignItems:'center'}}><T style={s.muted}>{t('დაგავიწყდა პაროლი?','Forgot password?')}</T></Pressable>}

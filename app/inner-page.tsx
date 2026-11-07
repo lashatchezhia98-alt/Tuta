@@ -60,7 +60,6 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
   const [password,setPassword]=useState("");
   const [firstName,setFirstName]=useState("");
   const [lastName,setLastName]=useState("");
-  const [nickname,setNickname]=useState("");
   const [birthDate,setBirthDate]=useState("");
   const [confirmPassword,setConfirmPassword]=useState("");
   const [busy,setBusy]=useState(false);
@@ -105,15 +104,17 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(register&&(!firstName.trim()||!lastName.trim())){setError(ka?"შეიყვანე სახელი და გვარი.":"Enter your first and last name.");return}
-    if(register&&(nickname.trim().length<2||nickname.trim().length>30)){setError(ka?"ნიკნეიმი 2–30 სიმბოლოს უნდა შეიცავდეს.":"Nickname must be 2–30 characters.");return}
     if(register&&!validBirthDate(birthDate)){setError(ka?"კალენდარში აირჩიე დაბადების სწორი თარიღი.":"Choose a valid birth date from the calendar.");return}
-    if(reset&&password!==confirmPassword){setError(ka?"პაროლები არ ემთხვევა ერთმანეთს.":"Passwords do not match.");return}
+    if((register||reset)&&password!==confirmPassword){setError(ka?"პაროლები არ ემთხვევა ერთმანეთს.":"Passwords do not match.");return}
     if((register||reset)&&password.length<8){setError(ka?"პაროლი მინიმუმ 8 სიმბოლოს უნდა შეიცავდეს.":"Password must be at least 8 characters.");return}
     setBusy(true);setError("");setNotice("");
     try{
       const supabase=getSupabaseBrowserClient();
+      const configuredSiteUrl=process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/,"");
+      const localHost=window.location.hostname==="localhost"||window.location.hostname==="127.0.0.1";
+      const redirectBase=configuredSiteUrl||(localHost?"https://tutahealth.ge":window.location.origin);
       if(forgot){
-        const {error}=await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(),{redirectTo:`${window.location.origin}/reset-password`});
+        const {error}=await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(),{redirectTo:`${redirectBase}/reset-password`});
         if(error)throw error;
         setNotice(ka?"თუ ამ ელფოსტით ანგარიში არსებობს, აღდგენის ბმულს მალე მიიღებ. შეამოწმე სპამიც.":"If an account exists for this email, you’ll receive a recovery link shortly. Check spam too.");
       }else if(reset){
@@ -127,7 +128,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
       }else{
         const result=login
           ? await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password})
-          : await supabase.auth.signUp({email:email.trim().toLowerCase(),password,options:{data:{first_name:firstName.trim(),last_name:lastName.trim(),name:`${firstName.trim()} ${lastName.trim()}`,nickname:nickname.trim(),date_of_birth:birthDate},emailRedirectTo:`${window.location.origin}/login`}});
+          : await supabase.auth.signUp({email:email.trim().toLowerCase(),password,options:{data:{first_name:firstName.trim(),last_name:lastName.trim(),name:`${firstName.trim()} ${lastName.trim()}`,date_of_birth:birthDate},emailRedirectTo:`${redirectBase}/login`}});
         if(result.error)throw result.error;
         if(register&&!result.data.session){
         setNotice(ka?"ანგარიში შეიქმნა. შესვლისთვის ელფოსტაზე გამოგზავნილი ბმული დაადასტურე.":"Account created. Confirm your email using the link we sent before signing in.");
@@ -147,10 +148,9 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     {!reset&&<label>{ka?"ელფოსტა (მომხმარებლის სახელი)":"Email (username)"}<input type="email" placeholder="name@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>}
     {register&&<label>{ka?"სახელი":"First name"}<input type="text" autoComplete="given-name" value={firstName} onChange={e=>setFirstName(e.target.value)} required maxLength={80}/></label>}
     {register&&<label>{ka?"გვარი":"Last name"}<input type="text" autoComplete="family-name" value={lastName} onChange={e=>setLastName(e.target.value)} required maxLength={80}/></label>}
-    {register&&<label>{ka?"ნიკნეიმი":"Nickname"}<input type="text" autoComplete="off" value={nickname} onChange={e=>setNickname(e.target.value)} required minLength={2} maxLength={30}/></label>}
     {register&&<label>{ka?"დაბადების თარიღი":"Date of birth"}<input type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)} required min={`${new Date().getFullYear()-120}-01-01`} max={isoDate(new Date())}/></label>}
     {!forgot&&<label>{reset?(ka?"ახალი პაროლი":"New password"):(ka?"პაროლი":"Password")}<input type="password" placeholder="••••••••" autoComplete={login?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} required minLength={8}/></label>}
-    {reset&&<label>{ka?"გაიმეორე ახალი პაროლი":"Confirm new password"}<input type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required minLength={8}/></label>}
+    {(register||reset)&&<label>{ka?(reset?"გაიმეორე ახალი პაროლი":"გაიმეორე პაროლი"):(reset?"Confirm new password":"Confirm password")}<input type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required minLength={8}/></label>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}>{busy?(ka?"მუშავდება…":"Please wait…"):login?(ka?"შესვლა":"Sign in"):register?(ka?"ანგარიშის შექმნა":"Create account"):forgot?(ka?"ბმულის გაგზავნა":"Send recovery link"):(ka?"პაროლის შეცვლა":"Update password")}</button>
   </form>{login&&<a href="/forgot-password">{ka?"დაგავიწყდა პაროლი?":"Forgot password?"}</a>}<a href={login?"/register":"/login"}>{login?(ka?"არ გაქვს ანგარიში?":"Need an account?"):(ka?"შესვლაზე დაბრუნება":"Back to sign in")}</a></div><div className="auth-art"><div className="auth-moon"/><p>{ka?"შენი მონაცემები შენ გეკუთვნის.":"Your data belongs to you."}</p></div></section>
