@@ -95,7 +95,7 @@ export default function Library({
     }
   }
   return (
-    <section className="workspace-card" id="content">
+    <section className="workspace-card" id={admin ? "admin-library" : "content"}>
       <div className="workspace-row">
         <h1>{ka ? "ბლოგები" : "Library"}</h1>
         <button disabled={loading} onClick={() => void load()}>
