@@ -5,10 +5,11 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { SITE_FEATURES, setSiteFeature, useSiteFeatures } from "@/lib/site-features";
 import Library from "@/components/library";
 import AdminCare from "@/components/admin-care";
+import AdminMarket from "@/components/admin-market";
 import BrandMark from "@/components/brand-mark";
 
 type Lang = "ka" | "en";
-type Section = "overview" | "features" | "reports" | "content" | "care" | "tools";
+type Section = "overview" | "features" | "reports" | "content" | "care" | "market" | "tools";
 type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; created_at: string } };
 
 const reasonNames: Record<string, [string, string]> = {
@@ -33,6 +34,7 @@ const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "reports", href: "/admin/reports", ka: "საჩივრები", en: "Reports" },
   { section: "content", href: "/admin/content", ka: "ბლოგები და ბიბლიოთეკა", en: "Blog & library" },
   { section: "care", href: "/admin/care", ka: "ექიმები და ვიზიტები", en: "Doctors & visits" },
+  { section: "market", href: "/admin/market", ka: "მარკეტი / მაღაზია", en: "Market / shop" },
   { section: "tools", href: "/admin/tools", ka: "მომავალი ფუნქციები", en: "Planned tools" },
 ];
 
@@ -107,6 +109,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     content: ["ბლოგები და ბიბლიოთეკა", "Blog & health library"],
     care: ["ექიმები და ვიზიტები", "Doctors & appointments"],
     tools: ["მომავალი ხელსაწყოები", "Planned admin tools"],
+    market: ["მარკეტის პროდუქტები", "Market products"],
   };
   const description: Record<Section, [string, string]> = {
     overview: ["ერთი ადგილიდან გადადი პლატფორმის მართვის საჭირო ნაწილზე.", "Jump to the area you need to manage."],
@@ -115,6 +118,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     content: ["მართე სტატიები, კატეგორიები, ენები და გამოქვეყნების სტატუსი.", "Manage articles, categories, languages and publication status."],
     care: ["მართე გადამოწმებული ექიმების პროფილები და ხელმისაწვდომი ვიზიტის დროები.", "Manage verified doctor profiles and available appointment times."],
     tools: ["ეს ხელსაწყოები ჯერ არ არის ჩართული და ამ გვერდიდან მოქმედება შეუძლებელია.", "These tools are not active yet and cannot be managed here."],
+    market: ["დაამატე ან შეცვალე პროდუქტი, აღწერა, ფასი და გამოჩენა მომხმარებლის მარკეტში.", "Add or edit products, descriptions, prices and visibility in the customer shop."],
   };
 
   const reportsView = (
@@ -141,7 +145,8 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
         <h3>{ka ? group : group === "ძირითადი" ? "Core" : "Services"}</h3>
         {SITE_FEATURES.filter(feature => feature.group === group).map(feature => {
           const item = feature[lang];
-          return <div className="admin-setting admin-feature-row" key={feature.id}><div><strong>{item.title}</strong><p>{item.description}</p></div><label className="switch"><input type="checkbox" checked={features[feature.id]} disabled={saving === feature.id} onChange={event => void toggleFeature(feature.id, event.target.checked)} aria-label={`${item.title}: ${ka ? "ჩართვა ან გამორთვა" : "enable or disable"}`}/><span/></label></div>;
+          const enabled = features[feature.id];
+          return <div className="admin-setting admin-feature-row" key={feature.id}><div><strong>{item.title}</strong><p>{item.description}</p><small className="admin-feature-state">{saving === feature.id ? (ka ? "ინახება…" : "Saving…") : enabled ? (ka ? "ჩართულია" : "On") : (ka ? "გამორთულია" : "Off")}</small></div><button type="button" className={`admin-feature-toggle ${enabled ? "is-on" : ""}`} disabled={saving === feature.id} onClick={() => void toggleFeature(feature.id, !enabled)} aria-pressed={enabled}>{saving === feature.id ? (ka ? "ინახება…" : "Saving…") : enabled ? (ka ? "გამორთვა" : "Turn off") : (ka ? "ჩართვა" : "Turn on")}</button></div>;
         })}
       </section>)}</div>
       {error && <div className="admin-notice admin-error" role="alert"><strong>{ka ? "ვერ შეინახა" : "Not saved"}</strong><p>{error}</p></div>}
@@ -150,6 +155,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     if (current === "reports") return reportsView;
     if (current === "content") return <Library lang={lang} admin/>;
     if (current === "care") return <AdminCare lang={lang}/>;
+    if (current === "market") return <AdminMarket lang={lang}/>;
     if (current === "tools") return <div className="admin-roadmap-grid">{(ka ? ["მომხმარებლების ანგარიშები და როლები", "პრემიუმ გამოწერები და გადახდები", "შეტყობინებების გაგზავნა და ისტორია", "ანონიმური, აგრეგირებული ანალიტიკა"] : ["User accounts and roles", "Premium subscriptions and payments", "Notifications and history", "Anonymous aggregated analytics"]).map(item => <div key={item}><span>◷</span><strong>{item}</strong><small>{ka ? "დაგეგმილია · მართვა ჯერ მიუწვდომელია" : "Planned · controls not available yet"}</small></div>)}</div>;
     return <div className="admin-summary admin-summary-overview">
       <Link href="/admin/features"><span>{ka ? "ჩართული ფუნქციები" : "Enabled features"}</span><strong>{enabledFeatures}<small> / {SITE_FEATURES.length}</small></strong><em>{ka ? "ფუნქციების მართვა →" : "Manage features →"}</em></Link>

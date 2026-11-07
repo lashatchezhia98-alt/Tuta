@@ -17,6 +17,7 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
           {features.community&&<a href="/community">{ka?'მთავარი':'Home'}</a>}
           <a href="/about">{ka?'ჩვენ შესახებ':'About'}</a>
           {features.library&&<a href="/blog">{ka?'ბლოგები':'Library'}</a>}
+          {features.market&&<a href="/market">{ka?'მარკეტი / მაღაზია':'Market / shop'}</a>}
           {features.period&&<a href="/app/dashboard">{ka?'პერიოდი':'Period'}</a>}
           {features.premium&&<a href="/premium">{ka?'პრემიუმი':'Premium'}</a>}
           {features.doctorConsultation&&<a href="/consultation">{ka?'ექიმთან კონსულტაცია':'Consult a doctor'}</a>}

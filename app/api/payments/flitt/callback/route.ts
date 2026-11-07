@@ -37,6 +37,16 @@ export async function POST(request: Request) {
   const allowedStatuses = new Set(["approved", "declined", "expired", "reversed", "processing", "created"]);
   if (typeof status !== "string" || !allowedStatuses.has(status)) return NextResponse.json({ error: "Unknown payment status." }, { status: 400 });
 
+  if (orderId.startsWith("tuta-market-")) {
+    const { data: marketOrder, error: marketReadError } = await clients.admin.from("market_orders").select("id,total_tetri").eq("order_id", orderId).maybeSingle();
+    if (marketReadError) return NextResponse.json({ error: "Could not read market order." }, { status: 503 });
+    if (!marketOrder) return NextResponse.json({ error: "Market order was not found." }, { status: 404 });
+    if (marketOrder.total_tetri !== amount) return NextResponse.json({ error: "Payment amount does not match the order." }, { status: 400 });
+    const { error: marketUpdateError } = await clients.admin.from("market_orders").update({ status, payment_id: paymentId == null ? null : String(paymentId), updated_at: new Date().toISOString() }).eq("id", marketOrder.id);
+    if (marketUpdateError) return NextResponse.json({ error: "Could not update market order." }, { status: 503 });
+    return NextResponse.json({ received: true });
+  }
+
   const { data, error } = await clients.admin.rpc("apply_flitt_premium_payment", {
     p_order_id: orderId,
     p_payment_id: paymentId == null ? null : String(paymentId),

@@ -8,7 +8,8 @@ export type SiteFeatureId =
   | "library"
   | "premium"
   | "doctorConsultation"
-  | "doctorReport";
+  | "doctorReport"
+  | "market";
 
 export const SITE_FEATURES: Array<{
   id: SiteFeatureId;
@@ -26,6 +27,7 @@ export const SITE_FEATURES: Array<{
   { id: "premium", group: "სერვისები", ka: { title: "Premium", description: "ფასიანი პაკეტის გვერდი და შეთავაზებები." }, en: { title: "Premium", description: "Paid plan page and offers." }, enabledByDefault: true },
   { id: "doctorConsultation", group: "სერვისები", ka: { title: "ექიმთან კონსულტაცია", description: "კონსულტაციის გვერდისა და ბმულების გამოჩენა." }, en: { title: "Doctor consultation", description: "Visibility of consultation page and links." }, enabledByDefault: true },
   { id: "doctorReport", group: "სერვისები", ka: { title: "ექიმის ანგარიში", description: "ექიმისთვის ანგარიშის გვერდი." }, en: { title: "Doctor report", description: "Doctor report page." }, enabledByDefault: true },
+  { id: "market", group: "სერვისები", ka: { title: "მარკეტი / მაღაზია", description: "პროდუქტების გვერდი, კალათა და შეკვეთის გაფორმება." }, en: { title: "Market / shop", description: "Product catalog, cart and checkout." }, enabledByDefault: true },
 ];
 
 export type SiteFeatureSettings = Record<SiteFeatureId, boolean>;
@@ -41,6 +43,7 @@ export function featureForRoute(route: string): SiteFeatureId | null {
   if (route === "/blog") return "library";
   if (route === "/premium") return "premium";
   if (route === "/consultation") return "doctorConsultation";
+  if (route === "/market") return "market";
   if (route === "/app/dashboard") return "period";
   if (route === "/app/log") return "dailyLog";
   if (route === "/app/insights") return "insights";

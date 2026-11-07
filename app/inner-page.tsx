@@ -15,15 +15,17 @@ import PremiumCheckout from "@/components/premium-checkout";
 import HealthWorkspace from "@/components/health-workspace";
 import Library from "@/components/library";
 import CareWorkspace from "@/components/care-workspace";
+import Marketplace from "@/components/marketplace";
 import { featureForRoute, useSiteFeatures } from "@/lib/site-features";
 
 type Lang = "ka" | "en";
 function validBirthDate(value:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(`${value}T12:00:00Z`);if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value)return false;const today=isoDate(new Date());const age=Number(today.slice(0,4))-Number(value.slice(0,4))-(today.slice(5)<value.slice(5)?1:0);return age>=1&&age<=120&&value<=today}
-type PageKind = "about"|"blog"|"premium"|"register"|"login"|"forgot-password"|"reset-password"|"dashboard"|"log"|"insights"|"report"|"settings"|"ovulation"|"period"|"admin"|"consultation";
+type PageKind = "about"|"blog"|"market"|"premium"|"register"|"login"|"forgot-password"|"reset-password"|"dashboard"|"log"|"insights"|"report"|"settings"|"ovulation"|"period"|"admin"|"consultation";
 
 const pageInfo: Record<PageKind, {ka:[string,string],en:[string,string]}> = {
   about:{ka:["თუთას შესახებ","თუთა შეიქმნა იმისთვის, რომ ჯანმრთელობაზე ზრუნვა იყოს მარტივი, პირადი და გასაგები."],en:["About TUTA","TUTA was created to make health awareness simple, private and easy to understand."]},
   blog:{ka:["ჯანმრთელობის ბიბლიოთეკა","ზოგადი საკითხავი მასალა პერიოდზე, ყოველდღიურ კეთილდღეობასა და ექიმთან ვიზიტისთვის მომზადებაზე."],en:["Health library","General reading on periods, everyday wellbeing and preparing for a doctor visit."]},
+  market:{ka:["მარკეტი / მაღაზია","შერჩეული პროდუქტები ყოველდღიური თავის მოვლისთვის."],en:["Market / shop","Thoughtfully selected products for everyday care."]},
   premium:{ka:["TUTA Premium","ფასიანი ფუნქციები მზადდება და ამ ვერსიაში ჯერ არ არის ჩართული."],en:["TUTA Premium","Paid features are in development and are not active in this version."]},
   register:{ka:["შექმენი ანგარიში","დაიწყე შენი ციკლის გაცნობიერება უსაფრთხო და პირად სივრცეში."],en:["Create your account","Start understanding your cycle in a safe and private space."]},
   login:{ka:["კეთილი იყოს შენი დაბრუნება","შედი ანგარიშზე და გააგრძელე იქიდან, სადაც გაჩერდი."],en:["Welcome back","Sign in and continue where you left off."]},
@@ -205,14 +207,14 @@ function DailyLog({lang,data,save}:{lang:Lang,data:HealthData,save:(next:HealthD
 export default function InnerPage({kind}:{kind:PageKind}){
   const {lang,setLang}=useSiteLanguage();
   const features=useSiteFeatures();
-  const pathByKind:Partial<Record<PageKind,string>>={blog:"/blog",premium:"/premium",consultation:"/consultation",dashboard:"/app/dashboard",log:"/app/log",insights:"/app/insights",report:"/app/report"};
+  const pathByKind:Partial<Record<PageKind,string>>={blog:"/blog",market:"/market",premium:"/premium",consultation:"/consultation",dashboard:"/app/dashboard",log:"/app/log",insights:"/app/insights",report:"/app/report"};
   const featureId=featureForRoute(pathByKind[kind]||"");
   const featureDisabled=featureId!==null&&!features[featureId];
   if(kind==="login"||kind==="register"||kind==="forgot-password"||kind==="reset-password")return <AuthPage kind={kind} lang={lang}/>;
   if(["dashboard","log","insights","report","settings"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:kind==="settings"?<AppDashboard kind={kind} lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation}/><HealthWorkspace kind={kind} lang={lang}/></>;
   return <>
     <InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} showActions={kind!=="admin"}/>
-    {featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="consultation"?<CareWorkspace lang={lang}/>:kind==="admin"?<Admin lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<Calculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
+    {featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="consultation"?<CareWorkspace lang={lang}/>:kind==="admin"?<Admin lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<Calculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
     {kind!=="admin"&&<footer className="inner-footer"><div className="inner-container"><InnerLogo lang={lang} inverse/><p>{lang==="ka"?"შენი ჯანმრთელობის ცნობიერება იწყება აქ.":"Your health awareness starts here."}</p></div></footer>}
   </>
 }
