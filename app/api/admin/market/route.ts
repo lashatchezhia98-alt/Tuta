@@ -45,7 +45,11 @@ async function saveProduct(db: Awaited<ReturnType<typeof requireAdmin>>, body: R
     : db.from("market_products").insert(values).select("*").single();
   let response = await write(product);
   if (response.error && /image_urls/i.test(response.error.message)) {
-    response = await write({ ...product, image_url: `${galleryPrefix}${JSON.stringify(product.image_urls)}` });
+    // Older production schemas may not have the gallery column yet. Keep the
+    // gallery in the legacy image_url field until the migration is applied.
+    const legacyProduct = { ...product, image_url: `${galleryPrefix}${JSON.stringify(product.image_urls)}` };
+    delete (legacyProduct as { image_urls?: string[] }).image_urls;
+    response = await write(legacyProduct);
   }
   return checked(response);
 }
@@ -64,7 +68,8 @@ export async function POST(request: Request) {
     const body = await readAdminJson(request, 16_384);
     if (body.action === "delete") {
       if (!isUuid(body.id)) throw new ApiError(400, "პროდუქტის ნომერი არასწორია.");
-      checked(await db.from("market_products").delete().eq("id", body.id));
+      const deleted = checked(await db.from("market_products").delete().eq("id", body.id).select("id").maybeSingle());
+      if (!deleted) throw new ApiError(404, "პროდუქტი ვერ მოიძებნა.");
       return result({ ok: true });
     }
     const product = parseProduct(body);
