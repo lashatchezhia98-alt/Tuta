@@ -9,6 +9,7 @@ import {NotoSansGeorgian_400Regular} from '@expo-google-fonts/noto-sans-georgian
 import {NotoSansGeorgian_700Bold} from '@expo-google-fonts/noto-sans-georgian/700Bold';
 import {Icon,MoonFlower,Face,CycleOrbit} from './src/Art';
 import {C,T,CTA,Chip,DateField,FieldLabel,Scale,s} from './src/ui';
+import PasswordInput from './src/PasswordInput';
 import {Data,Log,Tab,emptyData,validData} from './src/types';
 import {dateKey,stamp,addDays,validSetup,validBirthDate,cycleAt,calendarState,averages,predictions,forecast,distance,monthLabel,symptomPatterns} from './src/cycle.mjs';
 import {isSupabaseConfigured,supabase} from './src/supabase';
@@ -274,8 +275,8 @@ function AuthScreen({kind,lang,busy,setBusy,back,forgot,login,register}:{kind:'l
  {kind==='register'&&<View style={s.section}><FieldLabel>{t('სახელი','First name')}</FieldLabel><TextInput accessibilityLabel={t('სახელი','First name')} autoCapitalize="words" textContentType="givenName" style={s.input} value={firstName} onChangeText={setFirstName} maxLength={80}/></View>}
  {kind==='register'&&<View style={s.section}><FieldLabel>{t('გვარი','Last name')}</FieldLabel><TextInput accessibilityLabel={t('გვარი','Last name')} autoCapitalize="words" textContentType="familyName" style={s.input} value={lastName} onChangeText={setLastName} maxLength={80}/></View>}
  {kind==='register'&&<View style={s.section}><FieldLabel>{t('დაბადების თარიღი','Date of birth')}</FieldLabel><DateField label={t('დაბადების თარიღი','Date of birth')} value={birthDate} onChange={setBirthDate} ka={ka} birthDate/></View>}
- {!isForgot&&<View style={s.section}><FieldLabel>{isReset?t('ახალი პაროლი','New password'):t('პაროლი','Password')}</FieldLabel><TextInput accessibilityLabel="Password" secureTextEntry autoCapitalize="none" textContentType={kind==='login'?'password':'newPassword'} style={s.input} value={password} onChangeText={setPassword}/></View>}
- {(kind==='register'||isReset)&&<View style={s.section}><FieldLabel>{t(isReset?'გაიმეორე ახალი პაროლი':'გაიმეორე პაროლი',isReset?'Confirm new password':'Confirm password')}</FieldLabel><TextInput accessibilityLabel="Confirm password" secureTextEntry autoCapitalize="none" textContentType="newPassword" style={s.input} value={confirm} onChangeText={setConfirm}/></View>}
+ {!isForgot&&<View style={s.section}><FieldLabel>{isReset?t('ახალი პაროლი','New password'):t('პაროლი','Password')}</FieldLabel><PasswordInput label={isReset?t('ახალი პაროლი','New password'):t('პაროლი','Password')} ka={ka} newPassword={kind!=='login'} value={password} onChange={setPassword}/></View>}
+ {(kind==='register'||isReset)&&<View style={s.section}><FieldLabel>{t(isReset?'გაიმეორე ახალი პაროლი':'გაიმეორე პაროლი',isReset?'Confirm new password':'Confirm password')}</FieldLabel><PasswordInput label={t(isReset?'გაიმეორე ახალი პაროლი':'გაიმეორე პაროლი',isReset?'Confirm new password':'Confirm password')} ka={ka} value={confirm} onChange={setConfirm}/></View>}
  {message?<View style={s.banner}><T accessibilityLiveRegion="polite">{message}</T></View>:null}
  <CTA title={busy?t('მუშავდება…','Please wait…'):kind==='login'?t('შესვლა','Sign in'):kind==='register'?t('ანგარიშის შექმნა','Create account'):isForgot?t('ბმულის გაგზავნა','Send recovery link'):t('პაროლის შეცვლა','Update password')} disabled={busy} onPress={()=>void submit()}/>
  {kind==='login'&&<Pressable accessibilityRole="button" disabled={busy} onPress={forgot} style={{minHeight:52,justifyContent:'center',alignItems:'center'}}><T style={s.muted}>{t('დაგავიწყდა პაროლი?','Forgot password?')}</T></Pressable>}

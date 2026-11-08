@@ -64,6 +64,10 @@ test("registration, login and recovery routes render usable auth forms", async (
   assert.doesNotMatch(register, /ნიკნეიმი|Nickname/);
   assert.match(register, /დაბადების თარიღი|Date of birth/);
   assert.match(register, /გაიმეორე პაროლი|Confirm password/);
+  assert.equal([...register.matchAll(/class="password-toggle"/g)].length,2);
+  assert.equal([...login.matchAll(/class="password-toggle"/g)].length,1);
+  assert.equal([...reset.matchAll(/class="password-toggle"/g)].length,2);
+  assert.equal([...forgot.matchAll(/class="password-toggle"/g)].length,0);
   assert.match(login, /კეთილი იყოს შენი დაბრუნება|Welcome back/);
   assert.match(login, /ელფოსტა|Email/);
   assert.match(login, /შესვლა|Sign in/);

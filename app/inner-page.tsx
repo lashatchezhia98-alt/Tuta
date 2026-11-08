@@ -16,6 +16,7 @@ import HealthWorkspace from "@/components/health-workspace";
 import Library from "@/components/library";
 import CareWorkspace from "@/components/care-workspace";
 import Marketplace from "@/components/marketplace";
+import PasswordField from "@/components/password-field";
 import { featureForRoute, useSiteFeatures } from "@/lib/site-features";
 
 type Lang = "ka" | "en";
@@ -149,8 +150,8 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     {register&&<label>{ka?"სახელი":"First name"}<input type="text" autoComplete="given-name" value={firstName} onChange={e=>setFirstName(e.target.value)} required maxLength={80}/></label>}
     {register&&<label>{ka?"გვარი":"Last name"}<input type="text" autoComplete="family-name" value={lastName} onChange={e=>setLastName(e.target.value)} required maxLength={80}/></label>}
     {register&&<label>{ka?"დაბადების თარიღი":"Date of birth"}<input type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)} required min={`${new Date().getFullYear()-120}-01-01`} max={isoDate(new Date())}/></label>}
-    {!forgot&&<label>{reset?(ka?"ახალი პაროლი":"New password"):(ka?"პაროლი":"Password")}<input type="password" placeholder="••••••••" autoComplete={login?"current-password":"new-password"} value={password} onChange={e=>setPassword(e.target.value)} required minLength={8}/></label>}
-    {(register||reset)&&<label>{ka?(reset?"გაიმეორე ახალი პაროლი":"გაიმეორე პაროლი"):(reset?"Confirm new password":"Confirm password")}<input type="password" autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required minLength={8}/></label>}
+    {!forgot&&<PasswordField label={reset?(ka?"ახალი პაროლი":"New password"):(ka?"პაროლი":"Password")} lang={lang} autoComplete={login?"current-password":"new-password"} value={password} onChange={setPassword}/>}
+    {(register||reset)&&<PasswordField label={ka?(reset?"გაიმეორე ახალი პაროლი":"გაიმეორე პაროლი"):(reset?"Confirm new password":"Confirm password")} lang={lang} value={confirmPassword} onChange={setConfirmPassword}/>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}>{busy?(ka?"მუშავდება…":"Please wait…"):login?(ka?"შესვლა":"Sign in"):register?(ka?"ანგარიშის შექმნა":"Create account"):forgot?(ka?"ბმულის გაგზავნა":"Send recovery link"):(ka?"პაროლის შეცვლა":"Update password")}</button>
   </form>{login&&<a href="/forgot-password">{ka?"დაგავიწყდა პაროლი?":"Forgot password?"}</a>}<a href={login?"/register":"/login"}>{login?(ka?"არ გაქვს ანგარიში?":"Need an account?"):(ka?"შესვლაზე დაბრუნება":"Back to sign in")}</a></div><div className="auth-art"><div className="auth-moon"/><p>{ka?"შენი მონაცემები შენ გეკუთვნის.":"Your data belongs to you."}</p></div></section>
