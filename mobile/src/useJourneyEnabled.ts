@@ -1,33 +1,89 @@
-import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
-
-// Visibility is shared with the web admin; never send health records here.
-export function useFeatureEnabled(feature:string,active = true) {
-  const [status,setStatus] = useState<'loading'|'enabled'|'disabled'|'error'>('loading');
-  const [attempt,setAttempt] = useState(0);
-  useEffect(()=>{
-    if (!active) return;
-    let alive = true;
-    let controller: AbortController | undefined;
-    const load = async () => {
-      controller?.abort();
-      const current = new AbortController();
-      controller = current;
-      const timeout = setTimeout(()=>current.abort(),10000);
-      try {
-        const root = process.env.EXPO_PUBLIC_TUTA_API_URL?.trim().replace(/\/$/,'') || 'https://tutahealth.ge';
-        const response = await fetch(`${root}/api/site-features`,{signal:current.signal});
-        if (!response.ok) throw new Error('Feature settings unavailable');
-        const body = await response.json();
-        if (alive && current === controller) setStatus(body.features?.[feature] === true ? 'enabled' : 'disabled');
-      } catch {
-        if (alive && current === controller) setStatus('error');
-      } finally { clearTimeout(timeout); }
-    };
-    void load();
-    const subscription = AppState.addEventListener('change',state=>{if(state==='active')void load()});
-    return ()=>{alive=false;controller?.abort();subscription.remove()};
-  },[active,attempt,feature]);
-  return {status,retry:()=>setAttempt(value=>value+1)};
+import { useEffect, useSyncExternalStore } from "react";
+import { AppState } from "react-native";
+import { apiRoot } from "./api";
+type Snapshot = {
+  status: "loading" | "ready" | "error";
+  features: Record<string, boolean>;
+};
+const initial: Snapshot = { status: "loading", features: {} };
+let snapshot = initial,
+  pending: Promise<void> | null = null;
+const listeners = new Set<() => void>();
+function emit() {
+  listeners.forEach((listener) => listener());
 }
-export function useJourneyEnabled(active=true){return useFeatureEnabled('journey',active)}
+export function refreshFeatures() {
+  if (pending) return pending;
+  const controller = new AbortController(),
+    timeout = setTimeout(() => controller.abort(), 10000);
+  pending = fetch(apiRoot + "/api/site-features", {
+    signal: controller.signal,
+    cache: "no-store",
+  })
+    .then(async (response) => {
+      if (!response.ok) throw Error();
+      const body = await response.json();
+      snapshot = { status: "ready", features: body.features || {} };
+    })
+    .catch(() => {
+      snapshot = { status: "error", features: {} };
+    })
+    .finally(() => {
+      clearTimeout(timeout);
+      pending = null;
+      emit();
+    });
+  return pending;
+}
+let users = 0,
+  stop: undefined | (() => void);
+export function useAppFeatures(active = true) {
+  const state = useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    () => snapshot,
+    () => initial,
+  );
+  useEffect(() => {
+    if (!active) return;
+    if (++users === 1) {
+      void refreshFeatures();
+      const timer = setInterval(() => {
+        if (AppState.currentState === "active") void refreshFeatures();
+      }, 15000);
+      const sub = AppState.addEventListener("change", (state) => {
+        if (state === "active") void refreshFeatures();
+      });
+      stop = () => {
+        clearInterval(timer);
+        sub.remove();
+      };
+    }
+    return () => {
+      if (--users === 0) {
+        stop?.();
+        stop = undefined;
+      }
+    };
+  }, [active]);
+  return { ...state, retry: refreshFeatures };
+}
+export function useFeatureEnabled(feature: string, active = true) {
+  const state = useAppFeatures(active);
+  return {
+    status:
+      state.status === "ready"
+        ? state.features[feature] === true
+          ? "enabled"
+          : "disabled"
+        : state.status,
+    retry: state.retry,
+  };
+}
+export function useJourneyEnabled(active = true) {
+  return useFeatureEnabled("journey", active);
+}

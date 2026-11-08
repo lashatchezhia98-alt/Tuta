@@ -87,10 +87,10 @@ test("auth forms call Supabase sign-up, password sign-in and recovery", async ()
   assert.match(page, /onSubmit=\{submit\}/);
   assert.match(page, /signUp\(\{email:email\.trim\(\)\.toLowerCase\(\),password/);
   for (const source of [page, mobile]) {
-    assert.match(source, /first_name:firstName\.trim\(\)/);
-    assert.match(source, /last_name:lastName\.trim\(\)/);
+    assert.match(source, /first_name:\s*firstName\.trim\(\)/);
+    assert.match(source, /last_name:\s*lastName\.trim\(\)/);
     assert.doesNotMatch(source, /nickname:nickname\.trim\(\)/);
-    assert.match(source, /date_of_birth:birthDate/);
+    assert.match(source, /date_of_birth:\s*birthDate/);
     assert.match(source, /პაროლები არ ემთხვევა ერთმანეთს|Passwords do not match/);
     assert.match(source, /validBirthDate\(birthDate\)/);
   }

@@ -1,46 +1,193 @@
-import {useState} from 'react';
-import {Modal,Pressable,ScrollView,View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {Icon,MoonFlower} from './Art';
-import {C,T,s} from './ui';
-import type {Lang,Tab} from './types';
-import {useJourneyEnabled,useFeatureEnabled} from './useJourneyEnabled';
-
-const items:{id:Tab;ka:string;en:string;icon:string}[]=[
- {id:'journey',ka:'პირადი გზამკვლევი',en:'Guided journey',icon:'spark'},
- {id:'pregnancy',ka:'ორსულობა',en:'Pregnancy',icon:'calendar'},
- {id:'partners',ka:'პარტნიორი',en:'Partner',icon:'profile'},
- {id:'blog',ka:'ჯანმრთელობის ბიბლიოთეკა',en:'Health library',icon:'spark'},
- {id:'premium',ka:'პრემიუმი',en:'Premium',icon:'lock'},
- {id:'about',ka:'ჩვენს შესახებ',en:'About us',icon:'moon'},
- {id:'privacy',ka:'კონფიდენციალურობა',en:'Privacy',icon:'lock'},
- {id:'terms',ka:'წესები და პირობები',en:'Terms of use',icon:'spark'},
-];
-const settingsItem:{id:Tab;ka:string;en:string;icon:string}={id:'profile',ka:'პარამეტრები',en:'Settings',icon:'profile'};
-
-export function AppMenu({visible,lang,showSettings,onClose,onNavigate,onLanguage}:{visible:boolean;lang:Lang;showSettings:boolean;onClose:()=>void;onNavigate:(page:Tab)=>void;onLanguage:()=>void}){
- const ka=lang==='ka';const t=(a:string,b:string)=>ka?a:b;
- const {status}=useJourneyEnabled(visible);
- const pregnancy=useFeatureEnabled('pregnancy',visible),partners=useFeatureEnabled('partners',visible);
- const visibleItems=items.filter(item=>item.id==='journey'?status==='enabled':item.id==='pregnancy'?pregnancy.status==='enabled':item.id==='partners'?partners.status==='enabled':true);
- const menuItems=showSettings?[settingsItem,...visibleItems]:visibleItems;
- return <Modal visible={visible} animationType="slide" onRequestClose={onClose}><SafeAreaView style={{flex:1,backgroundColor:C.bg}} edges={['top','bottom']}><View style={[s.header,{paddingTop:16,paddingBottom:16}]}><T weight="display" style={s.logo}>{ka?'თუთა':'TUTA'}</T><Pressable accessibilityRole="button" accessibilityLabel={t('მენიუს დახურვა','Close menu')} onPress={onClose} style={s.round}><Icon name="close"/></Pressable></View><ScrollView contentContainerStyle={[s.content,{paddingTop:12}]}><T style={s.muted}>{t('ყველაფერი ერთ სივრცეში','EXPLORE TUTA')}</T><T weight="display" style={[s.title,{marginTop:4}]}>{t('მენიუ','Menu')}</T><View style={s.card}>{menuItems.map(({id,ka:geo,en,icon},i)=><Pressable key={id} accessibilityRole="button" onPress={()=>{onClose();onNavigate(id)}} style={{minHeight:58,flexDirection:'row',alignItems:'center',gap:14,borderBottomWidth:i===menuItems.length-1?0:1,borderColor:C.line}}><View style={{width:38,height:38,borderRadius:14,alignItems:'center',justifyContent:'center',backgroundColor:i%2?C.yellow:C.lav}}><Icon name={icon} size={19}/></View><T weight="bold" style={{flex:1,fontSize:16}}>{t(geo,en)}</T><Icon name="arrow" size={18}/></Pressable>)}</View><Pressable accessibilityRole="button" onPress={onLanguage} style={[s.card,{minHeight:58,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}]}><T weight="bold">{t('ენა','Language')}</T><T>{ka?'ქართული  ·  EN':'English  ·  ქა'}</T></Pressable></ScrollView></SafeAreaView></Modal>;
+import { Modal, Pressable, ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Icon, MoonFlower } from "./Art";
+import { C, T, s } from "./ui";
+import type { Lang, Tab } from "./types";
+import { destinations } from "./navigation.mjs";
+export function AppMenu({
+  visible,
+  lang,
+  onClose,
+  onNavigate,
+  onLanguage,
+}: {
+  visible: boolean;
+  lang: Lang;
+  showSettings: boolean;
+  onClose: () => void;
+  onNavigate: (page: Tab) => void;
+  onLanguage: () => void;
+}) {
+  const ka = lang === "ka";
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: C.bg }}
+        edges={["top", "bottom"]}
+      >
+        <View style={s.header}>
+          <T weight="bold" style={{ fontSize: 24 }}>
+            {ka ? "მენიუ" : "Menu"}
+          </T>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ka ? "დახურვა" : "Close menu"}
+            onPress={onClose}
+            style={s.round}
+          >
+            <Icon name="close" />
+          </Pressable>
+        </View>
+        <ScrollView contentContainerStyle={s.content}>
+          <T style={[s.muted, { marginBottom: 20 }]}>
+            {ka
+              ? "ყველა სერვისი ქვედა ნავიგაციიდანაა ხელმისაწვდომი. აქ ინფორმაცია და ენის არჩევანია."
+              : "Find services in the bottom navigation. Information and language settings are here."}
+          </T>
+          <View style={s.card}>
+            {destinations
+              .filter((p) => p.group === "info")
+              .map((page) => (
+                <Pressable
+                  key={page.id}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    onClose();
+                    onNavigate(page.id as Tab);
+                  }}
+                  style={{
+                    minHeight: 60,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 14,
+                  }}
+                >
+                  <Icon name={page.icon} />
+                  <T style={{ flex: 1 }}>{ka ? page.ka : page.en}</T>
+                  <Icon name="arrow" size={18} />
+                </Pressable>
+              ))}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onLanguage}
+            style={[
+              s.card,
+              s.row,
+              { minHeight: 60, justifyContent: "space-between" },
+            ]}
+          >
+            <T weight="bold">{ka ? "ენა" : "Language"}</T>
+            <T>{ka ? "ქართული · EN" : "English · ქა"}</T>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
 }
-
-const articles=[
- {ka:'ციკლის ჩანაწერის დაწყება',en:'Getting started with cycle tracking',bodyKa:'ჩაინიშნე სისხლდენის დაწყების თარიღი და ხანგრძლივობა. რამდენიმე დასრულებული ციკლის შემდეგ პროგნოზი უკეთ ერგება შენს ისტორიას. სავარაუდო ოვულაციის დღე დადასტურებული მოვლენა არ არის.',bodyEn:'Record when bleeding starts and how long it lasts. After several completed cycles, estimates can reflect your history better. An estimated ovulation day is not a confirmed event.'},
- {ka:'რას გეუბნება დღიური',en:'What your journal can show',bodyKa:'განწყობის, ენერგიისა და სიმპტომების ყოველდღიური ჩანაწერი დაგეხმარება საკუთარი ცვლილებების დანახვაში. განმეორებადი სიმპტომი დიაგნოზს არ ნიშნავს.',bodyEn:'A daily record of mood, energy and symptoms can help you notice changes over time. A recurring symptom is not a diagnosis.'},
- {ka:'ვიზიტისთვის მომზადება',en:'Preparing for a doctor visit',bodyKa:'გაიხსენე როდის დაიწყო სიმპტომი, რამდენ ხანს გაგრძელდა და რა შეიცვალა. თუ ძლიერი ან შემაშფოთებელი სიმპტომები გაქვს, მიმართე ჯანდაცვის პროფესიონალს.',bodyEn:'Note when a symptom began, how long it lasted and what changed. Seek a healthcare professional for severe or concerning symptoms.'},
-];
-
-export function MenuPage({page,lang}:{page:'about'|'blog'|'premium'|'privacy'|'terms';lang:Lang}){
- const ka=lang==='ka';const t=(a:string,b:string)=>ka?a:b;const [article,setArticle]=useState<number|null>(null);
- const title=page==='about'?t('ჩვენს შესახებ','About Tuta'):page==='blog'?t('ბიბლიოთეკა','Health library'):page==='premium'?t('პრემიუმი','Premium'):page==='terms'?t('წესები და პირობები','Terms of use'):t('კონფიდენციალურობა','Privacy');
- return <View style={s.content}><T style={s.muted}>{t('თუთა · შენი სივრცე','TUTA · YOUR SPACE')}</T><T weight="display" style={[s.title,{marginTop:4}]}>{title}</T>
- {page==='about'&&<><View style={[s.card,{alignItems:'center',backgroundColor:C.lav}]}><MoonFlower size={150}/></View><View style={s.section}><T weight="bold" style={{fontSize:20,marginBottom:10}}>{t('შენი რიტმის უკეთ გასაგებად','Understand your own rhythm')}</T><T style={{lineHeight:27}}>{t('თუთა აერთიანებს ციკლის კალენდარს, ყოველდღიურ ჩანაწერებს და საზოგადოებას. ჩვენი მიზანია ინფორმაცია მარტივად და გასაგებად მოგაწოდოთ. აპი არ არის სამედიცინო დიაგნოსტიკის საშუალება.','Tuta brings together a cycle calendar, daily check-ins and a community. Our aim is to make personal tracking easier to understand. The app is not a medical diagnostic tool.')}</T></View></>}
- {page==='blog'&&<>{article===null?<>{articles.map((a,i)=><Pressable key={a.en} accessibilityRole="button" onPress={()=>setArticle(i)} style={s.card}><T style={s.muted}>{t('გზამკვლევი','GUIDE')}</T><T weight="bold" style={{fontSize:19,marginVertical:8}}>{t(a.ka,a.en)}</T><View style={[s.row,{justifyContent:'space-between'}]}><T style={s.muted}>{t('წაკითხვა','Read article')}</T><Icon name="arrow" size={18}/></View></Pressable>)}</>:<><Pressable accessibilityRole="button" onPress={()=>setArticle(null)} style={{minHeight:44,justifyContent:'center'}}><T weight="bold">‹ {t('ყველა სტატია','All articles')}</T></Pressable><View style={s.section}><T weight="bold" style={{fontSize:22,marginBottom:16}}>{t(articles[article].ka,articles[article].en)}</T><T style={{lineHeight:29}}>{t(articles[article].bodyKa,articles[article].bodyEn)}</T></View></>}<T style={s.muted}>{t('ეს ზოგადი ინფორმაციაა და ექიმის რჩევას არ ცვლის.','General information only; it does not replace medical advice.')}</T></>}
- {page==='premium'&&<View style={s.section}><T weight="bold" style={{fontSize:20,marginBottom:10}}>{t('პრემიუმი მზადდება','Premium is in development')}</T><T style={{lineHeight:27}}>{t('გამოწერა და ფასიანი ფუნქციები ჯერ არ არის ჩართული. პერიოდის კალენდარი, დღიური და მთავარი გვერდი უფასოა.','Subscriptions and paid features are not active yet. Period tracking, the journal and Home are free.')}</T></View>}
- {page==='privacy'&&<><View style={s.section}><T weight="bold" style={{fontSize:19,marginBottom:8}}>{t('შენი პირადი ინფორმაცია დაცულია','Your personal information is protected')}</T><T style={{lineHeight:27}}>{t('ანგარიშის, პერიოდისა და დღიურის მონაცემები დაცულ ბაზაში ინახება. წვდომა შეზღუდულია შენი ანგარიშით; ეს მონაცემები საჯარო პოსტებში ავტომატურად არ ჩანს. ჩანაწერები აპსა და ვებსაიტს შორის სინქრონდება.','Your account, period and journal data are stored in a protected database. Access is restricted to your account; these details do not appear automatically in public posts. Entries sync between the app and website.')}</T></View><View style={s.section}><T weight="bold" style={{fontSize:19,marginBottom:8}}>{t('რას ხედავენ სხვები','What others can see')}</T><T style={{lineHeight:27}}>{t('მთავარ გვერდზე პოსტებსა და კომენტარებს მხოლოდ შესული მომხმარებლები ხედავენ. ანონიმური პოსტის ავტორის სახელი სხვებს არ ეჩვენებათ. თუ ფოტოს დაამატებ, ის Cloudinary-ზე აიტვირთება. გამოაქვეყნე მხოლოდ ის, რისი გაზიარებაც გსურს.','Only signed-in members can see posts and comments on Home. Anonymous posts do not show the author’s name to others. If you add a photo, it is uploaded to Cloudinary. Share only what you want others to see.')}</T></View></>}
- {page==='terms'&&<><View style={s.section}><T weight="bold" style={{fontSize:19,marginBottom:8}}>{t('რას აკეთებს თუთა','What Tuta does')}</T><T style={{lineHeight:27}}>{t('თუთა გაძლევს პერიოდის სავარაუდო პროგნოზს, კალენდარს, დღიურს და მომხმარებელთა მთავარ გვერდს. პროგნოზი შეფასებაა და არა დიაგნოზი ან კონტრაცეფციის მეთოდი.','Tuta offers estimated period predictions, a calendar, a journal and a member Home feed. Predictions are estimates, not a diagnosis or a method of contraception.')}</T></View><View style={s.section}><T weight="bold" style={{fontSize:19,marginBottom:8}}>{t('საზოგადოების წესები','Community rules')}</T><T style={{lineHeight:27}}>{t('პოსტი მაქსიმუმ 200 სიტყვას და ერთ ფოტოს შეიძლება შეიცავდეს. არ გამოაქვეყნო სხვისი პირადი მონაცემები, შეურაცხმყოფელი ტექსტი ან სპამი. შენი პოსტის შეცვლა ან წაშლა შეგიძლია; დარღვევის შესახებ შეტყობინების გაგზავნაც შესაძლებელია.','A post may contain up to 200 words and one photo. Do not post another person’s private information, abuse or spam. You can edit or delete your own post and report violations.')}</T></View><View style={s.section}><T weight="bold" style={{fontSize:19,marginBottom:8}}>{t('ანგარიში და ფასიანი სერვისები','Account and paid services')}</T><T style={{lineHeight:27}}>{t('პოსტების სანახავად და პირადი ჩანაწერების სინქრონიზაციისთვის ანგარიში საჭიროა. ექიმთან ჩატი, ჯავშანი და გამოწერა ამ ვერსიაში ჯერ არ მუშაობს; მათი საფასური არ ჩამოგეჭრება.','An account is required to view posts and sync personal entries. Doctor chat, booking and subscriptions are not active in this version; you will not be charged for them.')}</T></View></>}
- </View>;
+export function MenuPage({
+  page,
+  lang,
+}: {
+  page: "about" | "privacy" | "terms";
+  lang: Lang;
+}) {
+  const ka = lang === "ka";
+  const sections =
+    page === "about"
+      ? [
+          [
+            ka ? "შენი რიტმის გასაგებად" : "Understand your rhythm",
+            ka
+              ? "თუთა აერთიანებს პერიოდის კალენდარს, დღიურს, ქალთა საზოგადოებას, ჯანმრთელობის მასალებს, კონსულტაციებსა და მარკეტს. ვებსაიტი და აპები ერთი ანგარიშით მუშაობს."
+              : "Tuta brings together period tracking, check-ins, a women’s community, health education, consultations and a market. The website and apps use one account.",
+          ],
+          [
+            ka ? "შეფასება, არა დიაგნოზი" : "Estimates, not diagnosis",
+            ka
+              ? "პროგნოზი შენს ჩანაწერებს ეყრდნობა. გამოთვლები არ ადასტურებს ოვულაციას და კონტრაცეფციისთვის არ გამოიყენება."
+              : "Estimates depend on your recorded history. Calculations do not confirm ovulation and must not be used for contraception.",
+          ],
+        ]
+      : page === "privacy"
+        ? [
+            [
+              ka
+                ? "პირადი ინფორმაცია დაცულია"
+                : "Your personal information is protected",
+              ka
+                ? "პერიოდისა და დღიურის ჩანაწერები ინახება ანგარიშთან დაკავშირებულ ბაზაში და სინქრონდება ვებსაიტსა და აპებს შორის. ყოველდღიური ჯანმრთელობის ჩანაწერები ტელეფონის მუდმივ საცავში არ ინახება. ტელეფონზე ინახება შესვლის სესია და კალათის პროდუქტის კოდები/რაოდენობები."
+                : "Period and journal entries are stored in your account database and synced across web and apps. Daily health records are not persisted on the phone. Your sign-in session and cart product IDs/quantities are stored on the device.",
+            ],
+            [
+              ka ? "გაზიარებას შენ აკონტროლებ" : "You control sharing",
+              ka
+                ? "პარტნიორისთვის მხოლოდ შენ მიერ არჩეული პერიოდის ან ორსულობის თარიღები ზიარდება. ნებართვის გაუქმება ყოველთვის შეგიძლია. ექიმი შენს დღიურს ავტომატურად ვერ ხედავს. PDF-ისა და მონაცემების ექსპორტი მხოლოდ შენი მოქმედებით ქმნის გასაზიარებელ ასლს."
+                : "Partner sharing includes only selected period or pregnancy dates. You can revoke consent. Doctors cannot automatically see your journal. PDF and data exports create a shareable copy only when you choose to export.",
+            ],
+            [
+              ka ? "პოსტები და ფოტოები" : "Posts and photos",
+              ka
+                ? "პოსტებს მხოლოდ შესული წევრები ხედავენ. ანონიმური პოსტი სხვებს ავტორის სახელს არ აჩვენებს, თუმცა სრული ტექნიკური ანონიმურობა არ იგულისხმება. ფოტოები Cloudinary-ზე ინახება და ფოტოს ბმულის მქონეს მისი ნახვა შეუძლია."
+                : "Posts require member sign-in. Anonymous posting hides your display name from other members, not your identity from every system. Photos are hosted on Cloudinary and can be accessed by anyone holding the image URL.",
+            ],
+            [
+              ka ? "მარკეტი და მიწოდება" : "Market and delivery",
+              ka
+                ? "შეკვეთისას მითითებული მისამართი და არასავალდებულო პინი გამოიყენება მიწოდების ორგანიზებისთვის. ისინი კალათის ადგილობრივ ასლში არ ინახება."
+                : "Delivery details and your optional map pin are used to arrange delivery. They are not included in the locally stored cart.",
+            ],
+          ]
+        : [
+            [
+              ka ? "უსაფრთხო გამოყენება" : "Safe use",
+              ka
+                ? "თუთა არ არის დიაგნოსტიკის ან გადაუდებელი დახმარების სერვისი. ყველა სავარაუდო თარიღი დამოკიდებულია შეყვანილ ისტორიაზე. ექიმთან კონსულტაცია ხელმისაწვდომია მხოლოდ დამატებული ექიმებისა და მათი თავისუფალი დროების მიხედვით."
+                : "Tuta is not a diagnostic or emergency service. Estimated dates depend on entered history. Consultations depend on listed doctors and available appointment times.",
+            ],
+            [
+              ka ? "საზოგადოების წესები" : "Community rules",
+              ka
+                ? "პოსტი მაქსიმუმ 200 სიტყვასა და ერთ ფოტოს შეიცავს. მიუთითე თემა. შეგიძლია საკუთარი პოსტის შეცვლა/წაშლა, კონკრეტულ კომენტარზე პასუხი და დარღვევის გასაჩივრება. არ გამოაქვეყნო სხვისი პირადი ინფორმაცია, შეურაცხყოფა ან სპამი."
+                : "Posts allow up to 200 words and one photo, with a topic. Edit/delete your own post, reply to a specific comment and report violations. Do not publish private information about others, abuse or spam.",
+            ],
+            [
+              ka ? "გამოწერა და გადახდა" : "Plans and payments",
+              ka
+                ? "პრემიუმის ფასებია 4.99 ₾ / 30 დღე და 49.90 ₾ / წელი. ამ ვერსიაში გადახდა სატესტოა, რეალური გაყიდვა და ავტომატური ჩამოჭრა ჩართული არ არის. კალათის ფასი და რაოდენობა სერვერზე ხელახლა მოწმდება."
+                : "Premium prices are 4.99 GEL / 30 days and 49.90 GEL / year. Checkout is test-only; real sales and automatic charges are not enabled. Cart prices and quantities are revalidated on the server.",
+            ],
+          ];
+  return (
+    <View style={s.content}>
+      <T weight="display" style={s.title}>
+        {page === "about"
+          ? ka
+            ? "ჩვენ შესახებ"
+            : "About Tuta"
+          : page === "privacy"
+            ? ka
+              ? "კონფიდენციალურობა"
+              : "Privacy"
+            : ka
+              ? "წესები და პირობები"
+              : "Terms of use"}
+      </T>
+      {page === "about" && (
+        <View
+          style={[s.card, { alignItems: "center", backgroundColor: C.lav }]}
+        >
+          <MoonFlower size={140} />
+        </View>
+      )}
+      {sections.map(([title, body]) => (
+        <View key={title} style={s.card}>
+          <T weight="bold" style={{ fontSize: 20, marginBottom: 12 }}>
+            {title}
+          </T>
+          <T style={{ lineHeight: 28 }}>{body}</T>
+        </View>
+      ))}
+    </View>
+  );
 }

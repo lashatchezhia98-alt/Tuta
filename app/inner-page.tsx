@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { CycleSettings, getCycle, isoDate } from "../lib/cycle";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
+import { authRedirectBase } from "../lib/auth-redirect";
 import {useHealthState,type HealthData} from "./use-health-state";
 import AdminFeaturePanel from "@/components/admin-feature-panel";
 import BrandMark from '@/components/brand-mark';
@@ -113,9 +114,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     setBusy(true);setError("");setNotice("");
     try{
       const supabase=getSupabaseBrowserClient();
-      const configuredSiteUrl=process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/,"");
-      const localHost=window.location.hostname==="localhost"||window.location.hostname==="127.0.0.1";
-      const redirectBase=configuredSiteUrl||(localHost?"https://tutahealth.ge":window.location.origin);
+      const redirectBase=authRedirectBase(process.env.NEXT_PUBLIC_SITE_URL,window.location.origin);
       if(forgot){
         const {error}=await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(),{redirectTo:`${redirectBase}/reset-password`});
         if(error)throw error;

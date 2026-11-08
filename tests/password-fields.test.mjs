@@ -4,6 +4,15 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {sourceModule} from './source-loader.mjs';
 
+test('confirmation and recovery URLs never use a local or insecure configured address',()=>{
+ const {authRedirectBase}=sourceModule('lib/auth-redirect.ts');
+ for(const configured of ['http://localhost:3000','https://localhost:3000','https://127.0.0.1:3100','https://[::1]:3000','https://preview.localhost','not a URL','http://tutahealth.ge','https://user:password@tutahealth.ge'])
+  assert.equal(authRedirectBase(configured,'https://tutahealth.ge'),'https://tutahealth.ge');
+ assert.equal(authRedirectBase('http://localhost:3000','http://localhost:3100'),'https://tutahealth.ge');
+ assert.equal(authRedirectBase('https://tutahealth.ge/login?unused=1','https://preview.vercel.app'),'https://tutahealth.ge');
+ assert.equal(authRedirectBase(undefined,'https://tutahealth.ge'),'https://tutahealth.ge');
+});
+
 function nodes(tree,type){
  if(!tree||typeof tree!=='object')return [];
  return [...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(child=>nodes(child,type))];

@@ -3,20 +3,25 @@
     "name": "თუთა • Tuta",
     "slug": "tuta-moon-mood",
     "scheme": "com.tutahealth.app",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
+      "buildNumber": "4",
+      "appleTeamId": "D88588H2DS",
       "supportsTablet": true,
       "deploymentTarget": "26.6",
       "bundleIdentifier": "com.tutahealth.app"
     },
     "android": {
       "package": "com.tutahealth.app",
-      "versionCode": 3,
+      "versionCode": 4,
       "icon": "./assets/app-icon.png",
-      "adaptiveIcon": { "foregroundImage": "./assets/app-icon.png", "backgroundColor": "#E3D8F1" }
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon.png",
+        "backgroundColor": "#E3D8F1"
+      }
     },
     "web": {
       "name": "Tuta · Moon Mood"
@@ -24,7 +29,13 @@
     "plugins": [
       "expo-font",
       "./plugins/with-ios-scene-lifecycle",
-      ["expo-image-picker", {"photosPermission": "აირჩიე ერთი ფოტო თუთას საჯარო პოსტისთვის."}]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "აირჩიე ერთი ფოტო თუთას საჯარო პოსტისთვის."
+        }
+      ],
+      "expo-sharing"
     ]
   }
 }

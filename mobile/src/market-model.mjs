@@ -1,0 +1,5 @@
+export const cartKey='tuta-market-cart-v1';
+export function cleanCart(value){if(!Array.isArray(value))return [];const rows=new Map();for(const row of value.slice(0,100)){if(row&&typeof row.id==='string'&&Number.isInteger(row.quantity)&&row.quantity>0)rows.set(row.id,Math.min(20,(rows.get(row.id)||0)+row.quantity));}return [...rows].slice(0,20).map(([id,quantity])=>({id,quantity}));}
+export function changeCart(rows,id,delta){const existing=rows.find(r=>r.id===id);if(!existing&&rows.length>=20)return rows;return cleanCart(existing?rows.flatMap(r=>r.id!==id?[r]:r.quantity+delta>0?[{id,quantity:Math.min(20,r.quantity+delta)}]:[]):delta>0?[...rows,{id,quantity:delta}]:rows);}
+export function project(latitude,longitude,zoom=14){const scale=256*2**zoom;const lat=Math.max(-85.0511,Math.min(85.0511,latitude))*Math.PI/180;return {x:(longitude+180)/360*scale,y:(1-Math.asinh(Math.tan(lat))/Math.PI)/2*scale};}
+export function unproject(x,y,zoom=14){const scale=256*2**zoom;return {latitude:Number((Math.atan(Math.sinh(Math.PI*(1-2*y/scale)))*180/Math.PI).toFixed(6)),longitude:Number(((x/scale*360-180+540)%360-180).toFixed(6))};}

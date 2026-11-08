@@ -1,50 +1,556 @@
-import {useCallback,useEffect,useState} from 'react';
-import {Alert,AppState,Linking,Share,TextInput,View} from 'react-native';
-import {T,s,CTA,Chip,DateField,FieldLabel} from './ui';
-import {useMembership} from './useMembership';
-import {useFeatureEnabled} from './useJourneyEnabled';
-import {addDays,dateKey,forecast} from './cycle.mjs';
-import {pregnancyInput,pregnancyProgress} from './pregnancy.mjs';
-import type {Data} from './types';
-const root=process.env.EXPO_PUBLIC_TUTA_API_URL?.trim().replace(/\/$/,'')||'https://tutahealth.ge';
-type Props={data:Data;save:(next:Data)=>Promise<boolean>;token:string};
-function FeatureStatus({status,retry,ka}:{status:string;retry:()=>void;ka:boolean}){return <View style={s.content}><T>{status==='loading'?(ka?'იტვირთება…':'Loading…'):status==='disabled'?(ka?'ფუნქცია დროებით გამორთულია.':'This feature is temporarily disabled.'):(ka?'პარამეტრები ვერ ჩაიტვირთა.':'Could not load settings.')}</T>{status==='error'&&<CTA title={ka?'ხელახლა ცდა':'Retry'} onPress={retry}/>}</View>}
-
-export function PregnancyScreen({data,save,token}:Props){
-  const ka=data.lang==='ka';const {status,retry}=useFeatureEnabled('pregnancy');const {active:member}=useMembership(token,root);
-  const [dating,setDating]=useState<'dueDate'|'lmp'>('dueDate'),[date,setDate]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
-  const progress=pregnancyProgress(data.pregnancy);
-  async function persist(stop=false){setBusy(true);try{
-    if(stop&&data.pregnancy){if(await save({...data,pregnancy:{...data.pregnancy,active:false,updatedAt:new Date().toISOString()}}))setMessage(ka?'რეჟიმი გამორთულია. ჩანაწერები შენარჩუნებულია.':'Mode is off. Your entries are preserved.');}
-    else {if(!member)throw Error();const value=pregnancyInput(dating,date);if(await save({...data,pregnancy:value}))setMessage(ka?'შენახულია':'Saved');}
-  }catch{setMessage(ka?'შეამოწმე თარიღი, პრემიუმი და ინტერნეტი. საწყისი შეფასება უნდა იყოს 0–42 კვირის ფარგლებში.':'Check the date, Premium and connection. Initial dating must be within 0–42 weeks.')}finally{setBusy(false)}}
-  if(status!=='enabled')return <View><FeatureStatus status={status} retry={retry} ka={ka}/>{data.pregnancy?.active&&<CTA title={ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'} disabled={busy} onPress={()=>Alert.alert(ka?'გამორთო რეჟიმი?':'Turn off mode?',ka?'ისტორია შენარჩუნდება.':'Your history will be preserved.',[{text:ka?'გაუქმება':'Cancel',style:'cancel'},{text:ka?'გამორთვა':'Turn off',onPress:()=>void persist(true)}])}/>}<T>{message}</T></View>;
-  return <View style={s.content}><T weight="display" style={s.title}>{ka?'ორსულობა':'Pregnancy'}</T><T style={s.muted}>{ka?'რეჟიმი მხოლოდ შენი არჩევანით ირთვება. აპი ორსულობას ან ბავშვის ჯანმრთელობას არ ადასტურებს.':'Enabled only by your choice. The app does not confirm pregnancy or fetal health.'}</T>
-    {progress&&<View style={s.card}><T weight="bold" style={{fontSize:24}}>{progress.status==='active'?`${progress.weeks} ${ka?'კვირა':'weeks'} + ${progress.extraDays} ${ka?'დღე':'days'}`:(ka?'გადახედე თარიღებსა და რეჟიმს':'Review your dates and tracking mode')}</T><T style={s.muted}>{ka?'მოსალოდნელი თარიღი: ':'Estimated due date: '}{progress.dueDate}</T><T style={s.muted}>{ka?'პერიოდისა და ნაყოფიერი დღეების პროგნოზები შეჩერებულია.':'Period and fertile-day estimates are paused.'}</T><CTA disabled={busy} title={ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'} onPress={()=>Alert.alert(ka?'გამორთო რეჟიმი?':'Turn off tracking?',ka?'ისტორია არ წაიშლება და ახალი პერიოდი ავტომატურად არ დაემატება.':'History is preserved; no new period is automatically recorded.',[{text:ka?'გაუქმება':'Cancel',style:'cancel'},{text:ka?'გამორთვა':'Turn off',onPress:()=>void persist(true)}])}/></View>}
-    {!member?<View style={s.card}><T>🔒 {member===null?(ka?'პრემიუმის სტატუსი მოწმდება.':'Checking Premium status.'):(ka?'ორსულობის აღრიცხვის დაწყებას და თარიღის შეცვლას პრემიუმი სჭირდება. შენახული რეჟიმის გამორთვა ყოველთვის შეგიძლია.':'Starting tracking and editing dates require Premium. An existing mode can always be turned off.')}</T><CTA light title={ka?'Premium გვერდის გახსნა':'Open Premium page'} onPress={()=>void Linking.openURL(root+'/premium')}/></View>:<View style={s.card}><FieldLabel>{ka?'დათარიღება':'Dating method'}</FieldLabel><View style={s.wrap}><Chip selected={dating==='dueDate'} label={ka?'ექიმის თარიღი':'Clinician due date'} onPress={()=>{setDating('dueDate');setDate('')}}/><Chip selected={dating==='lmp'} label={ka?'ბოლო მენსტრუაცია':'Last period'} onPress={()=>{setDating('lmp');setDate('')}}/></View><DateField ka={ka} label={ka?'თარიღი':'Date'} value={date} onChange={setDate} minDate={addDays(dateKey(),dating==='lmp'?-294:-14)} maxDate={dating==='lmp'?dateKey():addDays(dateKey(),280)}/><CTA title={ka?'შენახვა / განახლება':'Save / update'} disabled={busy||!date} onPress={()=>void persist()}/></View>}
-    {message&&<T accessibilityLiveRegion="polite">{message}</T>}
-    <T style={s.muted}>{ka?'ბოლო მენსტრუაციის მეთოდი ამატებს 280 დღეს და 28-დღიან რეგულარულ ციკლს ვარაუდობს. არარეგულარული ციკლის, გაურკვეველი თარიღის ან IVF-ის დროს გამოიყენე ექიმის მიერ განსაზღვრული მოსალოდნელი თარიღი.':'Last-period dating adds 280 days and assumes a regular 28-day cycle. With irregular cycles, uncertain dates or IVF, use the due date established by your clinician.'}</T><CTA light title="ACOG ↗" onPress={()=>void Linking.openURL('https://www.acog.org/clinical/clinical-guidance/committee-opinion/articles/2017/05/methods-for-estimating-the-due-date')}/>
-  </View>;
+import { useCallback, useEffect, useState } from "react";
+import { Alert, AppState, Linking, Share, TextInput, View } from "react-native";
+import { T, s, CTA, Chip, DateField, FieldLabel } from "./ui";
+import { useMembership } from "./useMembership";
+import { useFeatureEnabled } from "./useJourneyEnabled";
+import { addDays, dateKey, forecast } from "./cycle.mjs";
+import { pregnancyInput, pregnancyProgress } from "./pregnancy.mjs";
+import type { Data } from "./types";
+const root =
+  process.env.EXPO_PUBLIC_TUTA_API_URL?.trim().replace(/\/$/, "") ||
+  "https://tutahealth.ge";
+type Props = {
+  data: Data;
+  save: (next: Data) => Promise<boolean>;
+  token: string;
+  onPremium: () => void;
+};
+function FeatureStatus({
+  status,
+  retry,
+  ka,
+}: {
+  status: string;
+  retry: () => void;
+  ka: boolean;
+}) {
+  return (
+    <View style={s.content}>
+      <T>
+        {status === "loading"
+          ? ka
+            ? "იტვირთება…"
+            : "Loading…"
+          : status === "disabled"
+            ? ka
+              ? "ფუნქცია დროებით გამორთულია."
+              : "This feature is temporarily disabled."
+            : ka
+              ? "პარამეტრები ვერ ჩაიტვირთა."
+              : "Could not load settings."}
+      </T>
+      {status === "error" && (
+        <CTA title={ka ? "ხელახლა ცდა" : "Retry"} onPress={retry} />
+      )}
+    </View>
+  );
 }
 
-type Scope={cycle:boolean;pregnancy:boolean};
-type Summary={cycle:{cycleLength:number;periods:{start:string;duration:number}[]}|null;pregnancy:Data['pregnancy']|null};
-type Shares={premium:boolean;outgoing:{id:string;label:string;accepted_at:string|null;revoked_at:string|null}[];incoming:{id:string;label:string;available:boolean;summary:Summary|null}[]};
-export function PartnerScreen({data,token}:{data:Data;token:string}){
-  const ka=data.lang==='ka',feature=useFeatureEnabled('partners');
-  const [snapshot,setSnapshot]=useState<{token:string;data:Shares}|null>(null),[scopes,setScopes]=useState<Scope>({cycle:false,pregnancy:false}),[label,setLabel]=useState(''),[invite,setInvite]=useState(''),[link,setLink]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
-  const state=snapshot?.token===token?snapshot.data:null;
-  const load=useCallback(async(signal?:AbortSignal)=>{try{const r=await fetch(root+'/api/partners',{headers:{Authorization:`Bearer ${token}`},signal});const d=await r.json();if(!r.ok)throw Error(d.error);if(!signal?.aborted){setSnapshot({token,data:d});setMessage('')}}catch(e){if(!signal?.aborted)setMessage(e instanceof Error?e.message:'Error')}},[token]);
-  useEffect(()=>{if(feature.status!=='enabled')return;const controller=new AbortController();const initial=setTimeout(()=>void load(controller.signal),0);const timer=setInterval(()=>{if(AppState.currentState==='active')void load(controller.signal)},15000);return()=>{controller.abort();clearTimeout(initial);clearInterval(timer)}},[load,feature.status]);
-  async function action(body:Record<string,unknown>){setBusy(true);try{const r=await fetch(root+'/api/partners',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.error);if(d.token)setLink(root+'/app/partners#invite='+d.token);if(body.action==='accept')setInvite('');await load()}catch(e){setMessage(e instanceof Error?e.message:'Error')}finally{setBusy(false)}}
-  if(feature.status!=='enabled')return <FeatureStatus status={feature.status} retry={feature.retry} ka={ka}/>;
-  const accept=()=>{let code=invite.trim();try{const url=new URL(code);code=new URLSearchParams(url.hash.slice(1)).get('invite')||''}catch{/* A plain code is also accepted. */}void action({action:'accept',token:code})};
-  return <View style={s.content}><T weight="display" style={s.title}>{ka?'პარტნიორთან გაზიარება':'Partner sharing'}</T><T style={s.muted}>{ka?'არაფერი ზიარდება ავტომატურად. აირჩიე ბოლო 4 პერიოდის თარიღები და ხანგრძლივობები ან ორსულობის დათარიღება. დღიური, სიმპტომები, შენიშვნები და ელფოსტა არასდროს გაზიარდება.':'Nothing is shared automatically. Choose the last 4 period dates and durations or pregnancy dating. Journal entries, symptoms, notes and email are never shared.'}</T>
-    {message&&<T accessibilityRole="alert">{message}</T>}<CTA light title={ka?'განახლება':'Refresh'} disabled={busy} onPress={()=>void load()}/>
-    {state?.premium?<View style={s.card}><FieldLabel>{ka?'გაზიარების სახელი':'Share label'}</FieldLabel><TextInput accessibilityLabel={ka?'გაზიარების სახელი':'Share label'} style={s.input} value={label} maxLength={60} onChangeText={setLabel}/><View style={s.wrap}><Chip selected={scopes.cycle} label={ka?'ბოლო 4 პერიოდი':'Last 4 periods'} onPress={()=>setScopes({...scopes,cycle:!scopes.cycle})}/><Chip selected={scopes.pregnancy} label={ka?'ორსულობის დათარიღება':'Pregnancy dating'} onPress={()=>setScopes({...scopes,pregnancy:!scopes.pregnancy})}/></View>{scopes.cycle&&!data.pregnancy?.active&&data.periods.slice(-4).map(p=><T key={p.start}>{p.start} · {p.duration} {ka?'დღე':'days'}</T>)}{scopes.pregnancy&&data.pregnancy?.active&&<T>{data.pregnancy.date} ({data.pregnancy.dating})</T>}<T style={s.muted}>{ka?'ბმული მოქმედებს 7 დღე და ერთი ანგარიშისთვისაა. გააზიარე მხოლოდ სანდო პირთან.':'The link expires in 7 days and can be used by one account. Share it only with someone you trust.'}</T><CTA title={ka?'მოწვევის შექმნა':'Create invitation'} disabled={busy||!label.trim()||(!scopes.cycle&&!scopes.pregnancy)} onPress={()=>void action({action:'invite',label,scopes})}/></View>:<T style={s.muted}>{ka?'მოწვევის შექმნა პრემიუმის ფუნქციაა. მიღება, გასვლა და საკუთარი გაზიარების გაუქმება უფასოა.':'Creating invitations is a Premium feature. Receiving, leaving and revoking your own shares are free.'}</T>}
-    {link&&<View style={s.card}><T selectable>{link}</T><CTA title={ka?'პირადი ბმულის გაზიარება':'Share private invitation'} onPress={()=>void Share.share({message:link})}/></View>}
-    <View style={s.card}><FieldLabel>{ka?'მოწვევის კოდი ან ბმული':'Invitation code or link'}</FieldLabel><TextInput style={s.input} value={invite} onChangeText={setInvite} autoCapitalize="none" autoCorrect={false} maxLength={300} accessibilityLabel={ka?'მოწვევის კოდი ან ბმული':'Invitation code or link'}/><CTA disabled={busy||!invite} title={ka?'მოწვევის მიღება':'Accept invitation'} onPress={accept}/></View>
-    <FieldLabel>{ka?'ჩემი გაზიარებები':'My shares'}</FieldLabel>{state?.outgoing.map(row=><View style={s.card} key={row.id}><T weight="bold">{row.label}</T><T>{row.revoked_at?(ka?'გაუქმებულია':'Revoked'):row.accepted_at?(ka?'მიღებულია':'Accepted'):(ka?'მოლოდინში':'Pending')}</T>{!row.revoked_at&&<CTA light title={ka?'გაუქმება':'Revoke'} disabled={busy} onPress={()=>void action({action:'revoke',id:row.id})}/>}</View>)}
-    <FieldLabel>{ka?'ჩემთვის გაზიარებული':'Shared with me'}</FieldLabel>{state?.incoming.map(row=>{const cycle=row.summary?.cycle,model=cycle?forecast(cycle.periods,cycle.cycleLength):null,pregnancy=pregnancyProgress(row.summary?.pregnancy);return <View style={s.card} key={row.id}><T weight="bold">{row.label}</T>{!row.available?<T>{ka?'გამზიარებლის პრემიუმი აღარ მოქმედებს.':'The owner’s Premium is inactive.'}</T>:<>{model&&<T>{ka?'შემდეგი პერიოდის ვარაუდი: ':'Next period estimate: '}{model.status==='overdue'?(ka?'ახალი ჩანაწერის მოლოდინში':'Awaiting a new entry'):model.expected||'—'}</T>}{pregnancy&&<T>{pregnancy.status==='active'?`${pregnancy.weeks} ${ka?'კვირა':'weeks'} + ${pregnancy.extraDays} ${ka?'დღე':'days'}`:(ka?'თარიღები გადასახედია':'Dates need review')}</T>}</>}<CTA light disabled={busy} title={ka?'გაზიარებიდან გასვლა':'Leave sharing'} onPress={()=>void action({action:'leave',id:row.id})}/></View>})}<T style={s.muted}>{ka?'გაუქმება აჩერებს შემდგომ წვდომას. უკვე ნანახი ინფორმაციის უკან დაბრუნება შეუძლებელია. თარიღები მხოლოდ შეფასებებია.':'Revoking stops future access, but cannot take back information already seen. Dates are estimates only.'}</T>
-  </View>;
+export function PregnancyScreen({ data, save, token, onPremium }: Props) {
+  const ka = data.lang === "ka";
+  const { status, retry } = useFeatureEnabled("pregnancy");
+  const { active: member } = useMembership(token, root);
+  const [dating, setDating] = useState<"dueDate" | "lmp">("dueDate"),
+    [date, setDate] = useState(""),
+    [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  const progress = pregnancyProgress(data.pregnancy);
+  async function persist(stop = false) {
+    setBusy(true);
+    try {
+      if (stop && data.pregnancy) {
+        if (
+          await save({
+            ...data,
+            pregnancy: {
+              ...data.pregnancy,
+              active: false,
+              updatedAt: new Date().toISOString(),
+            },
+          })
+        )
+          setMessage(
+            ka
+              ? "რეჟიმი გამორთულია. ჩანაწერები შენარჩუნებულია."
+              : "Mode is off. Your entries are preserved.",
+          );
+      } else {
+        if (!member) throw Error();
+        const value = pregnancyInput(dating, date);
+        if (await save({ ...data, pregnancy: value }))
+          setMessage(ka ? "შენახულია" : "Saved");
+      }
+    } catch {
+      setMessage(
+        ka
+          ? "შეამოწმე თარიღი, პრემიუმი და ინტერნეტი. საწყისი შეფასება უნდა იყოს 0–42 კვირის ფარგლებში."
+          : "Check the date, Premium and connection. Initial dating must be within 0–42 weeks.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (status !== "enabled")
+    return (
+      <View>
+        <FeatureStatus status={status} retry={retry} ka={ka} />
+        {data.pregnancy?.active && (
+          <CTA
+            title={
+              ka ? "ორსულობის რეჟიმის გამორთვა" : "Turn off pregnancy mode"
+            }
+            disabled={busy}
+            onPress={() =>
+              Alert.alert(
+                ka ? "გამორთო რეჟიმი?" : "Turn off mode?",
+                ka
+                  ? "ისტორია შენარჩუნდება."
+                  : "Your history will be preserved.",
+                [
+                  { text: ka ? "გაუქმება" : "Cancel", style: "cancel" },
+                  {
+                    text: ka ? "გამორთვა" : "Turn off",
+                    onPress: () => void persist(true),
+                  },
+                ],
+              )
+            }
+          />
+        )}
+        <T>{message}</T>
+      </View>
+    );
+  return (
+    <View style={s.content}>
+      <T weight="display" style={s.title}>
+        {ka ? "ორსულობა" : "Pregnancy"}
+      </T>
+      <T style={s.muted}>
+        {ka
+          ? "რეჟიმი მხოლოდ შენი არჩევანით ირთვება. აპი ორსულობას ან ბავშვის ჯანმრთელობას არ ადასტურებს."
+          : "Enabled only by your choice. The app does not confirm pregnancy or fetal health."}
+      </T>
+      {progress && (
+        <View style={s.card}>
+          <T weight="bold" style={{ fontSize: 24 }}>
+            {progress.status === "active"
+              ? `${progress.weeks} ${ka ? "კვირა" : "weeks"} + ${progress.extraDays} ${ka ? "დღე" : "days"}`
+              : ka
+                ? "გადახედე თარიღებსა და რეჟიმს"
+                : "Review your dates and tracking mode"}
+          </T>
+          <T style={s.muted}>
+            {ka ? "მოსალოდნელი თარიღი: " : "Estimated due date: "}
+            {progress.dueDate}
+          </T>
+          <T style={s.muted}>
+            {ka
+              ? "პერიოდისა და ნაყოფიერი დღეების პროგნოზები შეჩერებულია."
+              : "Period and fertile-day estimates are paused."}
+          </T>
+          <CTA
+            disabled={busy}
+            title={
+              ka ? "ორსულობის რეჟიმის გამორთვა" : "Turn off pregnancy mode"
+            }
+            onPress={() =>
+              Alert.alert(
+                ka ? "გამორთო რეჟიმი?" : "Turn off tracking?",
+                ka
+                  ? "ისტორია არ წაიშლება და ახალი პერიოდი ავტომატურად არ დაემატება."
+                  : "History is preserved; no new period is automatically recorded.",
+                [
+                  { text: ka ? "გაუქმება" : "Cancel", style: "cancel" },
+                  {
+                    text: ka ? "გამორთვა" : "Turn off",
+                    onPress: () => void persist(true),
+                  },
+                ],
+              )
+            }
+          />
+        </View>
+      )}
+      {!member ? (
+        <View style={s.card}>
+          <T>
+            🔒{" "}
+            {member === null
+              ? ka
+                ? "პრემიუმის სტატუსი მოწმდება."
+                : "Checking Premium status."
+              : ka
+                ? "ორსულობის აღრიცხვის დაწყებას და თარიღის შეცვლას პრემიუმი სჭირდება. შენახული რეჟიმის გამორთვა ყოველთვის შეგიძლია."
+                : "Starting tracking and editing dates require Premium. An existing mode can always be turned off."}
+          </T>
+          <CTA
+            light
+            title={ka ? "Premium გვერდის გახსნა" : "Open Premium page"}
+            onPress={onPremium}
+          />
+        </View>
+      ) : (
+        <View style={s.card}>
+          <FieldLabel>{ka ? "დათარიღება" : "Dating method"}</FieldLabel>
+          <View style={s.wrap}>
+            <Chip
+              selected={dating === "dueDate"}
+              label={ka ? "ექიმის თარიღი" : "Clinician due date"}
+              onPress={() => {
+                setDating("dueDate");
+                setDate("");
+              }}
+            />
+            <Chip
+              selected={dating === "lmp"}
+              label={ka ? "ბოლო მენსტრუაცია" : "Last period"}
+              onPress={() => {
+                setDating("lmp");
+                setDate("");
+              }}
+            />
+          </View>
+          <DateField
+            ka={ka}
+            label={ka ? "თარიღი" : "Date"}
+            value={date}
+            onChange={setDate}
+            minDate={addDays(dateKey(), dating === "lmp" ? -294 : -14)}
+            maxDate={dating === "lmp" ? dateKey() : addDays(dateKey(), 280)}
+          />
+          <CTA
+            title={ka ? "შენახვა / განახლება" : "Save / update"}
+            disabled={busy || !date}
+            onPress={() => void persist()}
+          />
+        </View>
+      )}
+      {Boolean(message) && <T accessibilityLiveRegion="polite">{message}</T>}
+      <T style={s.muted}>
+        {ka
+          ? "ბოლო მენსტრუაციის მეთოდი ამატებს 280 დღეს და 28-დღიან რეგულარულ ციკლს ვარაუდობს. არარეგულარული ციკლის, გაურკვეველი თარიღის ან IVF-ის დროს გამოიყენე ექიმის მიერ განსაზღვრული მოსალოდნელი თარიღი."
+          : "Last-period dating adds 280 days and assumes a regular 28-day cycle. With irregular cycles, uncertain dates or IVF, use the due date established by your clinician."}
+      </T>
+      <CTA
+        light
+        title="ACOG ↗"
+        onPress={() =>
+          void Linking.openURL(
+            "https://www.acog.org/clinical/clinical-guidance/committee-opinion/articles/2017/05/methods-for-estimating-the-due-date",
+          )
+        }
+      />
+    </View>
+  );
+}
+
+type Scope = { cycle: boolean; pregnancy: boolean };
+type Summary = {
+  cycle: {
+    cycleLength: number;
+    periods: { start: string; duration: number }[];
+  } | null;
+  pregnancy: Data["pregnancy"] | null;
+};
+type Shares = {
+  premium: boolean;
+  outgoing: {
+    id: string;
+    label: string;
+    accepted_at: string | null;
+    revoked_at: string | null;
+  }[];
+  incoming: {
+    id: string;
+    label: string;
+    available: boolean;
+    summary: Summary | null;
+  }[];
+};
+export function PartnerScreen({ data, token }: { data: Data; token: string }) {
+  const ka = data.lang === "ka",
+    feature = useFeatureEnabled("partners");
+  const [snapshot, setSnapshot] = useState<{
+      token: string;
+      data: Shares;
+    } | null>(null),
+    [scopes, setScopes] = useState<Scope>({ cycle: false, pregnancy: false }),
+    [label, setLabel] = useState(""),
+    [invite, setInvite] = useState(""),
+    [link, setLink] = useState(""),
+    [busy, setBusy] = useState(false),
+    [message, setMessage] = useState("");
+  const state = snapshot?.token === token ? snapshot.data : null;
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const r = await fetch(root + "/api/partners", {
+          headers: { Authorization: `Bearer ${token}` },
+          signal,
+        });
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error);
+        if (!signal?.aborted) {
+          setSnapshot({ token, data: d });
+          setMessage("");
+        }
+      } catch (e) {
+        if (!signal?.aborted)
+          setMessage(e instanceof Error ? e.message : "Error");
+      }
+    },
+    [token],
+  );
+  useEffect(() => {
+    const controller = new AbortController();
+    const initial = setTimeout(() => void load(controller.signal), 0);
+    const timer = setInterval(() => {
+      if (AppState.currentState === "active") void load(controller.signal);
+    }, 15000);
+    return () => {
+      controller.abort();
+      clearTimeout(initial);
+      clearInterval(timer);
+    };
+  }, [load]);
+  async function action(body: Record<string, unknown>) {
+    if (
+      feature.status !== "enabled" &&
+      ["invite", "accept"].includes(String(body.action))
+    ) {
+      setMessage(
+        ka
+          ? "ახალი გაზიარება დროებით გამორთულია. არსებულის გაუქმება შეგიძლია."
+          : "New sharing is paused. You can revoke existing shares.",
+      );
+      return;
+    }
+    setBusy(true);
+    try {
+      const r = await fetch(root + "/api/partners", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw Error(d.error);
+      if (d.token) setLink(root + "/app/partners#invite=" + d.token);
+      if (body.action === "accept") setInvite("");
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const accept = () => {
+    let code = invite.trim();
+    try {
+      const url = new URL(code);
+      code = new URLSearchParams(url.hash.slice(1)).get("invite") || "";
+    } catch {
+      /* A plain code is also accepted. */
+    }
+    void action({ action: "accept", token: code });
+  };
+  return (
+    <View style={s.content}>
+      <T weight="display" style={s.title}>
+        {ka ? "პარტნიორთან გაზიარება" : "Partner sharing"}
+      </T>
+      {feature.status !== "enabled" && (
+        <View style={s.banner}>
+          <T>
+            {ka
+              ? "ახალი გაზიარება დროებით შეჩერებულია. არსებულის ნახვა, გაუქმება და გასვლა ხელმისაწვდომია."
+              : "New sharing is paused. Viewing, revoking and leaving existing shares remain available."}
+          </T>
+        </View>
+      )}
+      <T style={s.muted}>
+        {ka
+          ? "არაფერი ზიარდება ავტომატურად. აირჩიე ბოლო 4 პერიოდის თარიღები და ხანგრძლივობები ან ორსულობის დათარიღება. დღიური, სიმპტომები, შენიშვნები და ელფოსტა არასდროს გაზიარდება."
+          : "Nothing is shared automatically. Choose the last 4 period dates and durations or pregnancy dating. Journal entries, symptoms, notes and email are never shared."}
+      </T>
+      {Boolean(message) && <T accessibilityRole="alert">{message}</T>}
+      <CTA
+        light
+        title={ka ? "განახლება" : "Refresh"}
+        disabled={busy}
+        onPress={() => void load()}
+      />
+      {state?.premium ? (
+        <View style={s.card}>
+          <FieldLabel>{ka ? "გაზიარების სახელი" : "Share label"}</FieldLabel>
+          <TextInput
+            accessibilityLabel={ka ? "გაზიარების სახელი" : "Share label"}
+            style={s.input}
+            value={label}
+            maxLength={60}
+            onChangeText={setLabel}
+          />
+          <View style={s.wrap}>
+            <Chip
+              selected={scopes.cycle}
+              label={ka ? "ბოლო 4 პერიოდი" : "Last 4 periods"}
+              onPress={() => setScopes({ ...scopes, cycle: !scopes.cycle })}
+            />
+            <Chip
+              selected={scopes.pregnancy}
+              label={ka ? "ორსულობის დათარიღება" : "Pregnancy dating"}
+              onPress={() =>
+                setScopes({ ...scopes, pregnancy: !scopes.pregnancy })
+              }
+            />
+          </View>
+          {scopes.cycle &&
+            !data.pregnancy?.active &&
+            data.periods.slice(-4).map((p) => (
+              <T key={p.start}>
+                {p.start} · {p.duration} {ka ? "დღე" : "days"}
+              </T>
+            ))}
+          {scopes.pregnancy && data.pregnancy?.active && (
+            <T>
+              {data.pregnancy.date} ({data.pregnancy.dating})
+            </T>
+          )}
+          <T style={s.muted}>
+            {ka
+              ? "ბმული მოქმედებს 7 დღე და ერთი ანგარიშისთვისაა. გააზიარე მხოლოდ სანდო პირთან."
+              : "The link expires in 7 days and can be used by one account. Share it only with someone you trust."}
+          </T>
+          <CTA
+            title={ka ? "მოწვევის შექმნა" : "Create invitation"}
+            disabled={
+              busy ||
+              feature.status !== "enabled" ||
+              !label.trim() ||
+              (!scopes.cycle && !scopes.pregnancy)
+            }
+            onPress={() => void action({ action: "invite", label, scopes })}
+          />
+        </View>
+      ) : (
+        <T style={s.muted}>
+          {ka
+            ? "მოწვევის შექმნა პრემიუმის ფუნქციაა. მიღება, გასვლა და საკუთარი გაზიარების გაუქმება უფასოა."
+            : "Creating invitations is a Premium feature. Receiving, leaving and revoking your own shares are free."}
+        </T>
+      )}
+      {link && (
+        <View style={s.card}>
+          <T selectable>{link}</T>
+          <CTA
+            title={ka ? "პირადი ბმულის გაზიარება" : "Share private invitation"}
+            onPress={() => void Share.share({ message: link })}
+          />
+        </View>
+      )}
+      <View style={s.card}>
+        <FieldLabel>
+          {ka ? "მოწვევის კოდი ან ბმული" : "Invitation code or link"}
+        </FieldLabel>
+        <TextInput
+          style={s.input}
+          value={invite}
+          onChangeText={setInvite}
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={300}
+          accessibilityLabel={
+            ka ? "მოწვევის კოდი ან ბმული" : "Invitation code or link"
+          }
+        />
+        <CTA
+          disabled={busy || !invite || feature.status !== "enabled"}
+          title={ka ? "მოწვევის მიღება" : "Accept invitation"}
+          onPress={accept}
+        />
+      </View>
+      <FieldLabel>{ka ? "ჩემი გაზიარებები" : "My shares"}</FieldLabel>
+      {state?.outgoing.map((row) => (
+        <View style={s.card} key={row.id}>
+          <T weight="bold">{row.label}</T>
+          <T>
+            {row.revoked_at
+              ? ka
+                ? "გაუქმებულია"
+                : "Revoked"
+              : row.accepted_at
+                ? ka
+                  ? "მიღებულია"
+                  : "Accepted"
+                : ka
+                  ? "მოლოდინში"
+                  : "Pending"}
+          </T>
+          {!row.revoked_at && (
+            <CTA
+              light
+              title={ka ? "გაუქმება" : "Revoke"}
+              disabled={busy}
+              onPress={() => void action({ action: "revoke", id: row.id })}
+            />
+          )}
+        </View>
+      ))}
+      <FieldLabel>{ka ? "ჩემთვის გაზიარებული" : "Shared with me"}</FieldLabel>
+      {state?.incoming.map((row) => {
+        const cycle = row.summary?.cycle,
+          model = cycle ? forecast(cycle.periods, cycle.cycleLength) : null,
+          pregnancy = pregnancyProgress(row.summary?.pregnancy);
+        return (
+          <View style={s.card} key={row.id}>
+            <T weight="bold">{row.label}</T>
+            {!row.available ? (
+              <T>
+                {ka
+                  ? "გამზიარებლის პრემიუმი აღარ მოქმედებს."
+                  : "The owner’s Premium is inactive."}
+              </T>
+            ) : (
+              <>
+                {model && (
+                  <T>
+                    {ka
+                      ? "შემდეგი პერიოდის ვარაუდი: "
+                      : "Next period estimate: "}
+                    {model.status === "overdue"
+                      ? ka
+                        ? "ახალი ჩანაწერის მოლოდინში"
+                        : "Awaiting a new entry"
+                      : model.expected || "—"}
+                  </T>
+                )}
+                {pregnancy && (
+                  <T>
+                    {pregnancy.status === "active"
+                      ? `${pregnancy.weeks} ${ka ? "კვირა" : "weeks"} + ${pregnancy.extraDays} ${ka ? "დღე" : "days"}`
+                      : ka
+                        ? "თარიღები გადასახედია"
+                        : "Dates need review"}
+                  </T>
+                )}
+              </>
+            )}
+            <CTA
+              light
+              disabled={busy}
+              title={ka ? "გაზიარებიდან გასვლა" : "Leave sharing"}
+              onPress={() => void action({ action: "leave", id: row.id })}
+            />
+          </View>
+        );
+      })}
+      <T style={s.muted}>
+        {ka
+          ? "გაუქმება აჩერებს შემდგომ წვდომას. უკვე ნანახი ინფორმაციის უკან დაბრუნება შეუძლებელია. თარიღები მხოლოდ შეფასებებია."
+          : "Revoking stops future access, but cannot take back information already seen. Dates are estimates only."}
+      </T>
+    </View>
+  );
 }
