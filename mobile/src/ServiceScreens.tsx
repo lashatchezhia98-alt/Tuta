@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { Alert, Linking, Pressable, TextInput, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Image,
+  Linking,
+  Pressable,
+  TextInput,
+  View,
+} from "react-native";
+import { useChatMessages, type ChatResponse } from "./useChatMessages";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
@@ -10,13 +18,7 @@ import { api, apiRoot, checkoutDestination } from "./api";
 import { useResource } from "./useResource";
 import { useMembership } from "./useMembership";
 import { useFeatureEnabled } from "./useJourneyEnabled";
-import {
-  forecast,
-  dateKey,
-  addDays,
-  validSetup,
-  predictions,
-} from "./cycle.mjs";
+import { forecast, addDays, validSetup, predictions } from "./cycle.mjs";
 import { healthReport, reminderCalendar } from "./health-report";
 import { symptoms } from "./symptoms.mjs";
 type Nav = { lang: Lang; onNavigate: (tab: Tab) => void };
@@ -271,6 +273,7 @@ type Doctor = {
   user_id: string;
   specialty: string;
   bio: string;
+  photoUrl: string | null;
   verified_doctors: { first_name: string; last_name: string };
 };
 type Slot = {
@@ -312,17 +315,16 @@ export function CareScreen({
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
-  const messages = useResource<{
-    messages: {
-      id: string;
-      sender_id: string;
-      body: string;
-      created_at: string;
-    }[];
-  }>(
-    thread ? "/api/care?thread=" + thread : "/api/care",
-    session.user.id,
-    thread ? 15000 : 0,
+  const loadMessages = useCallback(
+    () =>
+      api<ChatResponse>("/api/care?thread=" + thread, {
+        userId: session.user.id,
+      }),
+    [thread, session.user.id],
+  );
+  const messages = useChatMessages(
+    thread ? `${session.user.id}:${thread}` : "",
+    loadMessages,
   );
   const alive = useRef(true);
   useEffect(
@@ -424,6 +426,18 @@ export function CareScreen({
             .filter((d) => d.user_id !== session.user.id)
             .map((d) => (
               <View style={s.card} key={d.user_id}>
+                {d.photoUrl && (
+                  <Image
+                    source={{ uri: d.photoUrl }}
+                    accessibilityLabel={name(d.user_id)}
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 36,
+                      marginBottom: 12,
+                    }}
+                  />
+                )}
                 <T weight="bold" style={{ fontSize: 20 }}>
                   {ka ? "ექიმი " : "Dr "}
                   {name(d.user_id)} ✓
@@ -581,6 +595,11 @@ export function CareScreen({
           {Boolean(thread) && (
             <>
               <ResourceStatus {...messages} lang={lang} />
+              <T style={s.muted}>
+                {ka
+                  ? "შეტყობინებები გაგზავნიდან 48 საათში ავტომატურად იშლება. ჩატის არქივი არ ინახება."
+                  : "Messages are automatically deleted 48 hours after sending. No chat archive is kept."}
+              </T>
               {messages.data?.messages?.map((m) => (
                 <View
                   key={m.id}
@@ -721,7 +740,9 @@ export function ReportScreen({
       if (uri)
         try {
           new File(uri).delete();
-        } catch {}
+        } catch {
+          /* The OS may already have removed this temporary export. */
+        }
       if (alive.current) setBusy(false);
     }
   }

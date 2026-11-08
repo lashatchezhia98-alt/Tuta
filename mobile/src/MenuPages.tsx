@@ -137,6 +137,12 @@ export function MenuPage({
                 ? "შეკვეთისას მითითებული მისამართი და არასავალდებულო პინი გამოიყენება მიწოდების ორგანიზებისთვის. ისინი კალათის ადგილობრივ ასლში არ ინახება."
                 : "Delivery details and your optional map pin are used to arrange delivery. They are not included in the locally stored cart.",
             ],
+            [
+              ka ? "ექიმთან მიმოწერის ვადა" : "Chat retention",
+              ka
+                ? "ჩატის შეტყობინებები გაგზავნიდან 48 საათში წაიშლება აქტიური ბაზიდან და აპში აღარ გამოჩნდება. ჩატის ადგილობრივი არქივი არ იქმნება. პროვაიდერის სარეზერვო ასლებს შენახვის ცალკე ვადა აქვს; სხვის მიერ გაკეთებულ ასლებსა და ეკრანის ფოტოებს ვერ წავშლით. პროფილის ფოტო მხოლოდ გადამოწმებულ ექიმებს აქვთ."
+                : "Chat messages expire after 48 hours and are removed from the active database. No local chat archive is created. Provider backups have separate retention; copies and screenshots made by others cannot be erased. Only verified doctors have profile photos.",
+            ],
           ]
         : [
             [

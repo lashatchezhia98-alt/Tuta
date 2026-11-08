@@ -25,8 +25,8 @@ test('late consultation actions cannot restore an old account conversation or dr
  const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
  let cleanup;
  try{
-  render();cleanup=effects[0]();slots[0]={userId:'A',doctors:[{user_id:'doctor',verified_doctors:{first_name:'Test',last_name:'Doctor'}}],slots:[],threads:[],bookings:[],premium:true};slots[4]='private A draft';
-  nodes(render(),'button').find(b=>b.props.children==='Start chat').props.onClick();await tick();user='B';authCallback('SIGNED_IN',{user:{id:'B'}});assert.equal(slots[4],'');request.resolve({ok:true,json:async()=>({thread:{id:'A-private-thread'}})});await tick();assert.equal(slots[2],'');assert.equal(slots[7],'');
+  render();cleanup=effects[0]();slots[0]={userId:'A',doctors:[{user_id:'doctor',verified_doctors:{first_name:'Test',last_name:'Doctor'}}],slots:[],threads:[],bookings:[],premium:true};slots[3]='private A draft';
+  nodes(render(),'button').find(b=>b.props.children==='Start chat').props.onClick();await tick();user='B';authCallback('SIGNED_IN',{user:{id:'B'}});assert.equal(slots[3],'');request.resolve({ok:true,json:async()=>({thread:{id:'A-private-thread'}})});await tick();assert.equal(slots[2],'');assert.equal(slots[6],'');
  }finally{cleanup?.();globalThis.fetch=oldFetch}
 });
 function hookHarness({readDelay=false}={}){
@@ -91,7 +91,7 @@ const failure=e=>result({error:e.message},e instanceof ApiError?e.status:503);
 const checked=response=>{if(response.error)throw new ApiError(503,'Database unavailable');return response.data};
 test('market cart starts without a fabricated pin, clamps plus buttons to 20 and stores no address',()=>{
  const state=[];let cursor=0;const storage=[],previous=globalThis.localStorage;globalThis.localStorage={setItem:(_key,value)=>storage.push(value)};
- const react={useEffect(){},useMemo:fn=>fn(),useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value}]}};
+ const react={useEffect(){},useRef(initial){return state[cursor++]??={current:initial}},useMemo:fn=>fn(),useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value}]}};
  const Component=sourceModule('components/marketplace.tsx',{react}).default;
  const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
  const render=()=>{cursor=0;return Component({lang:'en'})};

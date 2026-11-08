@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
 type Doctor = {
   user_id: string;
   first_name: string;
   last_name: string;
+  photo_public_id: string | null;
   doctor_profiles: { specialty: string; bio: string; active: boolean } | null;
 };
 type Slot = {
@@ -12,7 +14,12 @@ type Slot = {
   starts_at: string;
   location: string;
 };
-type Booking={id:string;patient_label:string;status:string;consultation_slots:Slot};
+type Booking = {
+  id: string;
+  patient_label: string;
+  status: string;
+  consultation_slots: Slot;
+};
 export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
   const ka = lang === "ka";
   const [doctors, setDoctors] = useState<Doctor[]>([]),
@@ -25,7 +32,8 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
     [location, setLocation] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
-  const [bookings,setBookings]=useState<Booking[]>([]),[moves,setMoves]=useState<Record<string,string>>({});
+  const [bookings, setBookings] = useState<Booking[]>([]),
+    [moves, setMoves] = useState<Record<string, string>>({});
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/care", { cache: "no-store" });
@@ -33,7 +41,7 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
       if (!r.ok) throw Error(d.error);
       setDoctors(d.doctors);
       setSlots(d.slots);
-      setBookings(d.bookings||[]);
+      setBookings(d.bookings || []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Error");
     }
@@ -60,6 +68,37 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
       setBusy(false);
     }
   }
+  async function uploadPhoto(file: File) {
+    if (file.size > 3 * 1024 * 1024) {
+      setMessage(
+        ka ? "ფოტო მაქსიმუმ 3 მბ უნდა იყოს." : "Photo must be at most 3 MB.",
+      );
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const form = new FormData();
+      form.set("file", file);
+      form.set("doctorId", id);
+      const r = await fetch("/api/admin/care/photo", {
+        method: "POST",
+        body: form,
+      });
+      const data = await r.json();
+      if (!r.ok) throw Error(data.error);
+      await load();
+      setMessage(ka ? "ფოტო შენახულია" : "Photo saved");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const photo = doctorPhotoUrl(
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    doctors.find((d) => d.user_id === id),
+  );
   return (
     <section id="care" className="workspace-card">
       <h2>
@@ -72,10 +111,16 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
           ? "სიაში მხოლოდ უკვე გადამოწმებული ექიმის ანგარიშებია. ჩართვა ექიმს კონსულტაციის გვერდზე გამოაჩენს. ვიზიტის ხანგრძლივობაა 30 წუთი. ადმინისტრატორი არ ხედავს პირად მიმოწერას ან ჯანმრთელობის ჩანაწერებს."
           : "Only independently verified doctor accounts are listed. Enable a profile to show it on the consultation page. Appointments last 30 minutes. Administrators cannot read private chats or health records here."}
       </p>
+      <p>
+        {ka
+          ? "ჩატის შეტყობინებები გაგზავნიდან 48 საათში იშლება. მომხმარებლების მიმოწერა ადმინისთვის მიუწვდომელია. პროფილის ფოტო მხოლოდ გადამოწმებულ ექიმს აქვს."
+          : "Chat messages expire 48 hours after sending. Administrators cannot read chats. Only verified doctors have profile photos."}
+      </p>
       <label>
         {ka ? "ექიმი" : "Doctor"}
         <select
           value={id}
+          disabled={busy}
           onChange={(e) => {
             setId(e.target.value);
             const d = doctors.find(
@@ -103,6 +148,43 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
       )}
       {id && (
         <>
+          <section className="workspace-form">
+            <h3>{ka ? "ექიმის პროფილის ფოტო" : "Doctor profile photo"}</h3>
+            {photo && (
+              <img
+                className="doctor-avatar"
+                src={photo}
+                alt={ka ? "ექიმის ფოტო" : "Doctor photo"}
+                width={80}
+                height={80}
+              />
+            )}
+            <label>
+              {ka
+                ? "ატვირთე ერთი ფოტო, ექიმის თანხმობით (JPG, PNG, WebP, მაქს. 3 მბ)"
+                : "Upload one photo with the doctor’s consent (JPG, PNG, WebP, max 3 MB)"}
+              <input
+                key={id}
+                disabled={busy}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void uploadPhoto(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {photo && (
+              <button
+                disabled={busy}
+                type="button"
+                onClick={() => void save({ action: "remove-photo", id })}
+              >
+                {ka ? "ფოტოს მოხსნა" : "Remove photo"}
+              </button>
+            )}
+          </section>
           <form
             className="workspace-form"
             onSubmit={(e) => {
@@ -206,7 +288,107 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
             ))}
         </>
       )}
-      <section className="order-history"><h2>{ka?'ვიზიტების მართვა':'Appointment management'}</h2><p>{ka?'ბოლო 100 ჯავშანი. გადატანა შეათანხმე პაციენტთან; ახალ დროს იგივე ექიმი უნდა ემსახურებოდეს.':'Latest 100 bookings. Agree rescheduling with the patient; the new slot must belong to the same doctor.'}</p>{!bookings.length&&<p>{ka?'ჯავშნები ჯერ არ არის.':'No appointments yet.'}</p>}{bookings.map(b=><article className="order-card" key={b.id}><h3>{b.patient_label}</h3><p>{new Date(b.consultation_slots.starts_at).toLocaleString(ka?'ka-GE':'en-GB')} · {b.consultation_slots.location} · {b.status==='confirmed'?(ka?'დადასტურებული':'Confirmed'):(ka?'გაუქმებული':'Cancelled')}</p>{b.status==='confirmed'&&<><button disabled={busy} type="button" onClick={()=>{if(confirm(ka?'გაუქმდეს ჯავშანი? პაციენტს ცვლილება ცალკე შეატყობინე.':'Cancel this booking? Notify the patient separately.'))void save({action:'cancel-booking',id:b.id})}}>{ka?'გაუქმება':'Cancel'}</button><label>{ka?'გადატანა სხვა დროზე':'Reschedule'}<select value={moves[b.id]||''} onChange={e=>setMoves({...moves,[b.id]:e.target.value})}><option value="">{ka?'აირჩიე დრო':'Choose a slot'}</option>{slots.filter(s=>s.doctor_id===b.consultation_slots.doctor_id&&s.id!==b.consultation_slots.id&&!bookings.some(other=>other.status==='confirmed'&&other.consultation_slots.id===s.id)).map(s=><option key={s.id} value={s.id}>{new Date(s.starts_at).toLocaleString(ka?'ka-GE':'en-GB')} · {s.location}</option>)}</select></label><button disabled={busy||!moves[b.id]} type="button" onClick={()=>{if(confirm(ka?'პაციენტთან შეთანხმებული ახალი დრო შეინახოს?':'Save the new time agreed with the patient?'))void save({action:'reschedule-booking',id:b.id,slotId:moves[b.id]})}}>{ka?'დროის შეცვლა':'Reschedule'}</button></>}</article>)}</section>
+      <section className="order-history">
+        <h2>{ka ? "ვიზიტების მართვა" : "Appointment management"}</h2>
+        <p>
+          {ka
+            ? "ბოლო 100 ჯავშანი. გადატანა შეათანხმე პაციენტთან; ახალ დროს იგივე ექიმი უნდა ემსახურებოდეს."
+            : "Latest 100 bookings. Agree rescheduling with the patient; the new slot must belong to the same doctor."}
+        </p>
+        {!bookings.length && (
+          <p>{ka ? "ჯავშნები ჯერ არ არის." : "No appointments yet."}</p>
+        )}
+        {bookings.map((b) => (
+          <article className="order-card" key={b.id}>
+            <h3>{b.patient_label}</h3>
+            <p>
+              {new Date(b.consultation_slots.starts_at).toLocaleString(
+                ka ? "ka-GE" : "en-GB",
+              )}{" "}
+              · {b.consultation_slots.location} ·{" "}
+              {b.status === "confirmed"
+                ? ka
+                  ? "დადასტურებული"
+                  : "Confirmed"
+                : ka
+                  ? "გაუქმებული"
+                  : "Cancelled"}
+            </p>
+            {b.status === "confirmed" && (
+              <>
+                <button
+                  disabled={busy}
+                  type="button"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        ka
+                          ? "გაუქმდეს ჯავშანი? პაციენტს ცვლილება ცალკე შეატყობინე."
+                          : "Cancel this booking? Notify the patient separately.",
+                      )
+                    )
+                      void save({ action: "cancel-booking", id: b.id });
+                  }}
+                >
+                  {ka ? "გაუქმება" : "Cancel"}
+                </button>
+                <label>
+                  {ka ? "გადატანა სხვა დროზე" : "Reschedule"}
+                  <select
+                    value={moves[b.id] || ""}
+                    onChange={(e) =>
+                      setMoves({ ...moves, [b.id]: e.target.value })
+                    }
+                  >
+                    <option value="">
+                      {ka ? "აირჩიე დრო" : "Choose a slot"}
+                    </option>
+                    {slots
+                      .filter(
+                        (s) =>
+                          s.doctor_id === b.consultation_slots.doctor_id &&
+                          s.id !== b.consultation_slots.id &&
+                          !bookings.some(
+                            (other) =>
+                              other.status === "confirmed" &&
+                              other.consultation_slots.id === s.id,
+                          ),
+                      )
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {new Date(s.starts_at).toLocaleString(
+                            ka ? "ka-GE" : "en-GB",
+                          )}{" "}
+                          · {s.location}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <button
+                  disabled={busy || !moves[b.id]}
+                  type="button"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        ka
+                          ? "პაციენტთან შეთანხმებული ახალი დრო შეინახოს?"
+                          : "Save the new time agreed with the patient?",
+                      )
+                    )
+                      void save({
+                        action: "reschedule-booking",
+                        id: b.id,
+                        slotId: moves[b.id],
+                      });
+                  }}
+                >
+                  {ka ? "დროის შეცვლა" : "Reschedule"}
+                </button>
+              </>
+            )}
+          </article>
+        ))}
+      </section>
       <p role="status">{message}</p>
     </section>
   );

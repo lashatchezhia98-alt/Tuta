@@ -8,6 +8,8 @@ import {
 } from "@/lib/platform-server";
 import { readAdminJson } from "@/lib/admin-request";
 import { textField, uuid } from "@/lib/content-validation";
+import { chatCutoff } from "@/mobile/src/chat-retention.mjs";
+import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
 
 export async function GET(request: Request) {
   try {
@@ -33,15 +35,22 @@ export async function GET(request: Request) {
           .from("consultation_messages")
           .select("id,sender_id,body,created_at")
           .eq("thread_id", thread.id)
+          .gt("created_at", chatCutoff())
           .order("created_at", { ascending: false })
           .limit(100),
       );
-      return result({ messages: (messages || []).reverse(), userId: user.id });
+      return result({
+        messages: (messages || []).reverse(),
+        userId: user.id,
+        serverNow: new Date().toISOString(),
+      });
     }
     const [doctors, threads, membership, ownDoctor] = await Promise.all([
       db
         .from("doctor_profiles")
-        .select("user_id,specialty,bio,verified_doctors(first_name,last_name)")
+        .select(
+          "user_id,specialty,bio,verified_doctors(user_id,first_name,last_name,photo_public_id)",
+        )
         .eq("active", true)
         .limit(100),
       db
@@ -74,12 +83,27 @@ export async function GET(request: Request) {
       .select(
         "id,slot_id,patient_label,status,consultation_slots(starts_at,location,doctor_id)",
       )
-      .eq("patient_id",user.id)
+      .eq("patient_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100);
-    const patientBookings=checked(await ownBookings)||[];
-    const doctorBookings=isDoctor?checked(await db.from("consultation_bookings").select("id,slot_id,patient_label,status,consultation_slots!inner(starts_at,location,doctor_id)").eq("consultation_slots.doctor_id",user.id).order("created_at",{ascending:false}).limit(100))||[]:[];
-    const bookings=[...new Map([...patientBookings,...doctorBookings].map(b=>[b.id,b])).values()];
+    const patientBookings = checked(await ownBookings) || [];
+    const doctorBookings = isDoctor
+      ? checked(
+          await db
+            .from("consultation_bookings")
+            .select(
+              "id,slot_id,patient_label,status,consultation_slots!inner(starts_at,location,doctor_id)",
+            )
+            .eq("consultation_slots.doctor_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(100),
+        ) || []
+      : [];
+    const bookings = [
+      ...new Map(
+        [...patientBookings, ...doctorBookings].map((b) => [b.id, b]),
+      ).values(),
+    ];
     const slots = profiles.length
       ? checked(
           await db
@@ -108,7 +132,13 @@ export async function GET(request: Request) {
       : [];
     return result({
       userId: user.id,
-      doctors: profiles,
+      doctors: profiles.map((d) => ({
+        ...d,
+        photoUrl: doctorPhotoUrl(
+          process.env.CLOUDINARY_CLOUD_NAME,
+          d.verified_doctors,
+        ),
+      })),
       threads: checked(threads),
       premium: active,
       isDoctor,
@@ -145,9 +175,21 @@ export async function POST(request: Request) {
         .slice(0, 100) || "მომხმარებელი";
     if (body.action === "cancel") {
       // History and cancellation remain available even when new consultations are disabled.
-      const existing=checked(await db.from("consultation_bookings").select("patient_id,consultation_slots!inner(doctor_id)").eq("id",id).maybeSingle());
-      const slot=existing?.consultation_slots as unknown as {doctor_id:string}|null;
-      if(!existing||(existing.patient_id!==user.id&&slot?.doctor_id!==user.id))throw new ApiError(404,"ჯავშანი ვერ მოიძებნა.");
+      const existing = checked(
+        await db
+          .from("consultation_bookings")
+          .select("patient_id,consultation_slots!inner(doctor_id)")
+          .eq("id", id)
+          .maybeSingle(),
+      );
+      const slot = existing?.consultation_slots as unknown as {
+        doctor_id: string;
+      } | null;
+      if (
+        !existing ||
+        (existing.patient_id !== user.id && slot?.doctor_id !== user.id)
+      )
+        throw new ApiError(404, "ჯავშანი ვერ მოიძებნა.");
       const booking = checked(
         await db
           .from("consultation_bookings")

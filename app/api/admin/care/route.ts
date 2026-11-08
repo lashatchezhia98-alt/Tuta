@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       db
         .from("verified_doctors")
         .select(
-          "user_id,first_name,last_name,doctor_profiles(specialty,bio,active)",
+          "user_id,first_name,last_name,photo_public_id,doctor_profiles(specialty,bio,active)",
         )
         .limit(100),
       db
@@ -23,9 +23,19 @@ export async function GET(request: Request) {
         .gte("starts_at", new Date().toISOString())
         .order("starts_at")
         .limit(200),
-      db.from('consultation_bookings').select('id,patient_label,status,consultation_slots(id,doctor_id,starts_at,location)').order('created_at',{ascending:false}).limit(100),
+      db
+        .from("consultation_bookings")
+        .select(
+          "id,patient_label,status,consultation_slots(id,doctor_id,starts_at,location)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
-    return result({ doctors: checked(doctors), slots: checked(slots), bookings:checked(bookings) });
+    return result({
+      doctors: checked(doctors),
+      slots: checked(slots),
+      bookings: checked(bookings),
+    });
   } catch (e) {
     return failure(e);
   }
@@ -40,21 +50,69 @@ export async function POST(request: Request) {
     } catch {
       throw new ApiError(400, "შეამოწმე მონაცემები.");
     }
-    if(body.action==='cancel-booking'||body.action==='reschedule-booking'){
-      const booking=checked(await db.from('consultation_bookings').select('id,slot_id,consultation_slots!inner(doctor_id)').eq('id',id).eq('status','confirmed').maybeSingle());
-      if(!booking)throw new ApiError(404,'მოქმედი ჯავშანი ვერ მოიძებნა.');
-      const patch:Record<string,string>={status:'cancelled'};
-      if(body.action==='reschedule-booking'){
-        let slotId:string;try{slotId=uuid(body.slotId)}catch{throw new ApiError(400,'აირჩიე ახალი დრო.')}
-        const doctor=(booking.consultation_slots as unknown as {doctor_id:string}).doctor_id;
-        const slot=checked(await db.from('consultation_slots').select('id').eq('id',slotId).eq('doctor_id',doctor).gt('starts_at',new Date().toISOString()).maybeSingle());
-        if(!slot||slot.id===booking.slot_id)throw new ApiError(400,'აირჩიე იმავე ექიმის სხვა მომავალი დრო.');
-        patch.status='confirmed';patch.slot_id=slot.id;
+    if (body.action === "remove-photo") {
+      const saved = checked(
+        await db
+          .from("verified_doctors")
+          .update({ photo_public_id: null })
+          .eq("user_id", id)
+          .select("user_id")
+          .maybeSingle(),
+      );
+      if (!saved) throw new ApiError(404, "ექიმი ვერ მოიძებნა.");
+      return result({ ok: true });
+    }
+    if (
+      body.action === "cancel-booking" ||
+      body.action === "reschedule-booking"
+    ) {
+      const booking = checked(
+        await db
+          .from("consultation_bookings")
+          .select("id,slot_id,consultation_slots!inner(doctor_id)")
+          .eq("id", id)
+          .eq("status", "confirmed")
+          .maybeSingle(),
+      );
+      if (!booking) throw new ApiError(404, "მოქმედი ჯავშანი ვერ მოიძებნა.");
+      const patch: Record<string, string> = { status: "cancelled" };
+      if (body.action === "reschedule-booking") {
+        let slotId: string;
+        try {
+          slotId = uuid(body.slotId);
+        } catch {
+          throw new ApiError(400, "აირჩიე ახალი დრო.");
+        }
+        const doctor = (
+          booking.consultation_slots as unknown as { doctor_id: string }
+        ).doctor_id;
+        const slot = checked(
+          await db
+            .from("consultation_slots")
+            .select("id")
+            .eq("id", slotId)
+            .eq("doctor_id", doctor)
+            .gt("starts_at", new Date().toISOString())
+            .maybeSingle(),
+        );
+        if (!slot || slot.id === booking.slot_id)
+          throw new ApiError(400, "აირჩიე იმავე ექიმის სხვა მომავალი დრო.");
+        patch.status = "confirmed";
+        patch.slot_id = slot.id;
       }
-      const saved=await db.from('consultation_bookings').update(patch).eq('id',id).eq('status','confirmed').eq('slot_id',booking.slot_id).select('id').maybeSingle();
-      if(saved.error?.code==='23505')throw new ApiError(409,'ეს დრო უკვე დაჯავშნილია.');
-      if(!checked(saved))throw new ApiError(409,'ჯავშანი პარალელურად შეიცვალა. განაახლე სია.');
-      return result({ok:true});
+      const saved = await db
+        .from("consultation_bookings")
+        .update(patch)
+        .eq("id", id)
+        .eq("status", "confirmed")
+        .eq("slot_id", booking.slot_id)
+        .select("id")
+        .maybeSingle();
+      if (saved.error?.code === "23505")
+        throw new ApiError(409, "ეს დრო უკვე დაჯავშნილია.");
+      if (!checked(saved))
+        throw new ApiError(409, "ჯავშანი პარალელურად შეიცვალა. განაახლე სია.");
+      return result({ ok: true });
     }
     if (body.action === "profile") {
       let specialty: string, bio: string;

@@ -2,11 +2,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import {useSiteFeatures} from '@/lib/site-features';
+import { useSiteFeatures } from "@/lib/site-features";
+import { useChatMessages } from "@/mobile/src/useChatMessages";
 type Doctor = {
   user_id: string;
   specialty: string;
   bio: string;
+  photoUrl: string | null;
   verified_doctors: { first_name: string; last_name: string };
 };
 type Slot = {
@@ -37,12 +39,6 @@ type State = {
   premium: boolean;
   isDoctor: boolean;
 };
-type Message = {
-  id: string;
-  sender_id: string;
-  body: string;
-  created_at: string;
-};
 async function careRequest(path = "", body?: unknown) {
   const {
     data: { session },
@@ -63,11 +59,10 @@ async function careRequest(path = "", body?: unknown) {
 }
 export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
   const ka = lang === "ka";
-  const enabled=useSiteFeatures().doctorConsultation;
+  const enabled = useSiteFeatures().doctorConsultation;
   const [data, setData] = useState<State | null>(null),
     [error, setError] = useState(""),
     [thread, setThread] = useState(""),
-    [messages, setMessages] = useState<Message[]>([]),
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
@@ -92,18 +87,19 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
   }, []);
   useEffect(() => {
     const requestGeneration = generation;
+    const accountEpoch = authEpoch;
     let timer = setTimeout(() => void load(), 0);
     try {
       const client = getSupabaseBrowserClient();
       const {
         data: { subscription },
-      } = client.auth.onAuthStateChange(() => {
-        authEpoch.current++;
+      } = client.auth.onAuthStateChange((event) => {
+        if (event === "TOKEN_REFRESHED") return;
+        accountEpoch.current++;
         requestGeneration.current++;
         selected.current = "";
         setData(null);
         setThread("");
-        setMessages([]);
         setText("");
         setNotice("");
         setError("");
@@ -113,39 +109,36 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
         timer = setTimeout(() => void load(), 0);
       });
       return () => {
-        authEpoch.current++;
+        accountEpoch.current++;
         requestGeneration.current++;
         clearTimeout(timer);
         subscription.unsubscribe();
       };
     } catch {
-      return () => {authEpoch.current++;requestGeneration.current++;clearTimeout(timer)};
+      return () => {
+        accountEpoch.current++;
+        requestGeneration.current++;
+        clearTimeout(timer);
+      };
     }
   }, [load]);
   const loadMessages = useCallback(async () => {
-    if (!thread) return;
+    if (!thread) return { messages: [], serverNow: new Date().toISOString() };
     const epoch = authEpoch.current;
     try {
       const r = await careRequest("?thread=" + thread);
       if (epoch === authEpoch.current && selected.current === thread) {
-        setMessages(r.messages);
-        setError("");
+        return r;
       }
     } catch (e) {
-      if (epoch === authEpoch.current && selected.current === thread)
-        setError(e instanceof Error ? e.message : "Error");
+      if (epoch === authEpoch.current && selected.current === thread) throw e;
     }
+    return { messages: [], serverNow: new Date().toISOString() };
   }, [thread]);
-  useEffect(() => {
-    const initial = setTimeout(() => void loadMessages(), 0);
-    const timer = setInterval(() => {
-      if (document.visibilityState === "visible") void loadMessages();
-    }, 15000);
-    return () => {
-      clearTimeout(initial);
-      clearInterval(timer);
-    };
-  }, [loadMessages]);
+  const chat = useChatMessages(
+    data && thread ? `${data.userId}:${thread}` : "",
+    loadMessages,
+  );
   async function action(body: Record<string, unknown>) {
     const epoch = authEpoch.current;
     setBusy(true);
@@ -155,19 +148,19 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
       if (epoch !== authEpoch.current) return;
       if (body.action === "message") {
         setText("");
-        await loadMessages();
+        await chat.refresh();
       } else {
         await load();
         if (epoch !== authEpoch.current) return;
         if (r.thread) {
           selected.current = r.thread.id;
           setThread(r.thread.id);
-          setMessages([]);
         }
       }
       if (epoch === authEpoch.current) setNotice(ka ? "შესრულებულია" : "Done");
     } catch (e) {
-      if (epoch === authEpoch.current) setError(e instanceof Error ? e.message : "Error");
+      if (epoch === authEpoch.current)
+        setError(e instanceof Error ? e.message : "Error");
     } finally {
       if (epoch === authEpoch.current) setBusy(false);
     }
@@ -189,7 +182,13 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
     <div className="inner-container">
       <section className="workspace-card">
         <h1>{ka ? "ექიმები და კონსულტაცია" : "Doctors & consultations"}</h1>
-        {!enabled&&<p role="status">{ka?'ახალი კონსულტაციები დროებით შეჩერებულია. ისტორიის ნახვა და ჯავშნის გაუქმება ხელმისაწვდომია.':'New consultations are paused. History and appointment cancellation remain available.'}</p>}
+        {!enabled && (
+          <p role="status">
+            {ka
+              ? "ახალი კონსულტაციები დროებით შეჩერებულია. ისტორიის ნახვა და ჯავშნის გაუქმება ხელმისაწვდომია."
+              : "New consultations are paused. History and appointment cancellation remain available."}
+          </p>
+        )}
         <p>
           {ka
             ? "პირადი მიმოწერა არჩეულ ექიმთან და 30-წუთიანი ვიზიტის დაჯავშნა. ეს არ არის გადაუდებელი დახმარების სერვისი. ექიმი ვერ ხედავს შენს პერიოდის დღიურს."
@@ -229,6 +228,15 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
               .filter((d) => d.user_id !== data.userId)
               .map((d) => (
                 <article className="workspace-card" key={d.user_id}>
+                  {d.photoUrl && (
+                    <img
+                      src={d.photoUrl}
+                      alt={doctorName(d.user_id)}
+                      width={72}
+                      height={72}
+                      className="doctor-avatar"
+                    />
+                  )}
                   <h2>
                     {ka ? "ექიმი" : "Dr"} {doctorName(d.user_id)}{" "}
                     <span
@@ -305,20 +313,20 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                   {data.isDoctor ? ` · ${b.patient_label}` : ""}
                 </p>
                 {b.status === "confirmed" && (
-                    <button
-                      disabled={busy}
-                      onClick={() => {
-                        if (
-                          confirm(
-                            ka ? "გაუქმდეს ჯავშანი?" : "Cancel appointment?",
-                          )
+                  <button
+                    disabled={busy}
+                    onClick={() => {
+                      if (
+                        confirm(
+                          ka ? "გაუქმდეს ჯავშანი?" : "Cancel appointment?",
                         )
-                          void action({ action: "cancel", id: b.id });
-                      }}
-                    >
-                      {ka ? "გაუქმება" : "Cancel"}
-                    </button>
-                  )}
+                      )
+                        void action({ action: "cancel", id: b.id });
+                    }}
+                  >
+                    {ka ? "გაუქმება" : "Cancel"}
+                  </button>
+                )}
               </article>
             ))}
           </section>
@@ -332,7 +340,6 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                 onChange={(e) => {
                   selected.current = e.target.value;
                   setThread(e.target.value);
-                  setMessages([]);
                   setText("");
                 }}
               >
@@ -350,11 +357,12 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
               <>
                 <p>
                   {ka
-                    ? "ნაჩვენებია ბოლო 100 შეტყობინება; ახლდება ყოველ 15 წამში."
-                    : "Showing the latest 100 messages; refreshes every 15 seconds."}
+                    ? "შეტყობინებები გაგზავნიდან 48 საათში ავტომატურად იშლება. ჩატის არქივი არ ინახება. ნაჩვენებია ბოლო 100 მოქმედი შეტყობინება."
+                    : "Messages are automatically deleted 48 hours after sending. No chat archive is kept. Showing the latest 100 unexpired messages."}
                 </p>
+                {chat.error && <p role="alert">{chat.error}</p>}
                 <div className="care-messages" aria-live="polite">
-                  {messages.map((m) => (
+                  {chat.messages.map((m) => (
                     <article
                       className={m.sender_id === data.userId ? "mine" : ""}
                       key={m.id}
@@ -394,7 +402,8 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                   </label>
                   <button
                     disabled={
-                      busy || !enabled ||
+                      busy ||
+                      !enabled ||
                       (!data.premium &&
                         data.threads.find((t) => t.id === thread)?.doctor_id !==
                           data.userId)
