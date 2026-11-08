@@ -12,7 +12,11 @@ type Outgoing={id:string;label:string;scopes:Scopes;expires_at:string;accepted_a
 type Incoming={id:string;label:string;available:boolean;summary:ReturnType<typeof sharedHealth>|null};
 type State={outgoing:Outgoing[];incoming:Incoming[];premium:boolean};
 export default function PartnerWorkspace({lang}:{lang:'ka'|'en'}){
-  const health=useHealthState(),ka=lang==='ka',token=health.session?.access_token;
+  const health=useHealthState();
+  return <PartnerAccount key={health.session?.user.id??'guest'} lang={lang} health={health}/>;
+}
+function PartnerAccount({lang,health}:{lang:'ka'|'en';health:ReturnType<typeof useHealthState>}){
+  const ka=lang==='ka',token=health.session?.access_token;
   const enabled=useSiteFeatures().partners;
   const [snapshot,setSnapshot]=useState<{token:string;data:State;receivedAt:number}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[label,setLabel]=useState(''),[scopes,setScopes]=useState<Scopes>({cycle:false,pregnancy:false}),[invite,setInvite]=useState(''),[link,setLink]=useState('');
   const data=snapshot&&snapshot.token===token?snapshot.data:null;

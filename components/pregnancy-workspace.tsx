@@ -7,7 +7,11 @@ import {pregnancyInput,pregnancyProgress} from '../mobile/src/pregnancy.mjs';
 import {useMembership} from '../mobile/src/useMembership';
 
 export default function PregnancyWorkspace({lang}:{lang:'ka'|'en'}){
-  const health=useHealthState(),ka=lang==='ka';
+  const health=useHealthState();
+  return <PregnancyAccount key={health.session?.user.id??'guest'} lang={lang} health={health}/>;
+}
+function PregnancyAccount({lang,health}:{lang:'ka'|'en';health:ReturnType<typeof useHealthState>}){
+  const ka=lang==='ka';
   const [dating,setDating]=useState<'dueDate'|'lmp'>('dueDate'),[date,setDate]=useState(''),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const {active:member}=useMembership(health.session?.access_token);
   if(!health.loaded)return <p role="status">{ka?'იტვირთება…':'Loading…'}</p>;

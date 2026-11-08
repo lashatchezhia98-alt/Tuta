@@ -6,6 +6,29 @@ import {renderToStaticMarkup} from 'react-dom/server';
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve}};
+test('private sharing and pregnancy forms remount on account changes, not token refreshes',()=>{
+ for(const file of ['partner-workspace','pregnancy-workspace']){
+  let id='A',token='A1';
+  const Component=sourceModule(`components/${file}.tsx`,{'@/app/use-health-state':{useHealthState:()=>({session:id?{user:{id},access_token:token}:null})}}).default;
+  const render=()=>Component({lang:'en'});
+  const first=render();assert.equal(first.key,'A');token='A2';assert.equal(render().key,first.key);
+  id='B';assert.equal(render().key,'B');id=null;assert.equal(render().key,'guest');
+ }
+});
+test('late consultation actions cannot restore an old account conversation or draft',async()=>{
+ const slots=[],effects=[];let cursor=0,authCallback,user='A';const request=deferred(),oldFetch=globalThis.fetch;
+ const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}]},useRef(initial){return slots[cursor++]??={current:initial}},useCallback(fn){cursor++;return fn},useEffect(fn){cursor++;effects.push(fn)}};
+ const client={auth:{getSession:async()=>({data:{session:{user:{id:user},access_token:user}}}),onAuthStateChange(cb){authCallback=cb;return {data:{subscription:{unsubscribe(){}}}}}}};
+ globalThis.fetch=async(_url,options)=>options.method==='POST'?request.promise:{ok:true,json:async()=>({userId:user,doctors:[],slots:[],threads:[],bookings:[],premium:true})};
+ const Component=sourceModule('components/care-workspace.tsx',{react,'@/lib/supabase-browser':{getSupabaseBrowserClient:()=>client},'@/lib/site-features':{useSiteFeatures:()=>({doctorConsultation:true})}}).default;
+ const render=()=>{cursor=0;effects.length=0;return Component({lang:'en'})};
+ const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
+ let cleanup;
+ try{
+  render();cleanup=effects[0]();slots[0]={userId:'A',doctors:[{user_id:'doctor',verified_doctors:{first_name:'Test',last_name:'Doctor'}}],slots:[],threads:[],bookings:[],premium:true};slots[4]='private A draft';
+  nodes(render(),'button').find(b=>b.props.children==='Start chat').props.onClick();await tick();user='B';authCallback('SIGNED_IN',{user:{id:'B'}});assert.equal(slots[4],'');request.resolve({ok:true,json:async()=>({thread:{id:'A-private-thread'}})});await tick();assert.equal(slots[2],'');assert.equal(slots[7],'');
+ }finally{cleanup?.();globalThis.fetch=oldFetch}
+});
 function hookHarness({readDelay=false}={}){
  const slots=[],effects=[];let cursor=0,authCallback,currentUser='A',pendingWrite;
  const payload=id=>({version:1,lang:'ka',name:id,cycleLength:28,periods:[],logs:[]});

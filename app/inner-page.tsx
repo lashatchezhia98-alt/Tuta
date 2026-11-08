@@ -187,11 +187,11 @@ function AccountSettingsCard({lang}:{lang:Lang}){
   const [notice,setNotice]=useState("");
   const ka=lang==="ka";
   useEffect(()=>{
-    let active=true;
+    let active=true,observed=false;
     try{
       const supabase=getSupabaseBrowserClient();
-      const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{if(active)setSession(next)});
-      void supabase.auth.getSession().then(({data:{session}})=>{if(active)setSession(session)}).catch(()=>{});
+      const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{observed=true;if(active)setSession(next)});
+      void supabase.auth.getSession().then(({data:{session}})=>{if(active&&!observed)setSession(session)}).catch(()=>{});
       return()=>{active=false;subscription.unsubscribe()};
     }catch{queueMicrotask(()=>{if(active)setNotice(ka?"ანგარიშის სერვისი დაყენებული არ არის.":"Account service is not configured.")});return()=>{active=false}}
   },[ka]);

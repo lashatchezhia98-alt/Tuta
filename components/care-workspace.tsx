@@ -74,6 +74,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
     [notice, setNotice] = useState("");
   const selected = useRef("");
   const generation = useRef(0);
+  const authEpoch = useRef(0);
   const load = useCallback(async () => {
     const current = ++generation.current;
     try {
@@ -97,33 +98,41 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
       const {
         data: { subscription },
       } = client.auth.onAuthStateChange(() => {
+        authEpoch.current++;
         requestGeneration.current++;
         selected.current = "";
         setData(null);
         setThread("");
         setMessages([]);
+        setText("");
+        setNotice("");
+        setError("");
+        setBusy(false);
+        setLoading(true);
         clearTimeout(timer);
         timer = setTimeout(() => void load(), 0);
       });
       return () => {
+        authEpoch.current++;
         requestGeneration.current++;
         clearTimeout(timer);
         subscription.unsubscribe();
       };
     } catch {
-      return () => clearTimeout(timer);
+      return () => {authEpoch.current++;requestGeneration.current++;clearTimeout(timer)};
     }
   }, [load]);
   const loadMessages = useCallback(async () => {
     if (!thread) return;
+    const epoch = authEpoch.current;
     try {
       const r = await careRequest("?thread=" + thread);
-      if (selected.current === thread) {
+      if (epoch === authEpoch.current && selected.current === thread) {
         setMessages(r.messages);
         setError("");
       }
     } catch (e) {
-      if (selected.current === thread)
+      if (epoch === authEpoch.current && selected.current === thread)
         setError(e instanceof Error ? e.message : "Error");
     }
   }, [thread]);
@@ -138,26 +147,29 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
     };
   }, [loadMessages]);
   async function action(body: Record<string, unknown>) {
+    const epoch = authEpoch.current;
     setBusy(true);
     setNotice("");
     try {
       const r = await careRequest("", body);
+      if (epoch !== authEpoch.current) return;
       if (body.action === "message") {
         setText("");
         await loadMessages();
       } else {
         await load();
+        if (epoch !== authEpoch.current) return;
         if (r.thread) {
           selected.current = r.thread.id;
           setThread(r.thread.id);
           setMessages([]);
         }
       }
-      setNotice(ka ? "შესრულებულია" : "Done");
+      if (epoch === authEpoch.current) setNotice(ka ? "შესრულებულია" : "Done");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
+      if (epoch === authEpoch.current) setError(e instanceof Error ? e.message : "Error");
     } finally {
-      setBusy(false);
+      if (epoch === authEpoch.current) setBusy(false);
     }
   }
   function doctorName(id: string) {
