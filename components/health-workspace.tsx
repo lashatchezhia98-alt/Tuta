@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense, Fragment } from "react";
+import { useMembership } from "@/lib/use-membership";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import { useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { featureForRoute, useSiteFeatures } from "@/lib/site-features";
@@ -129,7 +131,7 @@ export default function HealthWorkspace({
             </button>
           </div>
         ) : (
-          <>
+          <Fragment key={health.session.user.id}>
             {health.legacy && (
               <button
                 onClick={() => void health.importLegacy().catch(() => {})}
@@ -150,7 +152,7 @@ export default function HealthWorkspace({
             ) : (
               <HealthInsights data={health.data} lang={lang} birthDate={health.session.user.user_metadata?.date_of_birth} />
             )}
-          </>
+          </Fragment>
         )}
       </main>
     </section>
@@ -467,6 +469,7 @@ function Journal({ data, save, lang }: Props) {
     };
   const [draft, setEntry] = useState(() => blank(initial));
   const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty,ka);
   const baseline = useRef("");
   const entry = dirty ? draft : blank(date);
   function change(p: Partial<typeof entry>) {
@@ -703,40 +706,7 @@ function Journal({ data, save, lang }: Props) {
 }
 
 function PremiumReport({ data, lang }: { data: HealthData; lang: Lang }) {
-  const [state, setState] = useState<"loading" | "active" | "locked" | "error">(
-    "loading",
-  );
-  useEffect(() => {
-    let active = true;
-    async function check() {
-      try {
-        const client = getSupabaseBrowserClient();
-        const {
-          data: { user },
-          error,
-        } = await client.auth.getUser();
-        if (error || !user) throw Error();
-        const result = await client
-          .from("premium_memberships")
-          .select("expires_at")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (result.error) throw result.error;
-        if (active)
-          setState(
-            result.data && Date.parse(result.data.expires_at) > Date.now()
-              ? "active"
-              : "locked",
-          );
-      } catch {
-        if (active) setState("error");
-      }
-    }
-    void check();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const {status:state}=useMembership();
   if (state === "active")
     return <HealthInsights data={data} lang={lang} report />;
   return (
@@ -777,6 +747,7 @@ function HealthInsights({
   const ka = lang === "ka",
     summary = healthReport(data),
     patterns = symptomPatterns(data.periods, data.logs);
+  const membership=useMembership();
   return (
     <div className={report ? "health-report" : ""}>
       {!report && <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />}
@@ -911,7 +882,7 @@ function HealthInsights({
             ? "მთელ ისტორიაში, სულ მცირე 3 დასრულებული ციკლის ერთსა და იმავე სავარაუდო ფაზაში. ეს დიაგნოზი არ არის."
             : "Across all history, in the same estimated phase in at least 3 completed cycles. This is not a diagnosis."}
         </p>
-        {patterns.length ? (
+        {!report&&!membership.active ? <p>🔒 {ka?"განმეორებადი სიმპტომების ანალიზი Premium-შია.":"Repeating symptom analysis is included in Premium."} <Link href="/premium">{ka?"პაკეტების ნახვა":"View plans"}</Link></p> : patterns.length ? (
           patterns.map((p) => (
             <p key={p.symptom + p.phase}>
               {symptomLabel(p.symptom, lang)} ·{" "}

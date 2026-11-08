@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {useUnsavedChanges} from '@/lib/use-unsaved-changes';
 import { articleCategories } from "@/lib/content-validation";
 type Article = {
   id: string;
@@ -41,6 +42,9 @@ export default function Library({
     [query, setQuery] = useState(""),
     [busy, setBusy] = useState(false),
     [draft, setDraft] = useState<Partial<Article> & typeof blank>(blank);
+  const baseline=useRef(JSON.stringify(blank));
+  const dirty=JSON.stringify(draft)!==baseline.current;
+  useUnsavedChanges(admin&&dirty,ka);
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -81,7 +85,7 @@ export default function Library({
         }),
       });
       if (!r.ok) throw Error();
-      setDraft(blank);
+      baseline.current=JSON.stringify(blank);setDraft(blank);
       await load();
       setMessage(ka ? "შენახულია" : "Saved");
     } catch {
@@ -196,7 +200,7 @@ export default function Library({
           <button type="submit" disabled={busy}>
             {ka ? "შენახვა" : "Save"}
           </button>
-          <button type="button" onClick={() => setDraft(blank)}>
+          <button type="button" onClick={() => {if(dirty&&!confirm(ka?'შეუნახავი ცვლილებები გაუქმდეს?':'Discard unsaved changes?'))return;baseline.current=JSON.stringify(blank);setDraft(blank)}}>
             {ka ? "ახალი სტატია" : "New article"}
           </button>
           {draft.id && (
@@ -267,8 +271,9 @@ export default function Library({
             {admin && (
               <button
                 onClick={() => {
+                  if(dirty&&!confirm(ka?'შეუნახავი ცვლილებები გაუქმდეს?':'Discard unsaved changes?'))return;
                   const date = a.publish_at ? new Date(a.publish_at) : null;
-                  setDraft({
+                  const next={
                     ...a,
                     status: a.status || "draft",
                     publish_at: date
@@ -278,8 +283,8 @@ export default function Library({
                           .toISOString()
                           .slice(0, 16)
                       : "",
-                  });
-                  document.getElementById("content")?.scrollIntoView();
+                  };baseline.current=JSON.stringify(next);setDraft(next);
+                  document.getElementById(admin ? "admin-library" : "content")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
               >
                 {ka ? "რედაქტირება" : "Edit"}

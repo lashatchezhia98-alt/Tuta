@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { useSiteFeatures } from "@/lib/site-features";
+import { useSiteFeatures,useSiteFeaturesStatus } from "@/lib/site-features";
+import HeaderActions from '@/components/header-actions';
+import BrandMark from '@/components/brand-mark';
 
 type Lang = "ka" | "en";
 type Post = { id: string; public_author_id: string | null; is_anonymous: boolean; display_name: string; topic: string; body: string; image_public_id: string | null; created_at: string };
@@ -27,6 +29,7 @@ const photoUrl = (publicId: string | null) => cloudName && publicId && /^[a-zA-Z
 
 export default function CommunityPage() {
   const features = useSiteFeatures();
+  const featureStatus=useSiteFeaturesStatus();
   const [lang, setLang] = useState<Lang>("ka");
   const t = useCallback((ka: string, en: string) => lang === "ka" ? ka : en, [lang]);
   const [client, setClient] = useState<SupabaseClient | null>(null);
@@ -171,9 +174,9 @@ export default function CommunityPage() {
   const date = (value: string) => new Intl.DateTimeFormat(lang === "ka" ? "ka-GE" : "en-US", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
   const author = (id: string | null, display: string, anonymous: boolean) => anonymous ? t("ანონიმური", "Anonymous") : id && doctors[id] ? `${t("ექიმი", "Dr.")} ${doctors[id].first_name} ${doctors[id].last_name}` : display;
 
-  if (!features.community) return <main className="min-h-screen bg-[#F9F8FC] px-5 py-24 text-center text-[#1E1B2E]"><h1 className="text-3xl font-semibold">{lang === "ka" ? "საზოგადოება დროებით გამორთულია" : "Community is temporarily unavailable"}</h1><p className="mt-4">{lang === "ka" ? "სცადე მოგვიანებით." : "Please try again later."}</p><Link className="mt-7 inline-flex min-h-11 items-center rounded-full bg-[#1E1B2E] px-6 text-white" href="/">{lang === "ka" ? "მთავარზე დაბრუნება" : "Back to home"}</Link></main>;
+  if (!features.community) return <main className="min-h-screen bg-[#F9F8FC] px-5 py-24 text-center text-[#1E1B2E]"><p>TUTA COMMUNITY</p><h1 className="text-3xl font-semibold">{featureStatus==='loading'?t('საზოგადოება იტვირთება…','Loading community…'):featureStatus==='error'?t('პარამეტრები ვერ ჩაიტვირთა','Could not load settings'):t('საზოგადოება დროებით გამორთულია','Community is temporarily unavailable')}</h1><p className="mt-4">{lang === "ka" ? "სცადე მოგვიანებით." : "Please try again later."}</p><Link className="mt-7 inline-flex min-h-11 items-center rounded-full bg-[#1E1B2E] px-6 text-white" href="/">{lang === "ka" ? "მთავარზე დაბრუნება" : "Back to home"}</Link></main>;
   return <main className="min-h-screen bg-[#F9F8FC] text-[#1E1B2E]">
-    <header className="border-b border-[#1E1B2E]/10 bg-white"><div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4"><Link href="/" className="text-2xl font-black">{lang === "ka" ? "თუთა" : "TUTA"}</Link><nav className="flex items-center gap-4 text-sm"><Link href="/blog">{t("ბლოგი", "Blog")}</Link><button type="button" onClick={() => { const next = lang === "ka" ? "en" : "ka"; setLang(next); localStorage.setItem("tuta-language", next); document.documentElement.lang = next; }} className="rounded-full border px-3 py-2">{lang === "ka" ? "EN" : "KA"}</button>{isMember ? <Link href="/app/settings" className="font-semibold">{nameOf(session?.user.user_metadata)}</Link> : <Link href="/login" className="font-semibold">{t("შესვლა", "Sign in")}</Link>}</nav></div></header>
+    <header className="inner-header"><div className="inner-container inner-nav"><Link href="/" className="inner-logo"><BrandMark/><strong>{lang === "ka" ? "თუთა" : "TUTA"}</strong></Link><HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/></div></header>
     <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[240px_minmax(0,1fr)]">
       <aside className="h-fit rounded-3xl bg-[#E3D8F1] p-6"><p className="text-xs font-bold uppercase tracking-widest">TUTA COMMUNITY</p><h1 className="mt-4 text-3xl font-semibold leading-tight">{t("ერთად, საკუთარ რიტმში", "A space to share")}</h1><p className="mt-4 text-sm leading-6 text-[#625B6D]">{t("პოსტები მხოლოდ რეგისტრირებულ მომხმარებლებს შეუძლიათ ნახონ. შენი პირადი ციკლის ჩანაწერები ლენტში არ ჩანს.", "Only registered members can see posts. Your private cycle entries do not appear in the feed.")}</p>{isMember ? <button type="button" onClick={openNew} className="mt-6 min-h-11 w-full rounded-full bg-[#1E1B2E] px-5 text-white">{t("პოსტის დაწერა", "Write a post")}</button> : null}</aside>
       {!authReady ? <section className="py-12 text-center">{t("იტვირთება…", "Loading…")}</section> : !isMember ? <section className="min-w-0 rounded-3xl border border-[#E6E2EC] bg-white p-8 sm:p-12"><h2 className="text-2xl font-semibold">{t("შედით საზოგადოების სანახავად", "Sign in to view the community")}</h2><p className="mt-3 text-[#625B6D]">{t("პოსტები და კომენტარები ხელმისაწვდომია მხოლოდ რეგისტრირებული მომხმარებლებისთვის.", "Posts and comments are available only to registered members.")}</p><div className="mt-7 flex flex-wrap gap-3"><Link href="/login" className="inline-flex min-h-11 items-center rounded-full bg-[#1E1B2E] px-6 text-white">{t("შესვლა", "Sign in")}</Link><Link href="/register" className="inline-flex min-h-11 items-center rounded-full border border-[#1E1B2E] px-6">{t("რეგისტრაცია", "Register")}</Link></div></section> : <section className="min-w-0"><div className="mb-6 flex flex-wrap gap-2" aria-label={t("პოსტების თემები", "Post topics")}>{["all", ...topics].map(key => <button key={key} type="button" aria-pressed={filter === key} onClick={() => setFilter(key)} className={`min-h-11 rounded-full border px-4 text-sm ${filter === key ? "border-[#1E1B2E] bg-[#FDF0CC] font-semibold" : "border-[#DCD7E5] bg-white"}`}>{key === "all" ? t("ყველა", "All") : t(...names[key])}</button>)}</div>

@@ -17,7 +17,9 @@ import Library from "@/components/library";
 import CareWorkspace from "@/components/care-workspace";
 import Marketplace from "@/components/marketplace";
 import PasswordField from "@/components/password-field";
-import { featureForRoute, useSiteFeatures } from "@/lib/site-features";
+import {authDestination} from '@/lib/auth-destination';
+import FreeCalculator from '@/components/free-calculator';
+import { featureForRoute, useSiteFeatures,useSiteFeaturesStatus } from "@/lib/site-features";
 
 type Lang = "ka" | "en";
 function validBirthDate(value:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(`${value}T12:00:00Z`);if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value)return false;const today=isoDate(new Date());const age=Number(today.slice(0,4))-Number(value.slice(0,4))-(today.slice(5)<value.slice(5)?1:0);return age>=1&&age<=120&&value<=today}
@@ -48,7 +50,7 @@ function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a 
 
 function InnerHeader({lang,setLang,showActions=true}:{lang:Lang,setLang:(v:Lang)=>void,consult?:boolean,showActions?:boolean}){return <header className="inner-header"><div className="inner-container inner-nav"><InnerLogo lang={lang}/>{showActions&&<HeaderActions lang={lang} setLang={setLang}/>}</div></header>}
 
-function StandardPage({kind,lang}:{kind:PageKind,lang:Lang}){const data=pageInfo[kind][lang];const cards=lang==="ka"?["მარტივი და გასაგები","პირადი დიზაინით","სანდო ინფორმაცია"]:["Simple and clear","Private by design","Trusted information"];return <><section className="inner-hero"><div className="inner-container"><span className="inner-kicker">TUTA HEALTH</span><h1>{data[0]}</h1><p>{data[1]}</p></div></section><section className="inner-body inner-container"><div className="info-grid">{cards.map((x,i)=><article key={x}><span>0{i+1}</span><h2>{x}</h2><p>{lang==="ka"?"ეს გვერდი მზად არის შემდეგ ეტაპზე რეალური მონაცემებისა და ფუნქციების დასაკავშირებლად.":"This page is ready for real data and functionality in the next implementation stage."}</p></article>)}</div></section></>}
+function StandardPage({kind,lang}:{kind:PageKind,lang:Lang}){const data=pageInfo[kind][lang];const cards=lang==="ka"?[["შენი რიტმის გასაცნობად","თუთა აერთიანებს პერიოდის კალენდარს, ყოველდღიურ დღიურსა და ქალების საზოგადოებას. თუთა მეგრულად მთვარეს ნიშნავს."],["კონტროლი შენს ხელშია","ჯანმრთელობის ჩანაწერები ანგარიშში ინახება. პოსტები მათგან განცალკევებულია; პარტნიორთან გაზიარებისთვის თავად ირჩევ მონაცემებს და თანხმობას აუქმებ ნებისმიერ დროს."],["ინფორმაცია და პროფესიული დახმარება","პროგნოზები შეფასებაა და არა დიაგნოზი. ექიმები ჩნდებიან ადმინისტრატორის მიერ კვალიფიკაციის გადამოწმების შემდეგ. გადახდები ამ ეტაპზე მხოლოდ სატესტოა."]]:[["Understand your rhythm","Tuta brings together a period calendar, daily journal and a community for women. Tuta means moon in Mingrelian."],["You stay in control","Health entries are stored in your account, separate from community posts. You choose what to share with a partner and can revoke consent at any time."],["Information and professional care","Predictions are estimates, not diagnoses. Doctors appear after administrator qualification checks. Payments currently operate in test mode only."]];return <><section className="inner-hero"><div className="inner-container"><span className="inner-kicker">TUTA HEALTH</span><h1>{data[0]}</h1><p>{data[1]}</p></div></section><section className="inner-body inner-container"><div className="info-grid">{cards.map(([title,body])=><article key={title}><h2>{title}</h2><p>{body}</p></article>)}</div><p><a href="/privacy">{lang==='ka'?'კონფიდენციალურობა':'Privacy'}</a> · <a href="/terms">{lang==='ka'?'წესები და პირობები':'Terms'}</a></p></section></>}
 function PremiumPage({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA PREMIUM</span><h1>{lang==="ka"?"Premium სატესტო პაკეტი":"Premium test plan"}</h1><p>{lang==="ka"?"სატესტო გადახდა და Premium წვდომის გააქტიურების სრული შემოწმება.":"Test the payment flow and Premium access activation."}</p></div></section><PremiumCheckout lang={lang}/></>}
 
 function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-password",lang:Lang}){
@@ -75,10 +77,10 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     try{
       const supabase=getSupabaseBrowserClient();
       const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
-        if(active&&event==="SIGNED_IN"&&session)router.replace("/app/dashboard");
+        if(active&&event==="SIGNED_IN"&&session)router.replace(authDestination(window.location.search));
       });
       void supabase.auth.getSession().then(({data:{session}})=>{
-        if(active&&session)router.replace("/app/dashboard");
+        if(active&&session)router.replace(authDestination(window.location.search));
       }).catch(()=>{});
       return()=>{active=false;subscription.unsubscribe()};
     }catch{queueMicrotask(()=>{if(active)setError(ka?"ანგარიშის სერვისი დაყენებული არ არის.":"Account service is not configured.")});return()=>{active=false}}
@@ -133,7 +135,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
         if(result.error)throw result.error;
         if(register&&!result.data.session){
         setNotice(ka?"ანგარიში შეიქმნა. შესვლისთვის ელფოსტაზე გამოგზავნილი ბმული დაადასტურე.":"Account created. Confirm your email using the link we sent before signing in.");
-        }else{router.replace("/app/dashboard")}
+        }else{router.replace(authDestination(window.location.search))}
       }
     }catch(cause){
       const message=cause instanceof Error?cause.message:"";
@@ -152,6 +154,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     {register&&<label>{ka?"დაბადების თარიღი":"Date of birth"}<input type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)} required min={`${new Date().getFullYear()-120}-01-01`} max={isoDate(new Date())}/></label>}
     {!forgot&&<PasswordField label={reset?(ka?"ახალი პაროლი":"New password"):(ka?"პაროლი":"Password")} lang={lang} autoComplete={login?"current-password":"new-password"} value={password} onChange={setPassword}/>}
     {(register||reset)&&<PasswordField label={ka?(reset?"გაიმეორე ახალი პაროლი":"გაიმეორე პაროლი"):(reset?"Confirm new password":"Confirm password")} lang={lang} value={confirmPassword} onChange={setConfirmPassword}/>}
+    {register&&<p>{ka?'ანგარიშის შექმნამდე გაეცანი':'Before creating an account, read our'} <a href="/terms" target="_blank" rel="noreferrer">{ka?'წესებსა და პირობებს':'Terms of use'}</a> {ka?'და':'and'} <a href="/privacy" target="_blank" rel="noreferrer">{ka?'კონფიდენციალურობის წესებს':'Privacy notice'}</a>.</p>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}>{busy?(ka?"მუშავდება…":"Please wait…"):login?(ka?"შესვლა":"Sign in"):register?(ka?"ანგარიშის შექმნა":"Create account"):forgot?(ka?"ბმულის გაგზავნა":"Send recovery link"):(ka?"პაროლის შეცვლა":"Update password")}</button>
   </form>{login&&<a href="/forgot-password">{ka?"დაგავიწყდა პაროლი?":"Forgot password?"}</a>}<a href={login?"/register":"/login"}>{login?(ka?"არ გაქვს ანგარიში?":"Need an account?"):(ka?"შესვლაზე დაბრუნება":"Back to sign in")}</a></div><div className="auth-art"><div className="auth-moon"/><p>{ka?"შენი მონაცემები შენ გეკუთვნის.":"Your data belongs to you."}</p></div></section>
@@ -176,6 +179,9 @@ function AppDashboard({kind,lang}:{kind:PageKind,lang:Lang}){
 function FeatureAppPage({kind,lang,data,save}:{kind:PageKind,lang:Lang,data:HealthData,save:(next:HealthData)=>Promise<void>}){if(kind==="log")return <DailyLog lang={lang} data={data} save={save}/>;if(kind==="settings")return <AccountSettings lang={lang}/>;if(kind==="insights"){const model=forecast(data.periods,data.cycleLength);const avg=Math.round(model.averageLength);return <div className="app-content-cards"><article><small>{lang==="ka"?"საშუალო ციკლი":"Average cycle"}</small><strong>{avg} {lang==="ka"?"დღე":"days"}</strong></article><article><small>{lang==="ka"?"ჩანაწერები":"Daily logs"}</small><strong>{data.logs.length}</strong></article><article><small>{lang==="ka"?"სტატუსი":"Status"}</small><strong>{model.reliability==="limited"?(lang==="ka"?"არასაკმარისი ისტორია":"Limited history"):model.reliability==="low"?(lang==="ka"?"ცვალებადი":"Variable"):(lang==="ka"?"ისტორია თანმიმდევრულია":"Consistent history")}</strong></article></div>};return <div className="app-content-cards"><article><small>{lang==="ka"?"შემდეგი ნაბიჯი":"Next step"}</small><strong>{lang==="ka"?"დაამატე ციკლი":"Add a cycle"}</strong></article></div>}
 
 function AccountSettings({lang}:{lang:Lang}){
+  return <><AccountSettingsCard lang={lang}/><nav className="account-history-links" aria-label={lang==='ka'?'არსებული სერვისების მართვა':'Manage existing services'}><a href="/consultation">{lang==='ka'?'ჩემი ვიზიტები და მიმოწერა':'My appointments & messages'}</a><a href="/app/partners">{lang==='ka'?'გაზიარებების ნახვა და გაუქმება':'View & revoke sharing'}</a><a href="/market/orders">{lang==='ka'?'შეკვეთების ისტორია':'Order history'}</a></nav></>;
+}
+function AccountSettingsCard({lang}:{lang:Lang}){
   const [session,setSession]=useState<Session|null>(null);
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
@@ -208,14 +214,17 @@ function DailyLog({lang,data,save}:{lang:Lang,data:HealthData,save:(next:HealthD
 export default function InnerPage({kind}:{kind:PageKind}){
   const {lang,setLang}=useSiteLanguage();
   const features=useSiteFeatures();
+  const featureStatus=useSiteFeaturesStatus();
   const pathByKind:Partial<Record<PageKind,string>>={blog:"/blog",market:"/market",premium:"/premium",consultation:"/consultation",dashboard:"/app/dashboard",log:"/app/log",insights:"/app/insights",report:"/app/report"};
   const featureId=featureForRoute(pathByKind[kind]||"");
   const featureDisabled=featureId!==null&&!features[featureId];
+  if(featureDisabled&&kind!=='consultation'&&featureStatus!=='ready')return <><InnerHeader lang={lang} setLang={setLang}/><main className="inner-container settings-workspace"><p role="status">{featureStatus==='loading'?(lang==='ka'?'პარამეტრები იტვირთება…':'Loading settings…'):(lang==='ka'?'პარამეტრები ვერ ჩაიტვირთა. სცადე განახლება.':'Could not load settings. Please retry.')}</p>{featureStatus==='error'&&<button type="button" onClick={()=>window.location.reload()}>{lang==='ka'?'განახლება':'Reload'}</button>}</main></>;
   if(kind==="login"||kind==="register"||kind==="forgot-password"||kind==="reset-password")return <AuthPage kind={kind} lang={lang}/>;
-  if(["dashboard","log","insights","report","settings"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:kind==="settings"?<AppDashboard kind={kind} lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation}/><HealthWorkspace kind={kind} lang={lang}/></>;
+  if(kind==='settings')return <><InnerHeader lang={lang} setLang={setLang}/><main className="inner-container settings-workspace"><nav className="workspace-nav" aria-label={lang==='ka'?'ჩემი სივრცე':'My space'}><a href="/community">{lang==='ka'?'მთავარი':'Home'}</a><a href="/app/dashboard">{lang==='ka'?'პერიოდი':'Period'}</a><a href="/app/features">{lang==='ka'?'ყველა ფუნქცია':'All features'}</a><a href="/market/orders">{lang==='ka'?'ჩემი შეკვეთები':'My orders'}</a></nav><h1>{pageInfo.settings[lang][0]}</h1><AccountSettings lang={lang}/><p><a href="/forgot-password">{lang==='ka'?'პაროლის აღდგენა':'Reset password'}</a> · <a href="/privacy">{lang==='ka'?'კონფიდენციალურობა':'Privacy'}</a></p></main></>;
+  if(["dashboard","log","insights","report"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation}/><HealthWorkspace kind={kind} lang={lang}/></>;
   return <>
     <InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} showActions={kind!=="admin"}/>
-    {featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="consultation"?<CareWorkspace lang={lang}/>:kind==="admin"?<Admin lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<Calculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
+    {kind==="consultation"?<CareWorkspace lang={lang}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="admin"?<Admin lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
     {kind!=="admin"&&<footer className="inner-footer"><div className="inner-container"><InnerLogo lang={lang} inverse/><p>{lang==="ka"?"შენი ჯანმრთელობის ცნობიერება იწყება აქ.":"Your health awareness starts here."}</p></div></footer>}
   </>
 }

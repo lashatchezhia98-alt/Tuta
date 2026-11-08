@@ -12,6 +12,7 @@ type Slot = {
   starts_at: string;
   location: string;
 };
+type Booking={id:string;patient_label:string;status:string;consultation_slots:Slot};
 export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
   const ka = lang === "ka";
   const [doctors, setDoctors] = useState<Doctor[]>([]),
@@ -24,6 +25,7 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
     [location, setLocation] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
+  const [bookings,setBookings]=useState<Booking[]>([]),[moves,setMoves]=useState<Record<string,string>>({});
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/care", { cache: "no-store" });
@@ -31,6 +33,7 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
       if (!r.ok) throw Error(d.error);
       setDoctors(d.doctors);
       setSlots(d.slots);
+      setBookings(d.bookings||[]);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Error");
     }
@@ -203,6 +206,7 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
             ))}
         </>
       )}
+      <section className="order-history"><h2>{ka?'ვიზიტების მართვა':'Appointment management'}</h2><p>{ka?'ბოლო 100 ჯავშანი. გადატანა შეათანხმე პაციენტთან; ახალ დროს იგივე ექიმი უნდა ემსახურებოდეს.':'Latest 100 bookings. Agree rescheduling with the patient; the new slot must belong to the same doctor.'}</p>{!bookings.length&&<p>{ka?'ჯავშნები ჯერ არ არის.':'No appointments yet.'}</p>}{bookings.map(b=><article className="order-card" key={b.id}><h3>{b.patient_label}</h3><p>{new Date(b.consultation_slots.starts_at).toLocaleString(ka?'ka-GE':'en-GB')} · {b.consultation_slots.location} · {b.status==='confirmed'?(ka?'დადასტურებული':'Confirmed'):(ka?'გაუქმებული':'Cancelled')}</p>{b.status==='confirmed'&&<><button disabled={busy} type="button" onClick={()=>{if(confirm(ka?'გაუქმდეს ჯავშანი? პაციენტს ცვლილება ცალკე შეატყობინე.':'Cancel this booking? Notify the patient separately.'))void save({action:'cancel-booking',id:b.id})}}>{ka?'გაუქმება':'Cancel'}</button><label>{ka?'გადატანა სხვა დროზე':'Reschedule'}<select value={moves[b.id]||''} onChange={e=>setMoves({...moves,[b.id]:e.target.value})}><option value="">{ka?'აირჩიე დრო':'Choose a slot'}</option>{slots.filter(s=>s.doctor_id===b.consultation_slots.doctor_id&&s.id!==b.consultation_slots.id&&!bookings.some(other=>other.status==='confirmed'&&other.consultation_slots.id===s.id)).map(s=><option key={s.id} value={s.id}>{new Date(s.starts_at).toLocaleString(ka?'ka-GE':'en-GB')} · {s.location}</option>)}</select></label><button disabled={busy||!moves[b.id]} type="button" onClick={()=>{if(confirm(ka?'პაციენტთან შეთანხმებული ახალი დრო შეინახოს?':'Save the new time agreed with the patient?'))void save({action:'reschedule-booking',id:b.id,slotId:moves[b.id]})}}>{ka?'დროის შეცვლა':'Reschedule'}</button></>}</article>)}</section>
       <p role="status">{message}</p>
     </section>
   );

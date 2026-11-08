@@ -12,7 +12,6 @@ import { textField, uuid } from "@/lib/content-validation";
 export async function GET(request: Request) {
   try {
     const { db, user } = await requireUser(request);
-    await requireFeature(db, "doctorConsultation");
     const threadId = new URL(request.url).searchParams.get("thread");
     if (threadId) {
       try {
@@ -70,30 +69,17 @@ export async function GET(request: Request) {
           Date.parse(membership.data!.expires_at) > Date.now(),
       );
     // Only return the user's own bookings, plus bookings for a verified doctor's own slots.
-    const mySlots = isDoctor
-      ? checked(
-          await db
-            .from("consultation_slots")
-            .select("id")
-            .eq("doctor_id", user.id)
-            .gte("starts_at", new Date().toISOString())
-            .limit(200),
-        ) || []
-      : [];
-    const bookingQuery = db
+    const ownBookings = db
       .from("consultation_bookings")
       .select(
         "id,slot_id,patient_label,status,consultation_slots(starts_at,location,doctor_id)",
       )
+      .eq("patient_id",user.id)
       .order("created_at", { ascending: false })
       .limit(100);
-    const bookings = checked(
-      await (mySlots.length
-        ? bookingQuery.or(
-            `patient_id.eq.${user.id},slot_id.in.(${mySlots.map((s) => s.id).join(",")})`,
-          )
-        : bookingQuery.eq("patient_id", user.id)),
-    );
+    const patientBookings=checked(await ownBookings)||[];
+    const doctorBookings=isDoctor?checked(await db.from("consultation_bookings").select("id,slot_id,patient_label,status,consultation_slots!inner(starts_at,location,doctor_id)").eq("consultation_slots.doctor_id",user.id).order("created_at",{ascending:false}).limit(100))||[]:[];
+    const bookings=[...new Map([...patientBookings,...doctorBookings].map(b=>[b.id,b])).values()];
     const slots = profiles.length
       ? checked(
           await db
@@ -137,7 +123,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { db, user } = await requireUser(request);
-    await requireFeature(db, "doctorConsultation");
     let body: Record<string, unknown>;
     try {
       body = await readAdminJson(request);
@@ -159,13 +144,15 @@ export async function POST(request: Request) {
         .trim()
         .slice(0, 100) || "მომხმარებელი";
     if (body.action === "cancel") {
-      // Expired members can still cancel their own appointments.
+      // History and cancellation remain available even when new consultations are disabled.
+      const existing=checked(await db.from("consultation_bookings").select("patient_id,consultation_slots!inner(doctor_id)").eq("id",id).maybeSingle());
+      const slot=existing?.consultation_slots as unknown as {doctor_id:string}|null;
+      if(!existing||(existing.patient_id!==user.id&&slot?.doctor_id!==user.id))throw new ApiError(404,"ჯავშანი ვერ მოიძებნა.");
       const booking = checked(
         await db
           .from("consultation_bookings")
           .update({ status: "cancelled" })
           .eq("id", id)
-          .eq("patient_id", user.id)
           .eq("status", "confirmed")
           .select("id")
           .maybeSingle(),
@@ -173,6 +160,7 @@ export async function POST(request: Request) {
       if (!booking) throw new ApiError(404, "ჯავშანი ვერ მოიძებნა.");
       return result({ ok: true });
     }
+    await requireFeature(db, "doctorConsultation");
     const member = checked(
       await db
         .from("premium_memberships")

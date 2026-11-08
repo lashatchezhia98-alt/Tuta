@@ -7,10 +7,11 @@ import Library from "@/components/library";
 import AdminCare from "@/components/admin-care";
 import DoctorEnrollment from "@/components/doctor-enrollment";
 import AdminMarket from "@/components/admin-market";
+import MarketOrders from "@/components/market-orders";
 import BrandMark from "@/components/brand-mark";
 
 type Lang = "ka" | "en";
-type Section = "overview" | "features" | "reports" | "content" | "doctors" | "care" | "market" | "tools";
+type Section = "overview" | "features" | "reports" | "content" | "doctors" | "care" | "market" | "orders" | "tools";
 type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; created_at: string } };
 
 const reasonNames: Record<string, [string, string]> = {
@@ -37,6 +38,7 @@ const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "doctors", href: "/admin/doctors", ka: "ექიმების რეგისტრაცია", en: "Doctor registration" },
   { section: "care", href: "/admin/care", ka: "პროფილები და ვიზიტები", en: "Profiles & visits" },
   { section: "market", href: "/admin/market", ka: "მარკეტი / მაღაზია", en: "Market / shop" },
+  { section: "orders", href: "/admin/orders", ka: "მარკეტის შეკვეთები", en: "Market orders" },
   { section: "tools", href: "/admin/tools", ka: "მომავალი ფუნქციები", en: "Planned tools" },
 ];
 
@@ -92,6 +94,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
   }
 
   async function toggleFeature(id: (typeof SITE_FEATURES)[number]["id"], enabled: boolean) {
+    if(saving)return;
     setSaving(id);
     setError("");
     try {
@@ -113,6 +116,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     doctors: ["ექიმების რეგისტრაცია", "Doctor registration"],
     tools: ["მომავალი ხელსაწყოები", "Planned admin tools"],
     market: ["მარკეტის პროდუქტები", "Market products"],
+    orders: ["მარკეტის შეკვეთები", "Market orders"],
   };
   const description: Record<Section, [string, string]> = {
     overview: ["ერთი ადგილიდან გადადი პლატფორმის მართვის საჭირო ნაწილზე.", "Jump to the area you need to manage."],
@@ -123,6 +127,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     doctors: ["დაამატე ექიმი, დააკავშირე ანგარიში და გადაამოწმე პროფესიული კვალიფიკაცია.", "Register a doctor, link their account and verify professional qualifications."],
     tools: ["ეს ხელსაწყოები ჯერ არ არის ჩართული და ამ გვერდიდან მოქმედება შეუძლებელია.", "These tools are not active yet and cannot be managed here."],
     market: ["დაამატე ან შეცვალე პროდუქტი, აღწერა, ფასი და გამოჩენა მომხმარებლის მარკეტში.", "Add or edit products, descriptions, prices and visibility in the customer shop."],
+    orders: ["მართე მიწოდების სტატუსი; გადახდის სტატუსი მხოლოდ პროვაიდერის დადასტურებით იცვლება.", "Manage delivery separately from provider-confirmed payments."],
   };
 
   const reportsView = (
@@ -144,13 +149,14 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
   );
 
   function renderSection(current: Section) {
+    if(current==='orders')return <MarketOrders lang={lang} admin/>;
     if (current === "features") return <>
       <div className="admin-feature-groups">{(["ძირითადი", "სერვისები"] as const).map(group => <section className="admin-feature-group" key={group}>
         <h3>{ka ? group : group === "ძირითადი" ? "Core" : "Services"}</h3>
         {SITE_FEATURES.filter(feature => feature.group === group).map(feature => {
           const item = feature[lang];
           const enabled = features[feature.id];
-          return <div className="admin-setting admin-feature-row" key={feature.id}><div><strong>{item.title}</strong><p>{item.description}</p><small className="admin-feature-state">{saving === feature.id ? (ka ? "ინახება…" : "Saving…") : enabled ? (ka ? "ჩართულია" : "On") : (ka ? "გამორთულია" : "Off")}</small></div><button type="button" className={`admin-feature-toggle ${enabled ? "is-on" : ""}`} disabled={saving === feature.id} onClick={() => void toggleFeature(feature.id, !enabled)} aria-pressed={enabled}>{saving === feature.id ? (ka ? "ინახება…" : "Saving…") : enabled ? (ka ? "გამორთვა" : "Turn off") : (ka ? "ჩართვა" : "Turn on")}</button></div>;
+          return <div className="admin-setting admin-feature-row" key={feature.id}><div><strong>{item.title}</strong><p>{item.description}</p><small className="admin-feature-state">{saving === feature.id ? (ka ? "ინახება…" : "Saving…") : enabled ? (ka ? "ჩართულია" : "On") : (ka ? "გამორთულია" : "Off")}</small></div><button type="button" className={`admin-feature-toggle ${enabled ? "is-on" : ""}`} disabled={saving!==null} onClick={() => void toggleFeature(feature.id, !enabled)} aria-pressed={enabled}>{saving === feature.id ? (ka ? "ინახება…" : "Saving…") : enabled ? (ka ? "გამორთვა" : "Turn off") : (ka ? "ჩართვა" : "Turn on")}</button></div>;
         })}
       </section>)}</div>
       {error && <div className="admin-notice admin-error" role="alert"><strong>{ka ? "ვერ შეინახა" : "Not saved"}</strong><p>{error}</p></div>}

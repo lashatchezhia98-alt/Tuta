@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     amount,
     currency: "GEL",
     sender_email: user.email || "",
-    response_url: `${origin}/premium?payment=returned`,
+    response_url: `${origin}/api/payments/flitt/return?type=premium`,
     server_callback_url: `${origin}/api/payments/flitt/callback`,
     lang: "ka",
     merchant_data: JSON.stringify({ product: `premium-${plan}`, test: true }),

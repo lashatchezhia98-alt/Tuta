@@ -5,6 +5,7 @@ import {useHealthState} from '@/app/use-health-state';
 import {forecast} from '../mobile/src/cycle.mjs';
 import {pregnancyProgress} from '../mobile/src/pregnancy.mjs';
 import {sharedHealth} from '@/lib/partner-sharing';
+import {useSiteFeatures} from '@/lib/site-features';
 
 type Scopes={cycle:boolean;pregnancy:boolean};
 type Outgoing={id:string;label:string;scopes:Scopes;expires_at:string;accepted_at:string|null;revoked_at:string|null};
@@ -12,6 +13,7 @@ type Incoming={id:string;label:string;available:boolean;summary:ReturnType<typeo
 type State={outgoing:Outgoing[];incoming:Incoming[];premium:boolean};
 export default function PartnerWorkspace({lang}:{lang:'ka'|'en'}){
   const health=useHealthState(),ka=lang==='ka',token=health.session?.access_token;
+  const enabled=useSiteFeatures().partners;
   const [snapshot,setSnapshot]=useState<{token:string;data:State;receivedAt:number}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[label,setLabel]=useState(''),[scopes,setScopes]=useState<Scopes>({cycle:false,pregnancy:false}),[invite,setInvite]=useState(''),[link,setLink]=useState('');
   const data=snapshot&&snapshot.token===token?snapshot.data:null;
   useEffect(()=>{const fragment=new URLSearchParams(window.location.hash.slice(1));const code=fragment.get('invite');if(code){const timer=setTimeout(()=>setInvite(code),0);history.replaceState(null,'',window.location.pathname);return()=>clearTimeout(timer)}},[]);
@@ -19,7 +21,7 @@ export default function PartnerWorkspace({lang}:{lang:'ka'|'en'}){
     if(!token)return;try{const r=await fetch('/api/partners',{headers:{Authorization:`Bearer ${token}`},cache:'no-store',signal});const body=await r.json();if(!r.ok)throw Error(body.error);if(!signal?.aborted){setSnapshot({token,data:body,receivedAt:Date.now()});setError('')}}catch(e){if(!signal?.aborted)setError(e instanceof Error?e.message:'Error')}
   },[token]);
   useEffect(()=>{const controller=new AbortController();const initial=setTimeout(()=>void load(controller.signal),0);const timer=setInterval(()=>{if(document.visibilityState==='visible')void load(controller.signal)},15000);return()=>{controller.abort();clearTimeout(initial);clearInterval(timer)}},[load]);
-  async function action(body:Record<string,unknown>){if(!token)return;setBusy(true);setError('');try{
+  async function action(body:Record<string,unknown>){if(!token)return;if(!enabled&&['invite','accept'].includes(String(body.action))){setError(ka?'ახალი გაზიარებები დროებით შეჩერებულია. არსებულის გაუქმება შეგიძლია.':'New sharing is paused. Existing sharing can still be revoked.');return}setBusy(true);setError('');try{
     const r=await fetch('/api/partners',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.error);
     if(d.token)setLink(`${window.location.origin}/app/partners#invite=${d.token}`);
     if(body.action==='accept')setInvite('');await load();
@@ -28,6 +30,7 @@ export default function PartnerWorkspace({lang}:{lang:'ka'|'en'}){
   if(!health.session)return <p>{ka?'მოწვევის მისაღებად შედი ანგარიშში, შემდეგ თავიდან გახსენი მოწვევის ბმული.':'Sign in, then reopen the invitation link to accept it.'} <Link href="/login">{ka?'შესვლა':'Sign in'}</Link></p>;
   const preview=!health.error&&(scopes.cycle||scopes.pregnancy)?sharedHealth(health.data,scopes):null;
   return <div><section className="workspace-card"><h2>{ka?'პარტნიორთან გაზიარება':'Partner sharing'}</h2>
+    {!enabled&&<p role="status">{ka?'ახალი გაზიარებები შეჩერებულია; არსებული გაზიარებების ნახვა, გაუქმება და გასვლა ხელმისაწვდომია.':'New sharing is paused; viewing, revoking and leaving existing shares remain available.'}</p>}
     <p>{ka?'არაფერი ზიარდება ავტომატურად. შეგიძლია გააზიარო მხოლოდ ბოლო 4 პერიოდის თარიღები/ხანგრძლივობა ან ორსულობის დათარიღება. დღიური, სიმპტომები, შენიშვნები და ელფოსტა არ გაზიარდება.':'Nothing is shared automatically. Choose the last 4 period dates/durations or pregnancy dating only. Journal entries, symptoms, notes and email are never shared.'}</p>
     {error&&<p role="alert">{error}</p>}<button disabled={busy} onClick={()=>void load()}>{ka?'განახლება':'Refresh'}</button>
     {!data&&<p role="status">{ka?'გაზიარებები ჯერ არ ჩაიტვირთა.':'Shares have not loaded yet.'}</p>}

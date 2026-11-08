@@ -25,9 +25,9 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
   const features=useSiteFeatures();
   useEffect(()=>{const timer=setTimeout(()=>{if(localStorage.getItem('tuta-language')==='en')setLang('en')},0);return()=>clearTimeout(timer)},[]);
   const ka=lang==='ka'; const page=extraPages.find(p=>p.slug===slug);
-  if(page && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></main>;
+  if(page && page.slug!=='partners' && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></main>;
   return <div className="inner-container" style={{padding:'24px 16px 80px'}}>
-    <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:32}}>
+    <header style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:32}}>
       <Link href="/" className="inner-logo"><BrandMark/>{ka?'თუთა':'TUTA'}</Link>
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>

@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "test": "npm run test:unit && npm run build -- --webpack && node --test tests/rendered-html.test.mjs",
-    "test:unit": "node --experimental-strip-types --test tests/cycle-parity.test.mjs tests/admin-security.test.mjs tests/health-report.test.mjs tests/health-features.test.mjs tests/doctor-registration.test.mjs tests/password-fields.test.mjs mobile/tests/*.test.mjs",
+    "test:unit": "node --experimental-strip-types --test tests/cycle-parity.test.mjs tests/admin-security.test.mjs tests/health-report.test.mjs tests/health-features.test.mjs tests/doctor-registration.test.mjs tests/password-fields.test.mjs tests/audit-regressions.test.mjs mobile/tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

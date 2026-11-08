@@ -43,10 +43,14 @@ export async function PUT(request: Request) {
   const feature = SITE_FEATURES.find(item => item.id === body.id);
   if (!feature || typeof body.enabled !== "boolean") return NextResponse.json({ error: "ფუნქციის პარამეტრი არასწორია." }, { status: 400 });
 
-  const { data: current, error: readError } = await supabase.from("site_settings").select("features").eq("id", "global").maybeSingle();
-  if (readError) return NextResponse.json({ error: "ჯერ Supabase-ის მონაცემთა ბაზის განახლება უნდა შესრულდეს." }, { status: 503 });
-  const features = { ...defaultSiteFeatures(), ...((current?.features || {}) as Partial<SiteFeatureSettings>), [feature.id]: body.enabled };
-  const { error } = await supabase.from("site_settings").upsert({ id: "global", features, updated_at: new Date().toISOString() });
-  if (error) return NextResponse.json({ error: "პარამეტრის შენახვა ვერ მოხერხდა." }, { status: 503 });
-  return NextResponse.json({ features });
+  // Compare-and-swap avoids overwriting another administrator's concurrent edit.
+  for (let attempt=0;attempt<5;attempt++) {
+    const {data:current,error:readError}=await supabase.from("site_settings").select("features").eq("id","global").maybeSingle();
+    if(readError||!current)return NextResponse.json({error:"პარამეტრები ვერ ჩაიტვირთა."},{status:503});
+    const features={...defaultSiteFeatures(),...(current.features as Partial<SiteFeatureSettings>),[feature.id]:body.enabled};
+    const {data:saved,error}=await supabase.from("site_settings").update({features,updated_at:new Date().toISOString()}).eq("id","global").filter("features","eq",JSON.stringify(current.features)).select("features").maybeSingle();
+    if(error)return NextResponse.json({error:"პარამეტრის შენახვა ვერ მოხერხდა."},{status:503});
+    if(saved)return NextResponse.json({features:saved.features});
+  }
+  return NextResponse.json({error:"პარამეტრები პარალელურად შეიცვალა. სცადე ხელახლა."},{status:409});
 }

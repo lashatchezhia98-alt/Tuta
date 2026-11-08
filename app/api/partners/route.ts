@@ -11,7 +11,7 @@ async function premium(db:Db,id:string) {
 }
 export async function GET(request:Request) {
   try {
-    const {db,user}=await requireUser(request);await requireFeature(db,'partners');
+    const {db,user}=await requireUser(request);
     const [outgoing,incoming,active]=await Promise.all([
       db.from('partner_shares').select('id,label,scopes,expires_at,accepted_at,revoked_at').eq('owner_id',user.id).order('created_at',{ascending:false}).limit(50),
       db.from('partner_shares').select('id,owner_id,label,scopes').eq('partner_id',user.id).is('revoked_at',null).limit(20),
@@ -31,7 +31,7 @@ export async function GET(request:Request) {
 }
 export async function POST(request:Request) {
   try {
-    const {db,user}=await requireUser(request);await requireFeature(db,'partners');
+    const {db,user}=await requireUser(request);
     let body:Record<string,unknown>;
     try{body=await readAdminJson(request);if(['revoke','leave'].includes(String(body.action)))uuid(body.id)}catch{throw new ApiError(400,'შეამოწმე მონაცემები.');}
     if(body.action==='revoke'){
@@ -45,6 +45,7 @@ export async function POST(request:Request) {
       if(!row)throw new ApiError(404,'გაზიარება ვერ მოიძებნა.');
       return result({ok:true});
     }
+    await requireFeature(db,'partners');
     if(body.action==='accept'){
       if(typeof body.token!=='string'||!/^[a-f0-9]{64}$/.test(body.token))throw new ApiError(400,'მოწვევის კოდი არასწორია.');
       const hash=createHash('sha256').update(body.token).digest('hex');

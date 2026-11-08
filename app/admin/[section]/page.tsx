@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import AdminFeaturePanel from "@/components/admin-feature-panel";
 import { COOKIE_NAME, verifyAdminSession } from "@/lib/admin-auth";
 
-const sections = ["features", "reports", "content", "doctors", "care", "market", "tools"] as const;
+const sections = ["features", "reports", "content", "doctors", "care", "market", "orders", "tools"] as const;
 type AdminSection = (typeof sections)[number];
 
 export default async function AdminSectionPage({ params }: { params: Promise<{ section: string }> }) {

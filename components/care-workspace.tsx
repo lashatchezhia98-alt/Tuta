@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import {useSiteFeatures} from '@/lib/site-features';
 type Doctor = {
   user_id: string;
   specialty: string;
@@ -62,6 +63,7 @@ async function careRequest(path = "", body?: unknown) {
 }
 export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
   const ka = lang === "ka";
+  const enabled=useSiteFeatures().doctorConsultation;
   const [data, setData] = useState<State | null>(null),
     [error, setError] = useState(""),
     [thread, setThread] = useState(""),
@@ -175,6 +177,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
     <div className="inner-container">
       <section className="workspace-card">
         <h1>{ka ? "ექიმები და კონსულტაცია" : "Doctors & consultations"}</h1>
+        {!enabled&&<p role="status">{ka?'ახალი კონსულტაციები დროებით შეჩერებულია. ისტორიის ნახვა და ჯავშნის გაუქმება ხელმისაწვდომია.':'New consultations are paused. History and appointment cancellation remain available.'}</p>}
         <p>
           {ka
             ? "პირადი მიმოწერა არჩეულ ექიმთან და 30-წუთიანი ვიზიტის დაჯავშნა. ეს არ არის გადაუდებელი დახმარების სერვისი. ექიმი ვერ ხედავს შენს პერიოდის დღიურს."
@@ -227,7 +230,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                   <strong>{d.specialty}</strong>
                   <p>{d.bio}</p>
                   <button
-                    disabled={busy || !data.premium}
+                    disabled={busy || !data.premium || !enabled}
                     onClick={() =>
                       void action({ action: "start", id: d.user_id })
                     }
@@ -243,7 +246,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                           {date(s.starts_at)} · {s.location}
                         </p>
                         <button
-                          disabled={busy || !data.premium}
+                          disabled={busy || !data.premium || !enabled}
                           onClick={() => {
                             if (
                               confirm(
@@ -289,8 +292,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                       : "Confirmed"}
                   {data.isDoctor ? ` · ${b.patient_label}` : ""}
                 </p>
-                {b.status === "confirmed" &&
-                  b.consultation_slots.doctor_id !== data.userId && (
+                {b.status === "confirmed" && (
                     <button
                       disabled={busy}
                       onClick={() => {
@@ -380,7 +382,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                   </label>
                   <button
                     disabled={
-                      busy ||
+                      busy || !enabled ||
                       (!data.premium &&
                         data.threads.find((t) => t.id === thread)?.doctor_id !==
                           data.userId)

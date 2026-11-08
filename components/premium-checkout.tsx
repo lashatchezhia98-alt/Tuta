@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { useMembership } from "@/lib/use-membership";
 
 type Lang = "ka" | "en";
 type Plan = "monthly" | "yearly";
@@ -11,8 +12,7 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
   const [busy, setBusy] = useState(false);
   const [plan, setPlan] = useState<Plan>("monthly");
   const [notice, setNotice] = useState("");
-  const [active, setActive] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const {active,expiresAt,refresh,status}=useMembership();
 
   const refreshMembership = useCallback(async (showMessage = true) => {
     try {
@@ -24,15 +24,14 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
       const response = await fetch("/api/payments/flitt/status", { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" });
       const data = await response.json() as { active?: boolean; expiresAt?: string | null; error?: string };
       if (!response.ok) throw new Error(data.error || "Status check failed.");
-      setActive(Boolean(data.active));
-      setExpiresAt(data.expiresAt || null);
+      await refresh();
       if (showMessage) setNotice(data.active
         ? (ka ? "Premium გააქტიურებულია ✓" : "Premium is active ✓")
         : (ka ? "გადახდა ჯერ არ დადასტურებულა. ცოტა ხანში ხელახლა შეამოწმე." : "Payment is not confirmed yet. Check again shortly."));
     } catch {
       if (showMessage) setNotice(ka ? "სტატუსის შემოწმება ვერ მოხერხდა. სცადე ხელახლა." : "Could not check status. Please try again.");
     }
-  }, [ka]);
+  }, [ka,refresh]);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("payment") === "returned") {
@@ -93,6 +92,8 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
         </button>
         {active && <p className="premium-active" role="status">{ka ? `Premium აქტიურია ${dateText}-მდე.` : `Premium is active until ${dateText}.`}</p>}
         {notice && <p className="premium-notice" role="status">{notice}</p>}
+        {status==='error'&&<p role="alert">{ka?'წევრობის სტატუსი ვერ შემოწმდა. სცადე განახლება.':'Could not check membership. Retry.'}</p>}
+        {!active&&<p><a href="/login">{ka?'შესვლა':'Sign in'}</a> · <a href="/register">{ka?'ანგარიშის შექმნა':'Create account'}</a></p>}
       </div>
       <aside className="premium-test-note">
         <strong>{ka ? "სატესტო გარემო" : "Sandbox environment"}</strong>
@@ -100,5 +101,6 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
         <a href="https://docs.flitt.com/api/testing/" target="_blank" rel="noreferrer">{ka ? "სატესტო ბარათები" : "Test cards"}</a>
       </aside>
     </div>
+    <section className="workspace-card premium-benefits"><h2>{ka?'უფასო და Premium':'Free & Premium'}</h2><div className="workspace-grid"><article><h3>{ka?'უფასო':'Free'}</h3><ul>{(ka?['პერიოდის კალენდარი და სავარაუდო პროგნოზები','დღიური და სიმპტომების აღრიცხვა','ციკლების ისტორია და ძირითადი შეჯამება','საზოგადოება, ბლოგები და მარკეტის დათვალიერება']:['Period calendar and estimated predictions','Daily journal and symptom logging','Cycle history and basic summaries','Community, articles and browsing the market']).map(item=><li key={item}>{item}</li>)}</ul></article><article><h3>Premium</h3><ul>{(ka?['უფასო პაკეტის ყველა ფუნქცია','განმეორებადი სიმპტომების ანალიზი','ექიმისთვის ანგარიშის მომზადება','ორსულობის დამატებითი თვალყურის დევნება','თანხმობით გაზიარება პარტნიორთან','ხელმისაწვდომ ექიმთან ჩატი და ვიზიტის დაჯავშნა']:['Everything in Free','Repeating symptom analysis','Doctor-ready reports','Additional pregnancy tracking','Consent-based partner sharing','Chat and booking with available doctors']).map(item=><li key={item}>{item}</li>)}</ul><p>{ka?'ექიმების ხელმისაწვდომობა ცალკე მოწმდება; გადახდა ჯერ მხოლოდ სატესტოა.':'Doctor availability is checked separately; payments remain test-only.'}</p></article></div></section>
   </section>;
 }
