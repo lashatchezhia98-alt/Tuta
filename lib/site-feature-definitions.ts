@@ -18,7 +18,7 @@ export const SITE_FEATURES: Array<{
   en: { title: string; description: string };
   enabledByDefault: boolean;
 }> = [
-  ...extraPages.map(page => ({id:page.slug,group:'სერვისები' as const,ka:{title:page.ka,description:page.slug==='journey'?'ჩანაწერებზე დაფუძნებული ნაბიჯ-ნაბიჯ გზამკვლევი.':'მოსამზადებელი გვერდის ხილვადობა. ჩართვა სერვისს არ ააქტიურებს.'},en:{title:page.en,description:page.slug==='journey'?'Step-by-step guidance based on saved entries.':'Preparation page visibility. Enabling does not activate the service.'},enabledByDefault:true})),
+  ...extraPages.map(page => ({id:page.slug,group:'სერვისები' as const,ka:{title:page.ka,description:['journey','pregnancy','partners'].includes(page.slug)?page.description:'მოსამზადებელი გვერდის ხილვადობა. ჩართვა სერვისს არ ააქტიურებს.'},en:{title:page.en,description:['journey','pregnancy','partners'].includes(page.slug)?page.english:'Preparation page visibility. Enabling does not activate the service.'},enabledByDefault:true})),
   { id: "community", group: "ძირითადი", ka: { title: "მთავარი / საზოგადოება", description: "პოსტების ნახვა და მომხმარებლების საზოგადოება." }, en: { title: "Home / Community", description: "Community feed and member posts." }, enabledByDefault: true },
   { id: "period", group: "ძირითადი", ka: { title: "პერიოდის კალენდარი", description: "პერიოდისა და ოვულაციის პროგნოზები." }, en: { title: "Period tracker", description: "Period and ovulation predictions." }, enabledByDefault: true },
   { id: "dailyLog", group: "ძირითადი", ka: { title: "დღიური ჩანაწერები", description: "განწყობის, ენერგიის, ტკივილისა და სიმპტომების აღრიცხვა." }, en: { title: "Daily check-in", description: "Mood, energy, pain and symptom tracking." }, enabledByDefault: true },

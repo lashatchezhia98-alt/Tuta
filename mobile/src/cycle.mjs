@@ -78,7 +78,7 @@ export function cycleAt(periods, fallback, date = dateKey(), asOf = dateKey()) {
   const phase=phaseForDay(day,duration,length);
   return {day,phase,next,ovulation,fertileStart,fertileEnd,overdue:distance(next,date)>0,length,duration,start:base.start};
 }
-export function forecast(periods, fallback, asOf=dateKey()) {
+export function forecast(periods, fallback, asOf=dateKey(), pregnancyActive=false) {
   stamp(asOf);
   const recorded=ordered(periods).filter(p=>p.start<=asOf);
   const avg=averages(recorded,fallback);
@@ -88,6 +88,7 @@ export function forecast(periods, fallback, asOf=dateKey()) {
   const irregular=sufficient&&lengths.some(n=>Math.abs(n-avg.length)>7);
   const spread=sufficient?Math.max(...lengths)-Math.min(...lengths):0;
   const reliability=!sufficient?'limited':irregular||spread>7||avg.length<21||avg.length>45?'low':'consistent';
+  if(pregnancyActive)return {status:'pregnancy',source:sufficient?'history':'manual',reliability,irregular,expected:null,earliest:null,latest:null,starts:[],fertilityAvailable:false,averageLength:avg.length,averageDuration:avg.duration,completed:lengths.length};
   if(!last)return {status:'empty',source:'manual',reliability:'limited',irregular:false,expected:null,earliest:null,latest:null,starts:[],fertilityAvailable:false,averageLength:avg.length,averageDuration:avg.duration,completed:0};
   const length=Math.round(avg.length);
   const expected=addDays(last.start,length);
@@ -103,11 +104,12 @@ export function forecast(periods, fallback, asOf=dateKey()) {
     averageLength:avg.length,averageDuration:avg.duration,completed:lengths.length,
   };
 }
-export function calendarState(periods, fallback, date, asOf=dateKey()) {
+export function calendarState(periods, fallback, date, asOf=dateKey(), pregnancyActive=false) {
   stamp(date);
   const recorded=ordered(periods).filter(p=>p.start<=asOf);
   const known=date<=asOf&&recorded.some(p=>date>=p.start && date<addDays(p.start,p.duration));
   if(known)return 'period';
+  if(pregnancyActive)return '';
   const current=cycleAt(recorded,fallback,date,asOf);
   if(!current)return '';
   const model=forecast(recorded,fallback,asOf);

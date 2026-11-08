@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { extraPages } from '@/lib/page-directory';
 import { featureForRoute, useSiteFeatures } from '@/lib/site-features';
 import GuidedJourney from './guided-journey';
+import PregnancyWorkspace from './pregnancy-workspace';
+import PartnerWorkspace from './partner-workspace';
 
 const existing = [
   ['/community','მთავარი','Home'], ['/app/dashboard','პერიოდი','Period'],
@@ -30,11 +32,11 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
     <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></nav>
-    {page ? <main><h1>{ka?page.ka:page.en}</h1><p>{ka?page.description:page.english}</p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main>
+    {page ? <main><h1>{ka?page.ka:page.en}</h1><p>{ka?page.description:page.english}</p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main>
       <h1>{ka?'ყველა ფუნქცია':'All features'}</h1><p>{ka?'აირჩიე შენი სივრცე. მოსამზადებელი ფუნქციები ცალკეა მონიშნული.':'Choose your space. Features still in preparation are clearly marked.'}</p>
       <div className="feature-directory-grid">{existing.filter(([url])=>{const id=featureForRoute(url);return !id||features[id]}).map(([url,a,b])=><Link className="workspace-card directory-link" key={url} href={url}>{ka?a:b}<span aria-hidden>↗</span></Link>)}</div>
-      {features.journey&&<Link className="workspace-card directory-link" href="/app/journey">{ka?'პირადი გზამკვლევი':'Guided journey'} ↗</Link>}
-      <h2>{ka?'მომზადების ეტაპზე':'In preparation'}</h2><div className="feature-directory-grid">{extraPages.filter(p=>p.slug!=='journey'&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}>{ka?p.ka:p.en}<span aria-hidden>↗</span></Link>)}</div>
+      <div className="feature-directory-grid">{extraPages.filter(p=>['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}>{ka?p.ka:p.en} ↗</Link>)}</div>
+      <h2>{ka?'მომზადების ეტაპზე':'In preparation'}</h2><div className="feature-directory-grid">{extraPages.filter(p=>!['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}>{ka?p.ka:p.en}<span aria-hidden>↗</span></Link>)}</div>
     </main>}
   </div>;
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
 // Visibility is shared with the web admin; never send health records here.
-export function useJourneyEnabled(active = true) {
+export function useFeatureEnabled(feature:string,active = true) {
   const [status,setStatus] = useState<'loading'|'enabled'|'disabled'|'error'>('loading');
   const [attempt,setAttempt] = useState(0);
   useEffect(()=>{
@@ -19,7 +19,7 @@ export function useJourneyEnabled(active = true) {
         const response = await fetch(`${root}/api/site-features`,{signal:current.signal});
         if (!response.ok) throw new Error('Feature settings unavailable');
         const body = await response.json();
-        if (alive && current === controller) setStatus(body.features?.journey === true ? 'enabled' : 'disabled');
+        if (alive && current === controller) setStatus(body.features?.[feature] === true ? 'enabled' : 'disabled');
       } catch {
         if (alive && current === controller) setStatus('error');
       } finally { clearTimeout(timeout); }
@@ -27,6 +27,7 @@ export function useJourneyEnabled(active = true) {
     void load();
     const subscription = AppState.addEventListener('change',state=>{if(state==='active')void load()});
     return ()=>{alive=false;controller?.abort();subscription.remove()};
-  },[active,attempt]);
+  },[active,attempt,feature]);
   return {status,retry:()=>setAttempt(value=>value+1)};
 }
+export function useJourneyEnabled(active=true){return useFeatureEnabled('journey',active)}

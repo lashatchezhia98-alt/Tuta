@@ -2,16 +2,18 @@
 
 import { cycleAt, forecast, dateKey } from "../mobile/src/cycle.mjs";
 
-export default function CycleOverview({ periods, cycleLength, lang }: {
+export default function CycleOverview({ periods, cycleLength, lang, pregnancyActive=false }: {
   periods: { start: string; duration: number }[]; cycleLength: number; lang: "ka" | "en";
+  pregnancyActive?: boolean;
 }) {
   const ka = lang === "ka";
   const today = dateKey();
-  const model = forecast(periods, cycleLength, today);
+  const model = forecast(periods, cycleLength, today, pregnancyActive);
   const current = cycleAt(periods, cycleLength, today, today);
   const format = (date: string) => new Intl.DateTimeFormat(ka ? "ka-GE" : "en-GB", {
     day: "numeric", month: "short", year: "numeric", timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
+  if(pregnancyActive)return <p>{ka?'ორსულობის რეჟიმი ჩართულია. პერიოდისა და ნაყოფიერი დღეების პროგნოზები შეჩერებულია.':'Pregnancy mode is active. Period and fertile-day estimates are paused.'} <a href="/app/pregnancy">{ka?'ორსულობის მონიტორინგი':'Pregnancy tracking'} →</a></p>;
   if (!current) return <p>{ka ? "პროგნოზისთვის შეინახე პერიოდის დაწყების თარიღი." : "Save a period start date to see an estimate."}</p>;
   const phase = (model.status === 'overdue' || model.reliability === 'low') && current.phase !== 'menstruation' ? 'unknown' : current.phase;
   const phases: Record<string, string> = { menstruation: "მენსტრუაცია", follicular: "ფოლიკულური", ovulation: "ოვულაცია", luteal: "ლუთეალური", unknown: "უცნობია" };

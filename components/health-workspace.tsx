@@ -181,6 +181,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
         setMessage(ka ? "წაშლილია" : "Removed");
         return;
       }
+      if(data.pregnancy?.active){setMessage(ka?'პერიოდის ახალი ჩანაწერის დამატებამდე გამორთე ორსულობის რეჟიმი.':'Turn off pregnancy mode before adding a period entry.');return;}
       if (
         selected > today ||
         duration < 1 ||
@@ -238,9 +239,11 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
       <CycleOverview
         periods={data.periods}
         cycleLength={data.cycleLength}
+        pregnancyActive={data.pregnancy?.active}
         lang={lang}
       />
       <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />
+      {data.pregnancy?.active&&<button type="button" disabled={busy} onClick={()=>{if(confirm(ka?'გამორთო ორსულობის რეჟიმი? ისტორია შენარჩუნდება.':'Turn off pregnancy mode? History will be preserved.'))void save({...data,pregnancy:{...data.pregnancy!,active:false,updatedAt:new Date().toISOString()}}).catch(()=>setMessage(ka?'შენახვა ვერ მოხერხდა.':'Could not save.'))}}>{ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'}</button>}
       <div className="workspace-grid">
         <section className="workspace-card">
           <div className="workspace-row">
@@ -278,6 +281,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                   data.cycleLength,
                   date,
                   today,
+                  data.pregnancy?.active,
                 );
               return (
                 <button
@@ -397,12 +401,12 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
         </p>
         <button
           disabled={
-            !forecast(data.periods, data.cycleLength, today).starts.length
+            !forecast(data.periods, data.cycleLength, today, data.pregnancy?.active).starts.length
           }
           onClick={() =>
             download(
               reminderCalendar(
-                forecast(data.periods, data.cycleLength, today).starts,
+                forecast(data.periods, data.cycleLength, today, data.pregnancy?.active).starts,
               ),
               "tuta-reminders.ics",
               "text/calendar",

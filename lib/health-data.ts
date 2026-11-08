@@ -1,10 +1,12 @@
 import { ordered, stamp } from "../mobile/src/cycle.mjs";
+import { validPregnancy } from '../mobile/src/pregnancy.mjs';
 
 export type HealthData = {
   version: 1;
   lang: "ka" | "en";
   name: string;
   cycleLength: number;
+  pregnancy?: {active:boolean;dating:'lmp'|'dueDate';date:string;updatedAt:string};
   periods: { start: string; duration: number }[];
   logs: { date: string; mood: string; energy: number; pain: number; flow: string; symptoms: string[]; notes: string }[];
 };
@@ -17,7 +19,7 @@ export function validHealthData(value: unknown): value is HealthData {
     const d = value as HealthData;
     if (d.version !== 1 || !["ka", "en"].includes(d.lang) || typeof d.name !== "string"
       || !Number.isInteger(d.cycleLength) || d.cycleLength < 21 || d.cycleLength > 45
-      || !Array.isArray(d.periods) || !Array.isArray(d.logs)) return false;
+      || !Array.isArray(d.periods) || !Array.isArray(d.logs) || !validPregnancy(d.pregnancy)) return false;
     ordered(d.periods); // Checks real dates, unique starts and period durations.
     if(new Set(d.logs.map(log=>log.date)).size!==d.logs.length)return false;
     return d.logs.every(log => {

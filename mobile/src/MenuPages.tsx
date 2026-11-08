@@ -4,10 +4,12 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {Icon,MoonFlower} from './Art';
 import {C,T,s} from './ui';
 import type {Lang,Tab} from './types';
-import {useJourneyEnabled} from './useJourneyEnabled';
+import {useJourneyEnabled,useFeatureEnabled} from './useJourneyEnabled';
 
 const items:{id:Tab;ka:string;en:string;icon:string}[]=[
  {id:'journey',ka:'პირადი გზამკვლევი',en:'Guided journey',icon:'spark'},
+ {id:'pregnancy',ka:'ორსულობა',en:'Pregnancy',icon:'calendar'},
+ {id:'partners',ka:'პარტნიორი',en:'Partner',icon:'profile'},
  {id:'blog',ka:'ჯანმრთელობის ბიბლიოთეკა',en:'Health library',icon:'spark'},
  {id:'premium',ka:'პრემიუმი',en:'Premium',icon:'lock'},
  {id:'about',ka:'ჩვენს შესახებ',en:'About us',icon:'moon'},
@@ -19,7 +21,8 @@ const settingsItem:{id:Tab;ka:string;en:string;icon:string}={id:'profile',ka:'�
 export function AppMenu({visible,lang,showSettings,onClose,onNavigate,onLanguage}:{visible:boolean;lang:Lang;showSettings:boolean;onClose:()=>void;onNavigate:(page:Tab)=>void;onLanguage:()=>void}){
  const ka=lang==='ka';const t=(a:string,b:string)=>ka?a:b;
  const {status}=useJourneyEnabled(visible);
- const visibleItems=items.filter(item=>item.id!=='journey'||status==='enabled');
+ const pregnancy=useFeatureEnabled('pregnancy',visible),partners=useFeatureEnabled('partners',visible);
+ const visibleItems=items.filter(item=>item.id==='journey'?status==='enabled':item.id==='pregnancy'?pregnancy.status==='enabled':item.id==='partners'?partners.status==='enabled':true);
  const menuItems=showSettings?[settingsItem,...visibleItems]:visibleItems;
  return <Modal visible={visible} animationType="slide" onRequestClose={onClose}><SafeAreaView style={{flex:1,backgroundColor:C.bg}} edges={['top','bottom']}><View style={[s.header,{paddingTop:16,paddingBottom:16}]}><T weight="display" style={s.logo}>{ka?'თუთა':'TUTA'}</T><Pressable accessibilityRole="button" accessibilityLabel={t('მენიუს დახურვა','Close menu')} onPress={onClose} style={s.round}><Icon name="close"/></Pressable></View><ScrollView contentContainerStyle={[s.content,{paddingTop:12}]}><T style={s.muted}>{t('ყველაფერი ერთ სივრცეში','EXPLORE TUTA')}</T><T weight="display" style={[s.title,{marginTop:4}]}>{t('მენიუ','Menu')}</T><View style={s.card}>{menuItems.map(({id,ka:geo,en,icon},i)=><Pressable key={id} accessibilityRole="button" onPress={()=>{onClose();onNavigate(id)}} style={{minHeight:58,flexDirection:'row',alignItems:'center',gap:14,borderBottomWidth:i===menuItems.length-1?0:1,borderColor:C.line}}><View style={{width:38,height:38,borderRadius:14,alignItems:'center',justifyContent:'center',backgroundColor:i%2?C.yellow:C.lav}}><Icon name={icon} size={19}/></View><T weight="bold" style={{flex:1,fontSize:16}}>{t(geo,en)}</T><Icon name="arrow" size={18}/></Pressable>)}</View><Pressable accessibilityRole="button" onPress={onLanguage} style={[s.card,{minHeight:58,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}]}><T weight="bold">{t('ენა','Language')}</T><T>{ka?'ქართული  ·  EN':'English  ·  ქა'}</T></Pressable></ScrollView></SafeAreaView></Modal>;
 }
