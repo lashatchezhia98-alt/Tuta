@@ -97,7 +97,7 @@ export const policyCopy = {
         ],
         [
           "ანგარიში და Premium",
-          "პოსტებისა და პირადი ჩანაწერებისთვის ანგარიში საჭიროა. Premium მოიცავს განმეორებადი სიმპტომების ანალიზს, ანგარიშებს, ორსულობის დამატებით თვალყურის დევნებას, პარტნიორთან გაზიარებას და ხელმისაწვდომ ექიმთან ჩატსა და ჯავშანს. ფასი: 4.99 ₾ / 30 დღე ან 49.90 ₾ / წელი. გადახდა ჯერ მხოლოდ სატესტოა, რეალური თანხა არ ჩამოიჭრება და ავტომატური განახლება ჩართული არ არის.",
+          "პოსტებისა და პირადი ჩანაწერებისთვის ანგარიში საჭიროა. Premium მოიცავს განმეორებადი სიმპტომების ანალიზს, ანგარიშებს, ორსულობის დამატებით თვალყურის დევნებას, პარტნიორთან გაზიარებას და ხელმისაწვდომ ექიმთან ჩატსა და ჯავშანს. ფასი: 4.99 ₾ / 30 დღე ან 49.90 ₾ / წელი. გადახდა და სურვილისამებრ ავტომატური განახლება მხოლოდ სატესტოა. რეალური თანხა არ ჩამოიჭრება.",
         ],
         [
           "ექიმები და შეკვეთები",
@@ -119,7 +119,7 @@ export const policyCopy = {
         ],
         [
           "Account and Premium",
-          "An account is required for posts and personal records. Premium includes repeating symptom analysis, reports, additional pregnancy tracking, partner sharing and chat/booking with available doctors. Prices are GEL 4.99 for 30 days or GEL 49.90 per year. Payments are test-only: no real charge and no automatic renewal.",
+          "An account is required for posts and personal records. Premium includes repeating symptom analysis, reports, additional pregnancy tracking, partner sharing and chat/booking with available doctors. Prices are GEL 4.99 for 30 days or GEL 49.90 per year. Payments and optional automatic renewal are test-only. No real charge is made.",
         ],
         [
           "Doctors and orders",

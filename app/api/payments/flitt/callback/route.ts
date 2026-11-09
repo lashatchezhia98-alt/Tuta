@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import {
   flittEnvironment,
+  decodeFlittEnvelope,
   FLITT_TEST_MERCHANT_ID,
+  tutaPremiumOrder,
   verifyFlittOrderStatus,
   verifyFlittSignature,
 } from "@/lib/flitt";
@@ -38,18 +40,24 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!verifyFlittSignature(payload))
+  const verifiedPayload = typeof payload.data === "string" ? decodeFlittEnvelope(payload)
+    : verifyFlittSignature(payload) ? payload : null;
+  if (!verifiedPayload)
     return NextResponse.json(
       { error: "Invalid Flitt signature." },
       { status: 401 },
     );
+  payload = verifiedPayload;
   const orderId = payload.order_id;
   const paymentId = String(payload.payment_id ?? "");
   const status = payload.order_status;
   const merchantId = String(payload.merchant_id ?? "");
+  const parent = String(payload.parent_order_id ?? "");
   if (
     typeof orderId !== "string" ||
-    !/^tuta-(?:market-)?[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(orderId) ||
+    (parent
+      ? !tutaPremiumOrder.test(parent) || parent === orderId || !/^[\w.#:-]{1,256}$/.test(orderId) || orderId.startsWith("tuta-market-")
+      : !/^tuta-(?:market-)?[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(orderId)) ||
     !/^\d{1,32}$/.test(paymentId) ||
     merchantId !== String(FLITT_TEST_MERCHANT_ID)
   ) {
@@ -82,7 +90,7 @@ export async function POST(request: Request) {
   // The public sandbox key is not an authentication secret. Confirm the
   // signed event with Flitt directly before granting access or marking it paid.
   try {
-    if (!(await verifyFlittOrderStatus(orderId, paymentId, status, amount))) {
+    if (!(await verifyFlittOrderStatus(orderId, paymentId, status, amount, parent))) {
       return NextResponse.json({ error: "Flitt has not confirmed this payment status." }, { status: 409 });
     }
   } catch {
@@ -111,8 +119,9 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await clients.admin.rpc(
-    "apply_flitt_premium_payment",
+    parent ? "apply_flitt_premium_renewal" : "apply_flitt_premium_payment",
     {
+      ...(parent ? { p_parent: parent } : {}),
       p_order_id: orderId,
       p_payment_id: paymentId,
       p_status: status,

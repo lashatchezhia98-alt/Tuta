@@ -169,27 +169,29 @@ export function PremiumScreen({ lang, session, onPaymentReturn }: Nav & {
   onPaymentReturn: (url: string) => void;
 }) {
   const ka = lang === "ka",
-    membership = useResource<{ active: boolean; expiresAt: string | null }>(
+    membership = useResource<{ active: boolean; expiresAt: string | null; purchaseBlocked?: boolean; renewalState?: "active" | "disabled" | "starting" | "stopping" | null; canResume?: boolean }>(
       "/api/payments/flitt/status",
       session.user.id,
       30000,
     );
   const [plan, setPlan] = useState("yearly"),
+    [autoRenew, setAutoRenew] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const alive = useRef(true);
-  useEffect(
-    () => () => {
-      alive.current = false;
-    },
-    [],
-  );
+  const working = useRef(false);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
   async function checkout() {
+    if (working.current || membership.data?.purchaseBlocked) return;
+    working.current = true;
     setBusy(true);
     setMessage("");
     try {
       const result = await api("/api/payments/flitt/checkout", {
-        body: { plan, ...(checkoutInApp ? { returnTo: "app" } : {}) },
+        body: { plan, autoRenew, ...(checkoutInApp ? { returnTo: "app" } : {}) },
         userId: session.user.id,
       });
       if (!alive.current) return;
@@ -200,8 +202,29 @@ export function PremiumScreen({ lang, session, onPaymentReturn }: Nav & {
     } catch (e) {
       if (alive.current)
         setMessage(e instanceof Error ? e.message : "Connection unavailable");
+      if (alive.current) void membership.refresh();
     } finally {
+      working.current = false;
       if (alive.current) setBusy(false);
+    }
+  }
+  const renewal = membership.data?.renewalState;
+  const pending = renewal === "starting" || renewal === "stopping";
+  async function changeRenewal(enabled: boolean) {
+    if (working.current) return;
+    working.current = true;
+    setBusy(true);
+    setMessage("");
+    try {
+      await api("/api/payments/flitt/status", { method: "PATCH", body: { enabled }, userId: session.user.id });
+      if (alive.current) setMessage(enabled
+        ? (ka ? "ავტომატური განახლება ჩაირთო." : "Automatic renewal is on.")
+        : (ka ? "ავტომატური განახლება გაითიშა. გადახდილი პერიოდი ძალაში რჩება." : "Automatic renewal is off. Paid access is unchanged."));
+    } catch (e) {
+      if (alive.current) setMessage(e instanceof Error ? e.message : "Connection unavailable");
+    } finally {
+      if (alive.current) { void membership.refresh(); setBusy(false); }
+      working.current = false;
     }
   }
   return (
@@ -251,11 +274,11 @@ export function PremiumScreen({ lang, session, onPaymentReturn }: Nav & {
         </T>
         <T style={s.muted}>
           {ka
-            ? "რეალური გამოწერის გაყიდვა არ არის ჩართული. ავტომატური განახლება არ ხდება."
-            : "Real subscription sales are not enabled. No automatic renewal."}
+            ? "რეალური თანხა არ ჩამოგეჭრება. ავტომატური განახლებაც სატესტოა."
+            : "No real charge. Automatic renewal is also in test mode."}
         </T>
       </View>
-      <View style={[s.wrap, { marginBottom: 16 }]}>
+      {membership.data?.purchaseBlocked ? <T style={s.muted}>{ka ? "მეორედ გადახდა ამ პერიოდში შეუძლებელია." : "You cannot pay again for the current period."}</T> : <><View style={[s.wrap, { marginBottom: 16 }]}>
         <Chip
           selected={plan === "monthly"}
           label={ka ? "30 დღე · 4.99 ₾" : "30 days · 4.99 GEL"}
@@ -267,11 +290,20 @@ export function PremiumScreen({ lang, session, onPaymentReturn }: Nav & {
           onPress={() => setPlan("yearly")}
         />
       </View>
+      <Chip selected={autoRenew} label={ka ? "ავტომატური სატესტო განახლება" : "Automatic test renewal"} onPress={() => setAutoRenew(value => !value)}/>
       <CTA
         title={ka ? "სატესტო გადახდის გახსნა" : "Open test checkout"}
-        disabled={busy}
+        disabled={busy || membership.loading || Boolean(membership.error)}
         onPress={() => void checkout()}
-      />
+      /></>}
+      {renewal && <View style={s.card}>
+        <T>{pending ? (ka ? "ცვლილება მოწმდება." : "Verifying change.") : renewal === "active" ? (ka ? "ავტომატური განახლება ჩართულია." : "Automatic renewal is on.") : (ka ? "ავტომატური განახლება გამორთულია." : "Automatic renewal is off.")}</T>
+        {(renewal !== "disabled" || membership.data?.canResume) && <CTA
+          light disabled={busy}
+          title={pending ? (ka ? "ხელახლა შემოწმება" : "Retry change") : renewal === "active" ? (ka ? "ავტომატური განახლების გათიშვა" : "Turn off automatic renewal") : (ka ? "ავტომატური განახლების ჩართვა" : "Turn on automatic renewal")}
+          onPress={() => void changeRenewal(renewal === "disabled" || renewal === "starting")}
+        />}
+      </View>}
       {Boolean(message) && <T accessibilityRole="alert">{message}</T>}
     </View>
   );

@@ -14,7 +14,8 @@ export async function api<T = any>(
     body,
     signal,
     userId,
-  }: { body?: unknown; signal?: AbortSignal; userId?: string } = {},
+    method,
+  }: { body?: unknown; signal?: AbortSignal; userId?: string; method?: "PATCH" } = {},
 ): Promise<T> {
   const session = (await supabase?.auth.getSession())?.data.session;
   if (userId && session?.user.id !== userId)
@@ -26,7 +27,7 @@ export async function api<T = any>(
   const timeout = setTimeout(abort, 20000);
   try {
     const response = await fetch(apiRoot + path, {
-      method: body ? "POST" : "GET",
+      method: method ?? (body ? "POST" : "GET"),
       headers: {
         ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
         ...(body ? { "Content-Type": "application/json" } : {}),
