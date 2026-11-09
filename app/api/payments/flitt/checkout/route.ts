@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bearerToken, flittEnvironment, flittSignature, FLITT_TEST_AMOUNTS, FLITT_TEST_MERCHANT_ID, verifyFlittSignature, type PremiumPlan } from "@/lib/flitt";
+import { bearerToken, createFlittCheckout, flittEnvironment, FLITT_TEST_AMOUNTS, FLITT_TEST_MERCHANT_ID, type PremiumPlan } from "@/lib/flitt";
 
 export const dynamic = "force-dynamic";
 
@@ -43,33 +43,18 @@ export async function POST(request: Request) {
     order_desc: `TUTA Premium ${plan} test access`,
     amount,
     currency: "GEL",
-    sender_email: user.email || "",
     response_url: `${origin}/api/payments/flitt/return?type=premium`,
     server_callback_url: `${origin}/api/payments/flitt/callback`,
     lang: "ka",
     merchant_data: JSON.stringify({ product: `premium-${plan}`, test: true }),
   };
-  params.signature = flittSignature(params);
-
   try {
-    const response = await fetch("https://pay.flitt.com/api/checkout/url", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request: params }),
-      cache: "no-store",
-    });
-    const result = await response.json() as { response?: { response_status?: string; checkout_url?: string; error_message?: string; signature?: string } };
-    const payment = result.response;
-    if (!response.ok || payment?.response_status !== "success" || !payment.checkout_url || !verifyFlittSignature(payment)) {
+    const checkoutUrl = await createFlittCheckout(params);
+    if (!checkoutUrl) {
       await clients.admin.from("premium_payments").update({ status: "failed" }).eq("order_id", orderId);
-      return NextResponse.json({ error: "Flitt-მა სატესტო შეკვეთა ვერ შექმნა.", detail: payment?.error_message }, { status: 502 });
+      return NextResponse.json({ error: "Flitt-მა სატესტო შეკვეთა ვერ შექმნა." }, { status: 502 });
     }
-    const checkoutUrl = new URL(payment.checkout_url);
-    if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "pay.flitt.com") {
-      await clients.admin.from("premium_payments").update({ status: "failed" }).eq("order_id", orderId);
-      return NextResponse.json({ error: "Flitt-ის გადახდის ბმული არასწორია." }, { status: 502 });
-    }
-    return NextResponse.json({ checkoutUrl: checkoutUrl.toString() });
+    return NextResponse.json({ checkoutUrl }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     await clients.admin.from("premium_payments").update({ status: "failed" }).eq("order_id", orderId);
     return NextResponse.json({ error: "Flitt-თან კავშირი ვერ შედგა. სცადე ხელახლა." }, { status: 502 });

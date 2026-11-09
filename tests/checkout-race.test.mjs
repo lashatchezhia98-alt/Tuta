@@ -1,6 +1,125 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { sourceModule } from "./source-loader.mjs";
+
+test("Premium and Market return the unsigned Flitt checkout URL without marking an order paid", async () => {
+  const flitt = sourceModule("lib/flitt.ts");
+  const productId = "12345678-1234-4234-8234-123456789abc";
+  const user = { id: "account", email: "do-not-share@example.com" };
+  const orders = [];
+  const admin = {
+    from(table) {
+      if (table === "market_products") {
+        return { select: () => ({ in: async () => ({
+          data: [{ id: productId, name: "Test product", price_tetri: 499, is_active: true }],
+        }) }) };
+      }
+      return { insert: async (order) => { orders.push({ table, ...order }); return {}; } };
+    },
+  };
+  const dependencies = {
+    "@/lib/flitt": {
+      ...flitt,
+      flittEnvironment: () => ({ admin, auth: { auth: { getUser: async () => ({ data: { user } }) } } }),
+    },
+    "@/lib/platform-server": {
+      requireUser: async () => ({ user }),
+      requireFeature: async () => {},
+      checked: ({ data }) => data,
+      failure: (error) => { throw error; },
+    },
+  };
+  const checkoutUrl = "https://pay.flitt.com/merchants/test/index.html?token=fixture";
+  const savedFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://pay.flitt.com/api/checkout/url");
+    assert.equal(init.redirect, "error");
+    const { request } = JSON.parse(init.body);
+    assert.equal(request.signature, flitt.flittSignature(request));
+    assert.equal(request.amount, 499);
+    assert.equal(request.currency, "GEL");
+    assert.equal(request.sender_email, undefined);
+    assert.equal(request.address, undefined);
+    return Response.json({ response: { checkout_url: checkoutUrl, payment_id: "12345", response_status: "success" } });
+  };
+  try {
+    for (const [path, body] of [
+      ["api/payments/flitt/checkout", { plan: "monthly" }],
+      ["api/market/checkout", { recipientName: "Test Recipient", address: "Test address", items: [{ productId, quantity: 1 }] }],
+    ]) {
+      const route = sourceModule(`app/${path}/route.ts`, dependencies);
+      const response = await route.POST(new Request(`https://tutahealth.ge/${path}`, {
+        method: "POST", headers: { Authorization: "Bearer fixture" }, body: JSON.stringify(body),
+      }));
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).checkoutUrl, checkoutUrl);
+    }
+    assert.deepEqual(orders.map(({ table, status, mode }) => [table, status, mode]), [
+      ["premium_payments", "pending", "test"], ["market_orders", "pending", "test"],
+    ]);
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+});
+
+test("checkout rejects untrusted URLs, provider errors, and a bad signature when supplied", async () => {
+  const flitt = sourceModule("lib/flitt.ts");
+  const savedFetch = globalThis.fetch;
+  try {
+    for (const response of [
+      { checkout_url: "https://pay.flitt.com.attacker.test/checkout" },
+      { checkout_url: "https://pay.flitt.com:444/checkout" },
+      { checkout_url: "https://username@pay.flitt.com/checkout" },
+      { checkout_url: "http://pay.flitt.com/checkout" },
+      { checkout_url: "not a URL" },
+      { checkout_url: "https://pay.flitt.com/checkout", signature: "0".repeat(40) },
+      { checkout_url: "https://pay.flitt.com/checkout", response_status: "failure" },
+    ]) {
+      globalThis.fetch = async () => Response.json({ response: { response_status: "success", ...response } });
+      assert.equal(await flitt.createFlittCheckout({}), null);
+    }
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+});
+
+test("a sandbox-signed callback cannot approve a payment Flitt still reports as created", async () => {
+  const flitt = sourceModule("lib/flitt.ts");
+  const order = {
+    order_id: "tuta-12345678-1234-4234-8234-123456789abc",
+    merchant_id: flitt.FLITT_TEST_MERCHANT_ID,
+    currency: "GEL",
+    amount: "499",
+    payment_id: "12345",
+    response_status: "success",
+  };
+  const payload = { ...order, order_status: "approved" };
+  const provider = { ...order, order_status: "created" };
+  const route = sourceModule("app/api/payments/flitt/callback/route.ts", {
+    "@/lib/flitt": {
+      ...flitt,
+      flittEnvironment: () => ({ admin: { rpc: () => assert.fail("Unconfirmed payment cannot be applied") } }),
+    },
+  });
+  const savedFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, "https://pay.flitt.com/api/status/order_id");
+    const { request } = JSON.parse(init.body);
+    assert.equal(request.order_id, order.order_id);
+    assert.equal(request.signature, flitt.flittSignature(request));
+    return Response.json({ response: { ...provider, signature: flitt.flittSignature(provider) } });
+  };
+  try {
+    const response = await route.POST(new Request("https://tutahealth.ge/api/payments/flitt/callback", {
+      method: "POST",
+      body: JSON.stringify({ ...payload, signature: flitt.flittSignature(payload) }),
+    }));
+    assert.equal(response.status, 409);
+  } finally {
+    globalThis.fetch = savedFetch;
+  }
+});
+
 test("web checkout discards an old account response, including A → B → A", async () => {
   const states = [],
     effects = [];

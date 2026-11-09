@@ -198,6 +198,9 @@ test("market callbacks go through the atomic database guard and never directly o
     "@/lib/flitt": {
       FLITT_TEST_MERCHANT_ID: 1549901,
       verifyFlittSignature: () => true,
+      verifyFlittOrderStatus: async (order, id, status, amount) =>
+        order === "tuta-market-12345678-1234-4234-8234-123456789abc" &&
+        id === "12345" && status === "processing" && amount === 499,
       flittEnvironment: () => ({
         admin: {
           rpc: async (name, params) => {
@@ -213,7 +216,8 @@ test("market callbacks go through the atomic database guard and never directly o
     new Request("https://tutahealth.ge/api/payments/flitt/callback", {
       method: "POST",
       body: JSON.stringify({
-        order_id: "tuta-market-test",
+        order_id: "tuta-market-12345678-1234-4234-8234-123456789abc",
+        payment_id: "12345",
         order_status: "processing",
         amount: 499,
         currency: "GEL",
@@ -223,5 +227,5 @@ test("market callbacks go through the atomic database guard and never directly o
   );
   assert.equal(response.status, 200);
   assert.equal(parameters.p_status, "processing");
-  assert.equal(parameters.p_payment_id, null);
+  assert.equal(parameters.p_payment_id, "12345");
 });

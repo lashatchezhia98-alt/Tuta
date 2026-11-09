@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   flittEnvironment,
   FLITT_TEST_MERCHANT_ID,
+  verifyFlittOrderStatus,
   verifyFlittSignature,
 } from "@/lib/flitt";
 
@@ -43,12 +44,13 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   const orderId = payload.order_id;
-  const paymentId = payload.payment_id;
+  const paymentId = String(payload.payment_id ?? "");
   const status = payload.order_status;
   const merchantId = String(payload.merchant_id ?? "");
   if (
     typeof orderId !== "string" ||
-    !orderId.startsWith("tuta-") ||
+    !/^tuta-(?:market-)?[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(orderId) ||
+    !/^\d{1,32}$/.test(paymentId) ||
     merchantId !== String(FLITT_TEST_MERCHANT_ID)
   ) {
     return NextResponse.json(
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
     );
   }
   const amount = Number(payload.amount);
-  if (!Number.isInteger(amount) || payload.currency !== "GEL") {
+  if (!Number.isSafeInteger(amount) || amount <= 0 || payload.currency !== "GEL") {
     return NextResponse.json(
       { error: "Payment amount or currency is invalid." },
       { status: 400 },
@@ -77,11 +79,21 @@ export async function POST(request: Request) {
       { status: 400 },
     );
 
+  // The public sandbox key is not an authentication secret. Confirm the
+  // signed event with Flitt directly before granting access or marking it paid.
+  try {
+    if (!(await verifyFlittOrderStatus(orderId, paymentId, status, amount))) {
+      return NextResponse.json({ error: "Flitt has not confirmed this payment status." }, { status: 409 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Flitt status is temporarily unavailable." }, { status: 503 });
+  }
+
   if (orderId.startsWith("tuta-market-")) {
     const { data: accepted, error: marketUpdateError } =
       await clients.admin.rpc("apply_flitt_market_payment", {
         p_order_id: orderId,
-        p_payment_id: paymentId == null ? null : String(paymentId),
+        p_payment_id: paymentId,
         p_status: status,
         p_amount: amount,
       });
@@ -102,7 +114,7 @@ export async function POST(request: Request) {
     "apply_flitt_premium_payment",
     {
       p_order_id: orderId,
-      p_payment_id: paymentId == null ? null : String(paymentId),
+      p_payment_id: paymentId,
       p_status: status,
       p_amount: amount,
     },

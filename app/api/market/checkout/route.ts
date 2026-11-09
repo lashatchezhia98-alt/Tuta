@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bearerToken, flittEnvironment, flittSignature, FLITT_TEST_MERCHANT_ID, verifyFlittSignature } from "@/lib/flitt";
+import { bearerToken, createFlittCheckout, flittEnvironment, FLITT_TEST_MERCHANT_ID } from "@/lib/flitt";
 import { ApiError, checked, failure, requireFeature, requireUser } from "@/lib/platform-server";
 
 export const dynamic = "force-dynamic";
@@ -35,18 +35,13 @@ export async function POST(request: Request) {
     checked(await clients.admin.from("market_orders").insert({ order_id: orderId, user_id: user.id, items: snapshot, total_tetri: total, recipient_name: recipient, address, latitude: lat, longitude: lon, status: "pending", mode: "test" }));
     const origin = new URL(request.url).origin;
     const params: Record<string, unknown> = {
-      order_id: orderId, merchant_id: FLITT_TEST_MERCHANT_ID, order_desc: `Tuta market order (${snapshot.length} items)`, amount: total, currency: "GEL", sender_email: user.email || "", response_url: `${origin}/api/payments/flitt/return?type=market&order=${encodeURIComponent(orderId)}`, server_callback_url: `${origin}/api/payments/flitt/callback`, lang: "ka", merchant_data: JSON.stringify({ type: "market-order", mode: "test" }),
+      order_id: orderId, merchant_id: FLITT_TEST_MERCHANT_ID, order_desc: `Tuta market order (${snapshot.length} items)`, amount: total, currency: "GEL", response_url: `${origin}/api/payments/flitt/return?type=market&order=${encodeURIComponent(orderId)}`, server_callback_url: `${origin}/api/payments/flitt/callback`, lang: "ka", merchant_data: JSON.stringify({ type: "market-order", mode: "test" }),
     };
-    params.signature = flittSignature(params);
-    const response = await fetch("https://pay.flitt.com/api/checkout/url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ request: params }), cache: "no-store" });
-    const result = await response.json() as { response?: { response_status?: string; checkout_url?: string; error_message?: string; signature?: string } };
-    const payment = result.response;
-    if (!response.ok || payment?.response_status !== "success" || !payment.checkout_url || !verifyFlittSignature(payment)) {
+    const checkoutUrl = await createFlittCheckout(params).catch(() => null);
+    if (!checkoutUrl) {
       await clients.admin.from("market_orders").update({ status: "declined", updated_at: new Date().toISOString() }).eq("order_id", orderId);
       throw new ApiError(502, "სატესტო გადახდის ბმული ვერ შეიქმნა. სცადე მოგვიანებით.");
     }
-    const checkoutUrl = new URL(payment.checkout_url);
-    if (checkoutUrl.protocol !== "https:" || checkoutUrl.hostname !== "pay.flitt.com") throw new ApiError(502, "გადახდის ბმული ვერ დადასტურდა.");
-    return NextResponse.json({ checkoutUrl: checkoutUrl.toString(), testMode: true }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ checkoutUrl, testMode: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { return failure(error); }
 }

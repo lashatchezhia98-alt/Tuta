@@ -22,6 +22,52 @@ export function verifyFlittSignature(params: Record<string, unknown>) {
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
 
+async function flittRequest(path: "checkout/url" | "status/order_id", params: Record<string, unknown>) {
+  const response = await fetch(`https://pay.flitt.com/api/${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ request: { ...params, signature: flittSignature(params) } }),
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(12_000),
+  });
+  const result = await response.json() as { response?: Record<string, unknown> } | null;
+  const payment = result?.response;
+  if (!response.ok || payment?.response_status !== "success") return null;
+  return payment;
+}
+
+export async function createFlittCheckout(params: Record<string, unknown>) {
+  const payment = await flittRequest("checkout/url", params);
+  if (!payment || typeof payment.checkout_url !== "string") return null;
+  // This HTTPS endpoint returns unsigned checkout URLs. A supplied signature
+  // still must be valid; this response can never authorize a payment.
+  if (Object.hasOwn(payment, "signature") && !verifyFlittSignature(payment)) return null;
+  try {
+    const url = new URL(payment.checkout_url);
+    return url.origin === "https://pay.flitt.com" && !url.username && !url.password
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function verifyFlittOrderStatus(orderId: string, paymentId: string, status: string, amount: number) {
+  const payment = await flittRequest("status/order_id", {
+    order_id: orderId,
+    merchant_id: FLITT_TEST_MERCHANT_ID,
+  });
+  return Boolean(
+    payment && verifyFlittSignature(payment) &&
+    payment.order_id === orderId &&
+    String(payment.payment_id ?? "") === paymentId &&
+    String(payment.merchant_id ?? "") === String(FLITT_TEST_MERCHANT_ID) &&
+    payment.currency === "GEL" && Number(payment.amount) === amount &&
+    payment.order_status === status,
+  );
+}
+
 export function flittEnvironment() {
   if (process.env.FLITT_MODE && process.env.FLITT_MODE !== "test") return null;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
