@@ -1,5 +1,5 @@
 "use client";
-import { SiteCopyText } from "@/components/site-copy-provider";
+import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -254,6 +254,7 @@ function PinMap({
 
 export default function Marketplace({ lang }: { lang: Lang }) {
   const ka = lang === "ka";
+  const addLabel = useSiteCopyText("market.add", lang);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<Category | "all">("all");
@@ -550,9 +551,9 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                     <button
                       type="button"
                       onClick={() => add(product)}
-                      aria-label={`${ka ? "კალათაში დამატება" : "Add to cart"}: ${product.name}`}
+                      aria-label={`${addLabel}: ${product.name}`}
                     >
-                      {ka ? "კალათაში დამატება" : "Add to cart"}
+                      <SiteCopyText id="market.add" lang={lang}/>
                     </button>
                   </div>
                 </div>
@@ -632,23 +633,21 @@ export default function Marketplace({ lang }: { lang: Lang }) {
               </p>
             )}
             <div className="market-total">
-              <span>{ka ? "ჯამი" : "Total"}</span>
+              <span><SiteCopyText id="market.total" lang={lang}/></span>
               <strong>{(total / 100).toFixed(2)} ₾</strong>
             </div>
             <div className="market-delivery">
               <div>
                 <span className="inner-kicker">
-                  {ka ? "მიწოდება" : "DELIVERY"}
+                  <SiteCopyText id="market.delivery" lang={lang}/>
                 </span>
-                <h3>{ka ? "სად მოგიტანოთ?" : "Where should we deliver?"}</h3>
+                <h3><SiteCopyText id="market.deliveryTitle" lang={lang}/></h3>
                 <p>
-                  {ka
-                    ? "მისამართი საჭიროა მხოლოდ შეკვეთის მისაწოდებლად."
-                    : "Your address is only used to deliver this order."}
+                  <SiteCopyText id="market.deliveryNote" lang={lang}/>
                 </p>
               </div>
               <label>
-                {ka ? "მიმღების სახელი" : "Recipient name"}
+                <SiteCopyText id="market.recipient" lang={lang}/>
                 <input
                   required
                   minLength={2}
@@ -659,7 +658,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                 />
               </label>
               <label>
-                {ka ? "მისამართი" : "Delivery address"}
+                <SiteCopyText id="market.address" lang={lang}/>
                 <textarea
                   required
                   minLength={5}
@@ -676,12 +675,10 @@ export default function Marketplace({ lang }: { lang: Lang }) {
               </label>
               <div className="market-pin-label">
                 <strong>
-                  {ka ? "მონიშნე პინი რუკაზე" : "Drop a pin on the map"}
+                  <SiteCopyText id="market.pin" lang={lang}/>
                 </strong>
                 <span>
-                  {ka
-                    ? "დააჭირე რუკაზე მიწოდების ადგილის ასარჩევად."
-                    : "Click the map to choose the delivery location."}
+                  <SiteCopyText id="market.pinNote" lang={lang}/>
                 </span>
               </div>
               <PinMap lang={lang} pin={pin || initialPin} onChange={setPin} />
@@ -714,14 +711,10 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                 ? ka
                   ? "გადასვლა…"
                   : "Opening checkout…"
-                : ka
-                  ? "გადახდა · სატესტო რეჟიმი"
-                  : "Continue to payment · test mode"}
+                : <SiteCopyText id="market.pay" lang={lang}/>}
             </button>
             <p className="market-test-note">
-              {ka
-                ? "გადახდა ახლა სატესტო რეჟიმში მუშაობს; რეალური ჩამოჭრა გამორთულია."
-                : "Payments currently run in test mode; no real charge is made."}
+              <SiteCopyText id="market.testPaymentNote" lang={lang}/>
             </p>
           </section>
         )}

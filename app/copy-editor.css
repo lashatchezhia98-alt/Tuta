@@ -16,6 +16,9 @@
 .copy-editor iframe { display: block; width: 100%; height: min(70vh, 46rem); min-height: 28rem; border: 1px solid #1e1b2e30; border-radius: .8rem; background: #f9f8fc; }
 .site-copy-preview-text { outline: 1px dashed #8067a3; outline-offset: 2px; cursor: pointer; overflow-wrap: anywhere; }
 .site-copy-preview-text:hover { outline: 2px solid #8067a3; }
+.copy-member-preview { display: grid; gap: .5rem; padding: 1rem; max-height: min(65vh, 37rem); overflow: auto; border: 1px solid #1e1b2e30; border-radius: .8rem; background: #f9f8fc; }
+.copy-member-preview h2 { font-size: 1.1rem; font-weight: 650; margin: .2rem 0; }
+.copy-member-preview button { text-align: start; white-space: pre-wrap; overflow-wrap: anywhere; }
 .admin-invites form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
 .admin-invites input { flex: 1 1 15rem; min-width: 0; }
 .admin-invite-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding: .85rem 0; border-bottom: 1px solid #1e1b2e20; }

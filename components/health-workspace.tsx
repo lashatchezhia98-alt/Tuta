@@ -1,4 +1,5 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
 import { useEffect, useState, useRef, Suspense, Fragment } from "react";
 import { useMembership } from "@/lib/use-membership";
 import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
@@ -20,6 +21,22 @@ import { symptoms } from "../mobile/src/symptoms.mjs";
 import { healthReport, reminderCalendar } from "@/lib/health-report";
 import CycleOverview from "./cycle-overview";
 import CycleEducation from "./cycle-education";
+
+const workspaceNavigation = [
+  ["/community", "nav.community"],
+  ["/app/dashboard", "nav.period"],
+  ["/app/log", "workspace.nav.journal"],
+  ["/app/insights", "workspace.nav.insights"],
+  ["/app/report", "workspace.nav.report"],
+  ["/blog", "nav.library"],
+  ["/consultation", "workspace.nav.care"],
+  ["/premium", "nav.premium"],
+  ["/app/settings", "workspace.nav.settings"],
+] as const;
+
+const workspaceTitles: Record<string, string> = {
+  dashboard: "tracker.title", log: "journal.title", insights: "insights.title", report: "report.title",
+};
 
 type Lang = "ka" | "en";
 type Props = {
@@ -64,50 +81,26 @@ export default function HealthWorkspace({
         className="workspace-nav"
         aria-label={ka ? "პირადი სივრცე" : "My space"}
       >
-        {[
-          ["/community", "მთავარი", "Home"],
-          ["/app/dashboard", "პერიოდი", "Period"],
-          ["/app/log", "დღიური", "Journal"],
-          ["/app/insights", "ანალიზი", "Insights"],
-          ["/app/report", "ანგარიში", "Report"],
-          ["/blog", "ბლოგები", "Library"],
-          ["/consultation", "ექიმები და ჯავშნები", "Doctors & bookings"],
-          ["/premium", "პრემიუმი", "Premium"],
-          ["/app/settings", "პარამეტრები", "Settings"],
-        ]
+        {workspaceNavigation
           .filter(([href]) => {
             const id = featureForRoute(href);
             return !id || features[id];
           })
-          .map(([href, a, b]) => (
+          .map(([href, id]) => (
             <Link
               key={href}
               href={href}
               aria-current={href.endsWith("/" + kind) ? "page" : undefined}
             >
-              {ka ? a : b}
+              <SiteCopyText id={id} lang={lang}/>
             </Link>
           ))}
       </nav>
       <main className="workspace-main">
         <p className="inner-kicker">
-          {ka ? "თუთა · შენი სივრცე" : "TUTA · YOUR SPACE"}
+          <SiteCopyText id="workspace.kicker" lang={lang}/>
         </p>
-        <h1>
-          {ka
-            ? {
-                dashboard: "ჩემი პერიოდი",
-                log: "როგორ ხარ დღეს?",
-                insights: "შენი ისტორია",
-                report: "ექიმისთვის ანგარიში",
-              }[kind] || "შენი სივრცე"
-            : {
-                dashboard: "My period",
-                log: "Your daily check-in",
-                insights: "Your history",
-                report: "Doctor report",
-              }[kind] || "Your space"}
-        </h1>
+        <h1><SiteCopyText id={workspaceTitles[kind] || "workspace.title"} lang={lang}/></h1>
         {!health.loaded ? (
           <p role="status">{ka ? "იტვირთება…" : "Loading…"}</p>
         ) : !health.session ? (
@@ -305,20 +298,12 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
             })}
           </div>
           <p>
-            {ka
-              ? "იისფერი: ჩაწერილი პერიოდი · კონტური: პროგნოზი · ყვითელი: სავარაუდო ნაყოფიერი დღეები"
-              : "Purple: recorded period · Outline: prediction · Yellow: estimated fertile days"}
+            <SiteCopyText id="tracker.legend" lang={lang}/>
           </p>
         </section>
         <section className="workspace-card">
           <h2>
-            {existing
-              ? ka
-                ? "პერიოდის შეცვლა"
-                : "Edit period"
-              : ka
-                ? "პერიოდის დამატება"
-                : "Log a period"}
+            <SiteCopyText id={existing ? "tracker.edit" : "tracker.add"} lang={lang}/>
           </h2>
           <form
             onSubmit={(e) => {
@@ -328,7 +313,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
             className="workspace-form"
           >
             <label>
-              {ka ? "დაწყების თარიღი" : "Start date"}
+              <SiteCopyText id="tracker.startDate" lang={lang}/>
               <input
                 type="date"
                 required
@@ -344,7 +329,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
               />
             </label>
             <label>
-              {ka ? "ჩაწერილი სისხლდენის დღეები" : "Recorded bleeding days"}
+              <SiteCopyText id="tracker.bleedingDays" lang={lang}/>
               <input
                 type="number"
                 min={1}
@@ -355,7 +340,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
               />
             </label>
             <label>
-              {ka ? "საწყისი ციკლის ხანგრძლივობა" : "Initial cycle length"}
+              <SiteCopyText id="tracker.initialLength" lang={lang}/>
               <input
                 type="number"
                 min={21}
@@ -365,9 +350,9 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                 onChange={(e) => setLength(Number(e.target.value))}
               />
             </label>
-            <p>{ka ? "28 დღე საწყისი ვარაუდია. 21–45 დღე მხოლოდ ამ პარამეტრის ზღვარია; რეალური ციკლები ამ დიაპაზონით არ იზღუდება. 3 დასრულებული ციკლის შემდეგ პროგნოზი შენს ისტორიას ეყრდნობა." : "28 days is a starting assumption. 21–45 days is only this setting’s limit, not a restriction on recorded cycles. After 3 completed cycles, estimates use your history."}</p>
+            <p><SiteCopyText id="tracker.initialNote" lang={lang}/></p>
             <button disabled={busy || selected > today}>
-              {ka ? "შენახვა" : "Save"}
+              <SiteCopyText id="tracker.save" lang={lang}/>
             </button>
             {existing && (
               <button
@@ -384,22 +369,20 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                     void persist(true);
                 }}
               >
-                {ka ? "პერიოდის წაშლა" : "Delete period"}
+                <SiteCopyText id="tracker.delete" lang={lang}/>
               </button>
             )}
           </form>
           <p role="status">{message}</p>
           <Link href={`/app/log?date=${selected}`}>
-            {ka ? "ამ დღის დღიური" : "Journal for this day"}
+            <SiteCopyText id="tracker.dayJournal" lang={lang}/>
           </Link>
         </section>
       </div>
       <section className="workspace-card">
-        <h2>{ka ? "შეხსენებები" : "Reminders"}</h2>
+        <h2><SiteCopyText id="tracker.reminders" lang={lang}/></h2>
         <p>
-          {ka
-            ? "გადაიტანე სავარაუდო თარიღები შენს კალენდარში. იმპორტის შემდეგ შეხსენებები კალენდრის აპში იმართება და ავტომატურად არ ახლდება."
-            : "Import estimated dates into your calendar. Reminders are managed by your calendar app and do not update automatically."}
+          <SiteCopyText id="tracker.reminderNote" lang={lang}/>
         </p>
         <button
           disabled={
@@ -415,13 +398,11 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
             )
           }
         >
-          {ka
-            ? "კალენდრის შეხსენებების ჩამოტვირთვა"
-            : "Download calendar reminders"}
+          <SiteCopyText id="tracker.download" lang={lang}/>
         </button>
       </section>
       <section className="workspace-card">
-        <h2>{ka ? "პერიოდების ისტორია" : "Period history"}</h2>
+        <h2><SiteCopyText id="tracker.history" lang={lang}/></h2>
         {[...data.periods].reverse().map((p) => (
           <button
             key={p.start}
@@ -538,7 +519,7 @@ function Journal({ data, save, lang }: Props) {
     >
       <fieldset disabled={busy} className="workspace-form">
         <label>
-          {ka ? "ჩანაწერის თარიღი" : "Entry date"}
+          <SiteCopyText id="journal.date" lang={lang}/>
           <input
             type="date"
             required
@@ -548,35 +529,23 @@ function Journal({ data, save, lang }: Props) {
           />
         </label>
         <fieldset>
-          <legend>{ka ? "განწყობა" : "Mood"}</legend>
+          <legend><SiteCopyText id="journal.mood" lang={lang}/></legend>
           <div className="workspace-row">
-            {[
-              ["happy", "ბედნიერი", "Happy"],
-              ["calm", "მშვიდი", "Calm"],
-              ["low", "სევდიანი", "Low"],
-              ["tense", "დაძაბული", "Tense"],
-              ["tired", "დაღლილი", "Tired"],
-            ].map(([id, a, b]) => (
+            {["happy", "calm", "low", "tense", "tired"].map((id) => (
               <button
                 type="button"
                 key={id}
                 aria-pressed={entry.mood === id}
                 onClick={() => change({ mood: id })}
               >
-                {ka ? a : b}
+                <SiteCopyText id={`journal.mood.${id}`} lang={lang}/>
               </button>
             ))}
           </div>
         </fieldset>
         {(["energy", "pain"] as const).map((key) => (
           <label key={key}>
-            {key === "energy"
-              ? ka
-                ? "ენერგია"
-                : "Energy"
-              : ka
-                ? "ტკივილი"
-                : "Pain"}{" "}
+            <SiteCopyText id={`journal.${key}`} lang={lang}/>{" "}
             (1–5)
             <input
               type="number"
@@ -589,7 +558,7 @@ function Journal({ data, save, lang }: Props) {
           </label>
         ))}
         <label>
-          {ka ? "ნაკადი" : "Flow"}
+          <SiteCopyText id="journal.flow" lang={lang}/>
           <select
             value={entry.flow}
             onChange={(e) => change({ flow: e.target.value })}
@@ -608,9 +577,9 @@ function Journal({ data, save, lang }: Props) {
           </select>
         </label>
         <fieldset>
-          <legend>{ka ? "სიმპტომები" : "Symptoms"}</legend>
+          <legend><SiteCopyText id="journal.symptoms" lang={lang}/></legend>
           <label>
-            {ka ? "სიმპტომის ძიება" : "Find a symptom"}
+            <SiteCopyText id="journal.findSymptom" lang={lang}/>
             <input value={query} onChange={(e) => setQuery(e.target.value)} />
           </label>
           <div className="symptom-choices">
@@ -649,7 +618,7 @@ function Journal({ data, save, lang }: Props) {
               </button>
             ))}
           <label>
-            {ka ? "სხვა სიმპტომი" : "Custom symptom"}
+            <SiteCopyText id="journal.customSymptom" lang={lang}/>
             <input
               maxLength={60}
               value={custom}
@@ -666,11 +635,11 @@ function Journal({ data, save, lang }: Props) {
               setCustom("");
             }}
           >
-            {ka ? "დამატება" : "Add"}
+            <SiteCopyText id="journal.add" lang={lang}/>
           </button>
         </fieldset>
         <label>
-          {ka ? "შენიშვნა" : "Notes"}
+          <SiteCopyText id="journal.notes" lang={lang}/>
           <textarea
             maxLength={2000}
             rows={4}
@@ -679,7 +648,7 @@ function Journal({ data, save, lang }: Props) {
           />
         </label>
         <button disabled={busy}>
-          {ka ? "ჩანაწერის შენახვა" : "Save check-in"}
+          <SiteCopyText id="journal.save" lang={lang}/>
         </button>
         {data.logs.some((l) => l.date === date) && (
           <button
@@ -696,7 +665,7 @@ function Journal({ data, save, lang }: Props) {
                 void submit(true);
             }}
           >
-            {ka ? "ჩანაწერის წაშლა" : "Delete entry"}
+            <SiteCopyText id="journal.delete" lang={lang}/>
           </button>
         )}
         <p role="status">{message}</p>
@@ -720,9 +689,7 @@ function PremiumReport({ data, lang }: { data: HealthData; lang: Lang }) {
             ? lang === "ka"
               ? "პრემიუმის სტატუსი ვერ შემოწმდა. განაახლე გვერდი."
               : "Could not verify membership. Reload this page."
-            : lang === "ka"
-              ? "🔒 ექიმისთვის ანგარიშის მომზადება პრემიუმის ფუნქციაა."
-              : "🔒 Doctor reports are a Premium feature."}
+            : <>🔒 <SiteCopyText id="report.locked" lang={lang}/></>}
       </p>
       {state === "locked" && (
         <Link href="/premium">
@@ -755,9 +722,7 @@ function HealthInsights({
         {summary.from} / {summary.today}
       </p>
       <p>
-        {ka
-          ? "ბოლო 6 თვის ჩაწერილი მონაცემები. სავარაუდო ფაზები არ არის კლინიკურად დადასტურებული."
-          : "Recorded data from the last 6 months. Estimated phases are not clinically confirmed."}
+        <SiteCopyText id="insights.periodNote" lang={lang}/>
       </p>
       {report && (
         <button
@@ -773,31 +738,29 @@ function HealthInsights({
               window.print();
           }}
         >
-          {ka ? "ბეჭდვა / PDF-ად შენახვა" : "Print / Save as PDF"}
+          <SiteCopyText id="report.download" lang={lang}/>
         </button>
       )}
       <div className="workspace-grid">
         <section className="workspace-card">
-          <h2>{ka ? "ციკლების ხანგრძლივობა" : "Cycle lengths"}</h2>
+          <h2><SiteCopyText id="insights.lengths" lang={lang}/></h2>
           {!summary.cycles.length ? (
             <p>
-              {ka
-                ? "დასრულებული ციკლი ჯერ არ გაქვს ჩაწერილი."
-                : "No completed cycles recorded."}
+              <SiteCopyText id="insights.noCycles" lang={lang}/>
             </p>
           ) : (
             <>
               <p>
-                {ka ? "საშუალო" : "Average"}: {summary.mean?.toFixed(1)}{" "}
+                <SiteCopyText id="insights.average" lang={lang}/>: {summary.mean?.toFixed(1)}{" "}
                 {ka ? "დღე" : "days"}
               </p>
               <table>
                 <thead>
                   <tr>
-                    <th>{ka ? "დაწყება" : "Start"}</th>
-                    <th>{ka ? "დღეები" : "Days"}</th>
-                    <th>{ka ? "პერიოდი" : "Bleeding"}</th>
-                    <th>{ka ? "შენიშვნა" : "Flag"}</th>
+                    <th><SiteCopyText id="insights.start" lang={lang}/></th>
+                    <th><SiteCopyText id="insights.days" lang={lang}/></th>
+                    <th><SiteCopyText id="insights.bleeding" lang={lang}/></th>
+                    <th><SiteCopyText id="insights.flag" lang={lang}/></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -827,7 +790,7 @@ function HealthInsights({
           )}
         </section>
         <section className="workspace-card">
-          <h2>{ka ? "სიმპტომების სიხშირე" : "Symptom frequency"}</h2>
+          <h2><SiteCopyText id="insights.symptomFrequency" lang={lang}/></h2>
           <p>
             {ka
               ? "დათვლილია დღეები, არა სიმპტომის სიმძიმე."
@@ -876,7 +839,7 @@ function HealthInsights({
         )}
       </section>
       <section className="workspace-card">
-        <h2>{ka ? "განმეორებადი სიმპტომები" : "Repeating symptom patterns"}</h2>
+        <h2><SiteCopyText id="insights.patterns" lang={lang}/></h2>
         <p>
           {ka
             ? "მთელ ისტორიაში, სულ მცირე 3 დასრულებული ციკლის ერთსა და იმავე სავარაუდო ფაზაში. ეს დიაგნოზი არ არის."

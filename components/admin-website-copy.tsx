@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { copyFields, copyPages, emptyCopy, getCopyText, validateCopy, type CopyLanguage, type CopyOverrides } from "@/lib/site-copy";
+import { copyFields, copyPages, memberCopyPages, emptyCopy, getCopyText, validateCopy, type CopyLanguage, type CopyOverrides } from "@/lib/site-copy";
 
 type EditorState = { draft: CopyOverrides; published: CopyOverrides; revision: number; published_at: string | null };
 type Action = "save" | "publish";
@@ -13,6 +13,7 @@ export default function AdminWebsiteCopy({ lang }: { lang: CopyLanguage }) {
   const [saved, setSaved] = useState<EditorState | null>(null);
   const [draft, setDraft] = useState(emptyCopy);
   const [page, setPage] = useState<string>(startingPage[0]);
+  const [audience, setAudience] = useState<"public" | "member">("public");
   const [language, setLanguage] = useState<CopyLanguage>("ka");
   const [selected, setSelected] = useState("home.title");
   const [query, setQuery] = useState("");
@@ -21,10 +22,11 @@ export default function AdminWebsiteCopy({ lang }: { lang: CopyLanguage }) {
   const [error, setError] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
-  const activePage = copyPages.find(item => item[0] === page) ?? startingPage;
-  const pageFields = copyFields.filter(item => activePage[3].some(prefix => item.id.startsWith(prefix)));
+  const pages = audience === "member" ? memberCopyPages : copyPages;
+  const activePage = pages.find(item => item[0] === page) ?? pages[0];
+  const pageFields = [...new Set(activePage[3].flatMap(prefix => copyFields.filter(item => item.id.startsWith(prefix))))];
   const visible = pageFields.filter(item => [item[language], getCopyText(draft, item.id, language), item.id].some(value => value.toLowerCase().includes(query.trim().toLowerCase())));
-  const field = pageFields.find(item => item.id === selected) ?? visible[0] ?? pageFields[0];
+  const field = visible.find(item => item.id === selected) ?? visible[0];
   const text = field ? getCopyText(draft, field.id, language) : "";
   const dirty = !!saved && JSON.stringify(draft) !== JSON.stringify(saved.draft);
   const unpublished = !!saved && JSON.stringify(draft) !== JSON.stringify(saved.published);
@@ -51,6 +53,14 @@ export default function AdminWebsiteCopy({ lang }: { lang: CopyLanguage }) {
   const sendPreview = useCallback(() => {
     frame.current?.contentWindow?.postMessage({ type: "tuta:copy-preview:values", copy: draft, lang: language }, window.location.origin);
   }, [draft, language]);
+
+  function chooseAudience(next: "public" | "member") {
+    if (next === audience) return;
+    setAudience(next);
+    setPage(next === "member" ? memberCopyPages[0][0] : copyPages[0][0]);
+    setSelected(next === "member" ? "feed.title" : "home.title");
+    setQuery("");
+  }
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -115,8 +125,12 @@ export default function AdminWebsiteCopy({ lang }: { lang: CopyLanguage }) {
     {error && <p className="copy-editor-error" role="alert">{error}</p>}
     {saved && <div className="copy-editor-grid">
       <div className="copy-editor-controls">
+        <div className="copy-editor-actions" role="group" aria-label={ka ? "გვერდების ჯგუფი" : "Page audience"}>
+          <button type="button" aria-pressed={audience === "public"} onClick={() => chooseAudience("public")}>{ka ? "საჯარო გვერდები" : "Public pages"}</button>
+          <button type="button" aria-pressed={audience === "member"} onClick={() => chooseAudience("member")}>{ka ? "შესული მომხმარებლის გვერდები" : "Signed-in pages"}</button>
+        </div>
         <label>{ka ? "გვერდი" : "Page"}<select value={page} onChange={event => { setPage(event.target.value); setSelected(""); setQuery(""); }}>
-          {copyPages.map(([href, label, english]) => <option key={href} value={href}>{ka ? label : english}</option>)}
+          {pages.map(([href, label, english]) => <option key={href} value={href}>{ka ? label : english}</option>)}
         </select></label>
         <div className="copy-editor-actions" role="group" aria-label={ka ? "ტექსტის ენა" : "Copy language"}>
           <button type="button" aria-pressed={language === "ka"} onClick={() => { setLanguage("ka"); setQuery(""); }}>ქართული</button>
@@ -131,9 +145,23 @@ export default function AdminWebsiteCopy({ lang }: { lang: CopyLanguage }) {
         <button type="button" onClick={restore} disabled={!field || busy || !(field.id in draft[language])}>{ka ? "საწყისი ტექსტის აღდგენა" : "Restore default"}</button>
       </div>
       <div className="copy-editor-preview">
-        <strong>{ka ? "ვებსაიტის წინასწარი ხედი" : "Website preview"}</strong>
-        <p>{ka ? "მონიშნულ ტექსტზე დაჭერით მისი ველი გაიხსნება." : "Click an outlined text to open its field."}</p>
-        <iframe ref={frame} title={ka ? "ვებსაიტის წინასწარი ხედი" : "Website preview"} sandbox="allow-scripts allow-same-origin" src={`${page}?copyPreview=${language}`} onLoad={sendPreview}/>
+        {audience === "member" ? <>
+          <strong>{ka ? "ტექსტების წინასწარი ხედი" : "Copy preview"}</strong>
+          <p>{ka ? "აქ მხოლოდ ინტერფეისის ტექსტებია. მომხმარებლის პირადი მონაცემები არ იტვირთება." : "Only interface text is shown here. No private account data is loaded."}</p>
+          <div className="copy-member-preview" lang={language}>
+            <h2>{activePage[language === "ka" ? 1 : 2]}</h2>
+            {visible.map(item => <button
+              key={item.id}
+              type="button"
+              aria-pressed={field?.id === item.id}
+              onClick={() => { setSelected(item.id); input.current?.focus(); }}
+            >{getCopyText(draft, item.id, language)}</button>)}
+          </div>
+        </> : <>
+          <strong>{ka ? "ვებსაიტის წინასწარი ხედი" : "Website preview"}</strong>
+          <p>{ka ? "მონიშნულ ტექსტზე დაჭერით მისი ველი გაიხსნება." : "Click an outlined text to open its field."}</p>
+          <iframe ref={frame} title={ka ? "ვებსაიტის წინასწარი ხედი" : "Website preview"} sandbox="allow-scripts allow-same-origin" src={`${page}?copyPreview=${language}`} onLoad={sendPreview}/>
+        </>}
       </div>
     </div>}
   </div>;

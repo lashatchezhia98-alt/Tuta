@@ -26,7 +26,7 @@ test('late consultation actions cannot restore an old account conversation or dr
  let cleanup;
  try{
   render();cleanup=effects[0]();slots[0]={userId:'A',doctors:[{user_id:'doctor',verified_doctors:{first_name:'Test',last_name:'Doctor'}}],slots:[],threads:[],bookings:[],premium:true};slots[3]='private A draft';
-  nodes(render(),'button').find(b=>b.props.children==='Start chat').props.onClick();await tick();user='B';authCallback('SIGNED_IN',{user:{id:'B'}});assert.equal(slots[3],'');request.resolve({ok:true,json:async()=>({thread:{id:'A-private-thread'}})});await tick();assert.equal(slots[2],'');assert.equal(slots[6],'');
+  nodes(render(),'button').find(b=>b.props.children?.props?.id==='care.startChat').props.onClick();await tick();user='B';authCallback('SIGNED_IN',{user:{id:'B'}});assert.equal(slots[3],'');request.resolve({ok:true,json:async()=>({thread:{id:'A-private-thread'}})});await tick();assert.equal(slots[2],'');assert.equal(slots[6],'');
  }finally{cleanup?.();globalThis.fetch=oldFetch}
 });
 function hookHarness({readDelay=false}={}){
@@ -92,7 +92,7 @@ const checked=response=>{if(response.error)throw new ApiError(503,'Database unav
 test('market cart starts without a fabricated pin, clamps plus buttons to 20 and stores no address',()=>{
  const state=[];let cursor=0;const storage=[],previous=globalThis.localStorage;globalThis.localStorage={setItem:(_key,value)=>storage.push(value)};
  const react={useEffect(){},useRef(initial){return state[cursor++]??={current:initial}},useMemo:fn=>fn(),useState(initial){const i=cursor++;if(!(i in state))state[i]=initial;return [state[i],value=>{state[i]=typeof value==='function'?value(state[i]):value}]}};
- const Component=sourceModule('components/marketplace.tsx',{react}).default;
+ const Component=sourceModule('components/marketplace.tsx',{react,'@/components/site-copy-provider':{useSiteCopyText:()=>'Add to cart'}}).default;
  const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
  const render=()=>{cursor=0;return Component({lang:'en'})};
  try{render();assert.equal(state[6],null);state[0]=[{id:'product',name:'Care item',description:'Test',category:'period-care',price_tetri:100}];state[1]=false;const add=nodes(render(),'button').find(b=>b.props['aria-label']==='Add to cart: Care item');add.props.onClick();for(let i=0;i<25;i++){const plus=nodes(render(),'button').find(b=>b.props['aria-label']==='Increase quantity');plus.props.onClick()}assert.equal(state[3][0].quantity,20);assert.equal(nodes(render(),'button').find(b=>b.props['aria-label']==='Increase quantity').props.disabled,true);const saved=JSON.parse(storage.at(-1));assert.deepEqual(saved,[{id:'product',quantity:20}]);assert.ok(!storage.join('').includes('recipient'))}finally{globalThis.localStorage=previous}

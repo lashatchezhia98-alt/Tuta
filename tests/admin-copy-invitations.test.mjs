@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sourceModule } from './source-loader.mjs';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 class ApiError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -23,6 +25,53 @@ test('copy registry falls back independently per language and accepts only confi
   assert.throws(() => validateCopy({ en: { 'home.title': 'x'.repeat(3501) } }));
   assert.throws(() => validateCopy(JSON.parse('{"ka":{"__proto__":"bad"}}')));
   assert.deepEqual(validateCopy({ ka: { arbitrary: 'dropped' } }, false), { ka: {}, en: {} });
+});
+
+test('the signed-in catalog includes both languages and accepts drafts for each member screen', () => {
+  const { copyFields, memberCopyPages, validateCopy, getCopyText } = sourceModule('lib/site-copy.ts');
+  const expected = new Map([
+    ['/community', 'feed.write'], ['/app/dashboard', 'tracker.save'], ['/app/log', 'journal.save'],
+    ['/app/insights', 'insights.patterns'], ['/app/report', 'report.download'], ['/app/settings', 'settings.signOut'],
+    ['/app/pregnancy', 'pregnancy.save'], ['/app/partners', 'partners.create'], ['/app/journey', 'journey.open'],
+    ['/consultation', 'care.startChat'], ['/premium', 'premium.monthly'], ['/market', 'market.address'],
+    ['/market/orders', 'orders.title'],
+  ]);
+  for (const [path, , , prefixes] of memberCopyPages) {
+    const id = expected.get(path);
+    assert.ok(id, path);
+    assert.ok(prefixes.some(prefix => id.startsWith(prefix)), path);
+    const field = copyFields.find(item => item.id === id);
+    assert.ok(field?.ka && field?.en, path);
+    const draft = validateCopy({ ka: { [id]: 'საცდელი ტექსტი' }, en: { [id]: 'Example copy' } });
+    assert.equal(getCopyText(draft, id, 'ka'), 'საცდელი ტექსტი');
+    assert.equal(getCopyText(draft, id, 'en'), 'Example copy');
+    expected.delete(path);
+  }
+  assert.equal(expected.size, 0);
+});
+
+test('published journal text renders in the signed-in screen without changing the guest gate', () => {
+  const { getCopyText, validateCopy } = sourceModule('lib/site-copy.ts');
+  const overrides = validateCopy({ en: { 'journal.title': 'Your check-in', 'journal.save': 'Keep this entry' } });
+  let session = null;
+  const HealthWorkspace = sourceModule('components/health-workspace.tsx', {
+    'next/navigation': { useSearchParams: () => new URLSearchParams() },
+    '@/app/use-health-state': { useHealthState: () => ({
+      data: { periods: [], logs: [], cycleLength: 28 },
+      session, loaded: true, error: '', save: async () => {},
+    }) },
+    '@/lib/site-features': { featureForRoute: () => null, useSiteFeatures: () => ({}) },
+    '@/components/site-copy-provider': { SiteCopyText: ({ id, lang }) => getCopyText(overrides, id, lang) },
+  }).default;
+  const render = () => renderToStaticMarkup(createElement(HealthWorkspace, { kind: 'log', lang: 'en' }));
+  const guest = render();
+  assert.match(guest, /Sign in to access your records/);
+  assert.doesNotMatch(guest, /Keep this entry/);
+  session = { user: { id: 'fixture-member' } };
+  const member = render();
+  assert.match(member, /<h1>Your check-in<\/h1>/);
+  assert.match(member, /<button>Keep this entry<\/button>/);
+  assert.doesNotMatch(member, /Sign in to access your records/);
 });
 
 test('draft is private, publish updates public copy, and stale writes cannot overwrite the latest revision', async () => {

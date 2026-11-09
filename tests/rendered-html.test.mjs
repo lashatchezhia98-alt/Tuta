@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
+import { sourceModule } from './source-loader.mjs';
 
 const appRoot = new URL("../.next/server/app/", import.meta.url);
 const sourceRoot = new URL("../", import.meta.url);
@@ -32,10 +33,10 @@ test('cycle education renders age-specific context and preserves unusual observe
 
 test('journey enforces sign-in, shows load errors and routes actionable steps',async()=>{
   let health={loaded:true,session:null,error:'',data:{periods:[],logs:[]}};
-  const Component=await loadComponent('components/guided-journey.tsx',{
+  const Component=sourceModule('components/guided-journey.tsx',{
     '@/app/use-health-state':{useHealthState:()=>health},
-    'next/link':{default:({children,...props})=>createElement('a',props,children)},
-  });
+    'next/link':{__esModule:true,default:({children,...props})=>createElement('a',props,children)},
+  }).default;
   const render=()=>renderToStaticMarkup(createElement(Component,{lang:'en'}));
   assert.match(render(),/Sign in to see your journey/);
   health={...health,session:{user:{id:'test'}}};
@@ -139,8 +140,8 @@ test("community page exposes topics and the post composer", async () => {
   assert.match(source, /community_reports/);
   assert.match(source, /საჩივარი/);
   assert.match(source, /verified_doctors/);
-  assert.match(source, /რედაქტირება/);
-  assert.match(source, /წაშლა/);
+  assert.match(source, /id="feed\.edit"/);
+  assert.match(source, /id="feed\.delete"/);
   assert.match(admin, /საზოგადოების საჩივრები/);
   assert.match(admin, /Reporter identity is not shown to admins/);
   assert.match(moderationApi, /getAdminIdentity/);

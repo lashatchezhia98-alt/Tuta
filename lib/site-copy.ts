@@ -1,4 +1,6 @@
 import { aboutCards, homeCopy, pageInfo, policyCopy } from "./site-copy-defaults";
+import { memberCopyFields } from "./member-copy-defaults";
+import { extraPages } from "./page-directory";
 
 export type CopyLanguage = "ka" | "en";
 export type CopyOverrides = Record<CopyLanguage, Record<string, string>>;
@@ -20,6 +22,22 @@ export const copyPages = [
   ["/tools/period-calculator", "პერიოდის კალკულატორი", "Period calculator", ["page.period.0", "calculator.", "nav."]],
   ["/tools/ovulation-calculator", "ოვულაციის კალკულატორი", "Ovulation calculator", ["page.ovulation.0", "calculator.", "nav."]],
   ["/app/features", "ფუნქციები", "Features", ["directory.", "nav."]],
+] as const;
+
+export const memberCopyPages = [
+  ["/community", "მთავარი და პოსტები", "Home & posts", ["feed.", "nav."]],
+  ["/app/dashboard", "პერიოდის კალენდარი", "Period calendar", ["tracker.", "workspace.", "nav."]],
+  ["/app/log", "ყოველდღიური დღიური", "Daily journal", ["journal.", "workspace.", "nav."]],
+  ["/app/insights", "პერიოდის ანალიზი", "Insights", ["insights.", "workspace.", "nav."]],
+  ["/app/report", "ექიმისთვის ანგარიში", "Doctor report", ["report.", "insights.", "workspace.", "nav."]],
+  ["/app/settings", "ანგარიში და პარამეტრები", "Account & settings", ["settings.", "nav."]],
+  ["/app/pregnancy", "ორსულობა", "Pregnancy", ["extra.pregnancy.", "pregnancy."]],
+  ["/app/partners", "პარტნიორთან გაზიარება", "Partner sharing", ["extra.partners.", "partners."]],
+  ["/app/journey", "პირადი გზამკვლევი", "Guided journey", ["extra.journey.", "journey."]],
+  ["/consultation", "ექიმები, ჩატი და ჯავშნები", "Doctors, chat & appointments", ["care."]],
+  ["/premium", "პრემიუმი და გადახდა", "Premium & checkout", ["premium."]],
+  ["/market", "კალათა და შეკვეთის გაფორმება", "Cart & checkout", ["market."]],
+  ["/market/orders", "ჩემი შეკვეთები", "My orders", ["orders."]],
 ] as const;
 
 const fields = new Map<string, { ka: string; en: string; max: number }>();
@@ -112,6 +130,11 @@ const additional: Record<string, [string, string]> = {
   "calculator.empty": ["გამოთვლისთვის შეავსე ველები.","Complete the fields to estimate dates."],
 };
 for (const [key, [ka, en]] of Object.entries(additional)) add(key, ka, en);
+for (const [key, [ka, en]] of Object.entries(memberCopyFields)) add(key, ka, en);
+for (const page of extraPages) {
+  add(`extra.${page.slug}.title`, page.ka, page.en);
+  add(`extra.${page.slug}.intro`, page.description, page.english);
+}
 
 export const copyFields = Array.from(fields, ([id, field]) => ({ id, ...field }));
 

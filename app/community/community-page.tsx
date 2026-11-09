@@ -1,4 +1,5 @@
 "use client";
+import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadCommentPage, mergeComments } from "@/mobile/src/comment-pages.mjs";
@@ -76,6 +77,8 @@ export default function CommunityPage() {
   const features = useSiteFeatures();
   const featureStatus = useSiteFeaturesStatus();
   const [lang, setLang] = useState<Lang>("ka");
+  const commentPlaceholder = useSiteCopyText("feed.commentPlaceholder", lang);
+  const replyPlaceholder = useSiteCopyText("feed.replyPlaceholder", lang);
   const t = useCallback(
     (ka: string, en: string) => (lang === "ka" ? ka : en),
     [lang],
@@ -572,13 +575,10 @@ export default function CommunityPage() {
             TUTA COMMUNITY
           </p>
           <h1 className="mt-4 text-3xl font-semibold leading-tight">
-            {t("ერთად, საკუთარ რიტმში", "A space to share")}
+            {<SiteCopyText id="feed.title" lang={lang}/>}
           </h1>
           <p className="mt-4 text-sm leading-6 text-[#625B6D]">
-            {t(
-              "პოსტები მხოლოდ რეგისტრირებულ მომხმარებლებს შეუძლიათ ნახონ. შენი პირადი ციკლის ჩანაწერები ლენტში არ ჩანს.",
-              "Only registered members can see posts. Your private cycle entries do not appear in the feed.",
-            )}
+            {<SiteCopyText id="feed.intro" lang={lang}/>}
           </p>
           {isMember ? (
             <button
@@ -586,7 +586,7 @@ export default function CommunityPage() {
               onClick={openNew}
               className="mt-6 min-h-11 w-full rounded-full bg-[#1E1B2E] px-5 text-white"
             >
-              {t("პოსტის დაწერა", "Write a post")}
+              {<SiteCopyText id="feed.write" lang={lang}/>}
             </button>
           ) : null}
         </aside>
@@ -597,16 +597,10 @@ export default function CommunityPage() {
         ) : !isMember ? (
           <section className="min-w-0 rounded-3xl border border-[#E6E2EC] bg-white p-8 sm:p-12">
             <h2 className="text-2xl font-semibold">
-              {t(
-                "შედით საზოგადოების სანახავად",
-                "Sign in to view the community",
-              )}
+              {<SiteCopyText id="feed.guestTitle" lang={lang}/>}
             </h2>
             <p className="mt-3 text-[#625B6D]">
-              {t(
-                "პოსტები და კომენტარები ხელმისაწვდომია მხოლოდ რეგისტრირებული მომხმარებლებისთვის.",
-                "Posts and comments are available only to registered members.",
-              )}
+              {<SiteCopyText id="feed.guestIntro" lang={lang}/>}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
@@ -637,7 +631,7 @@ export default function CommunityPage() {
                   onClick={() => setFilter(key)}
                   className={`min-h-11 rounded-full border px-4 text-sm ${filter === key ? "border-[#1E1B2E] bg-[#FDF0CC] font-semibold" : "border-[#DCD7E5] bg-white"}`}
                 >
-                  {key === "all" ? t("ყველა", "All") : t(...names[key])}
+                  {key === "all" ? <SiteCopyText id="feed.all" lang={lang}/> : t(...names[key])}
                 </button>
               ))}
             </div>
@@ -645,14 +639,11 @@ export default function CommunityPage() {
               <div className="mb-6 rounded-3xl border border-[#D8CBE8] bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-semibold">
                   {editing
-                    ? t("პოსტის რედაქტირება", "Edit post")
-                    : t("ახალი პოსტი", "New post")}
+                    ? <SiteCopyText id="feed.editPost" lang={lang}/>
+                    : <SiteCopyText id="feed.newPost" lang={lang}/>}
                 </h2>
                 <p className="mt-2 text-sm text-[#6F687D]">
-                  {t(
-                    "პოსტი რეგისტრირებულ წევრებს გამოუჩნდებათ. ნუ გამოაქვეყნებ პირად ჯანმრთელობის მონაცემებს.",
-                    "Registered members can see this post. Avoid sharing private health details.",
-                  )}
+                  {<SiteCopyText id="feed.composerNote" lang={lang}/>}
                 </p>
                 {!editing ? (
                   <label className="mt-5 flex min-h-11 items-center gap-3 font-medium">
@@ -664,7 +655,7 @@ export default function CommunityPage() {
                       }
                       className="h-5 w-5"
                     />
-                    {t("ანონიმურად გამოქვეყნება", "Post anonymously")}
+                    {<SiteCopyText id="feed.anonymous" lang={lang}/>}
                   </label>
                 ) : (
                   <p className="mt-5 text-sm text-[#6F687D]">
@@ -678,7 +669,7 @@ export default function CommunityPage() {
                 )}
                 <fieldset className="mt-5">
                   <legend className="mb-2 font-semibold">
-                    {t("რას ეხება პოსტი?", "What is this post about?")}
+                    {<SiteCopyText id="feed.topic" lang={lang}/>}
                   </legend>
                   <div className="flex flex-wrap gap-2">
                     {topics.map((key) => (
@@ -698,7 +689,7 @@ export default function CommunityPage() {
                   className="mt-5 block font-semibold"
                   htmlFor="community-body"
                 >
-                  {t("პოსტის ტექსტი", "Post text")}
+                  {<SiteCopyText id="feed.body" lang={lang}/>}
                 </label>
                 <textarea
                   id="community-body"
@@ -715,10 +706,7 @@ export default function CommunityPage() {
                 </p>
                 {!editing ? (
                   <label className="mt-3 block text-sm font-medium">
-                    {t(
-                      "ერთი ფოტო (არასავალდებულო, მაქს. 4 მბ)",
-                      "One photo (optional, max 4 MB)",
-                    )}
+                    {<SiteCopyText id="feed.photo" lang={lang}/>}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
@@ -743,14 +731,14 @@ export default function CommunityPage() {
                     onClick={() => void save()}
                     className="min-h-11 rounded-full bg-[#1E1B2E] px-6 text-white disabled:opacity-50"
                   >
-                    {busy ? t("ინახება…", "Saving…") : t("შენახვა", "Save")}
+                    {busy ? t("ინახება…", "Saving…") : <SiteCopyText id="feed.save" lang={lang}/>}
                   </button>
                   <button
                     type="button"
                     onClick={() => setCompose(false)}
                     className="min-h-11 rounded-full border px-5"
                   >
-                    {t("გაუქმება", "Cancel")}
+                    {<SiteCopyText id="feed.cancel" lang={lang}/>}
                   </button>
                 </div>
               </div>
@@ -784,7 +772,7 @@ export default function CommunityPage() {
               </div>
             ) : posts.length === 0 ? (
               <div className="rounded-3xl border bg-white p-8">
-                {t("ჯერ პოსტები არ არის.", "No posts yet.")}
+                {<SiteCopyText id="feed.empty" lang={lang}/>}
               </div>
             ) : (
               <div className="space-y-5">
@@ -853,14 +841,14 @@ export default function CommunityPage() {
                               onClick={() => edit(post)}
                               className="min-h-11 px-2"
                             >
-                              {t("რედაქტირება", "Edit")}
+                              {<SiteCopyText id="feed.edit" lang={lang}/>}
                             </button>
                             <button
                               type="button"
                               onClick={() => void remove(post)}
                               className="min-h-11 px-2 text-red-700"
                             >
-                              {t("წაშლა", "Delete")}
+                              {<SiteCopyText id="feed.delete" lang={lang}/>}
                             </button>
                           </>
                         ) : (
@@ -873,7 +861,7 @@ export default function CommunityPage() {
                             }
                             className="min-h-11 px-2 text-[#5E4780]"
                           >
-                            {t("საჩივარი", "Report")}
+                            {<SiteCopyText id="feed.report" lang={lang}/>}
                           </button>
                         )}
                       </div>
@@ -915,7 +903,7 @@ export default function CommunityPage() {
                             onClick={() => setReportingPost(null)}
                             className="min-h-11 px-3 text-xs underline"
                           >
-                            {t("გაუქმება", "Cancel")}
+                            {<SiteCopyText id="feed.cancel" lang={lang}/>}
                           </button>
                         </div>
                       </div>
@@ -937,8 +925,8 @@ export default function CommunityPage() {
                       className="mt-5 min-h-11 rounded-full bg-[#F9F8FC] px-4 text-sm font-semibold"
                     >
                       {openComments[post.id]
-                        ? t("კომენტარების დამალვა", "Hide comments")
-                        : t("კომენტარები", "Comments")}
+                        ? <SiteCopyText id="feed.hideComments" lang={lang}/>
+                        : <SiteCopyText id="feed.comments" lang={lang}/>}
                     </button>
                     {openComments[post.id] ? (
                       <div className="mt-4 border-t pt-4">
@@ -1049,7 +1037,7 @@ export default function CommunityPage() {
                               }
                               className="mt-2 min-h-11 text-sm font-semibold text-[#5E4780]"
                             >
-                              {t("პასუხი", "Reply")}
+                              {<SiteCopyText id="feed.reply" lang={lang}/>}
                             </button>
                           </div>
                         ))}
@@ -1081,7 +1069,7 @@ export default function CommunityPage() {
                               }
                               className="min-h-11 underline"
                             >
-                              {t("გაუქმება", "Cancel")}
+                              {<SiteCopyText id="feed.cancel" lang={lang}/>}
                             </button>
                           </div>
                         ) : null}
@@ -1095,7 +1083,7 @@ export default function CommunityPage() {
                             className="sr-only"
                             htmlFor={`comment-${post.id}`}
                           >
-                            {t("კომენტარი", "Comment")}
+                            {<SiteCopyText id="feed.comment" lang={lang}/>}
                           </label>
                           <textarea
                             id={`comment-${post.id}`}
@@ -1110,8 +1098,8 @@ export default function CommunityPage() {
                             rows={2}
                             placeholder={
                               replyTo[post.id]
-                                ? t("დაწერე პასუხი…", "Write a reply…")
-                                : t("დაწერე კომენტარი…", "Write a comment…")
+                                ? replyPlaceholder
+                                : commentPlaceholder
                             }
                             className="w-full rounded-2xl border p-3"
                           />
@@ -1129,7 +1117,7 @@ export default function CommunityPage() {
                                 }
                                 className="h-5 w-5"
                               />
-                              {t("ანონიმურად პასუხი", "Reply anonymously")}
+                              {<SiteCopyText id="feed.anonymousReply" lang={lang}/>}
                             </label>
                           ) : null}
                           <button
@@ -1138,8 +1126,8 @@ export default function CommunityPage() {
                             className="mt-2 min-h-11 rounded-full bg-[#1E1B2E] px-5 text-white disabled:opacity-50"
                           >
                             {replyTo[post.id]
-                              ? t("პასუხის გაგზავნა", "Post reply")
-                              : t("გაგზავნა", "Post comment")}
+                              ? <SiteCopyText id="feed.postReply" lang={lang}/>
+                              : <SiteCopyText id="feed.postComment" lang={lang}/>}
                           </button>
                         </form>
                       </div>

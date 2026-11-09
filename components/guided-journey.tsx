@@ -1,4 +1,5 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
 import Link from 'next/link';
 import { useHealthState } from '@/app/use-health-state';
 import { trackingJourney } from '../mobile/src/cycle-guidance.mjs';
@@ -12,8 +13,8 @@ export default function GuidedJourney({lang}:{lang:'ka'|'en'}) {
   const steps = trackingJourney(health.data, lang);
   const links: Record<string,string> = {period:'/app/dashboard',log:'/app/log',insights:'/app/insights'};
   return <div className="feature-directory-grid">{steps.map(step => <section className="workspace-card" key={step.id}>
-    <p>{step.done ? (ka ? '✓ შესრულებულია' : '✓ Completed') : (ka ? 'შემდეგი ნაბიჯი' : 'Next step')}</p>
+    <p><SiteCopyText id={step.done ? 'journey.completed' : 'journey.next'} lang={lang}/></p>
     <h2>{step.title}</h2><p>{step.detail}</p>
-    <Link href={links[step.action]}>{ka ? 'გახსნა' : 'Open'} →</Link>
+    <Link href={links[step.action]}><SiteCopyText id="journey.open" lang={lang}/> →</Link>
   </section>)}</div>;
 }

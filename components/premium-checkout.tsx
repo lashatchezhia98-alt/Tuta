@@ -74,15 +74,15 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
   return <section className="inner-container premium-checkout">
     <div className="premium-checkout-card">
       <div className="premium-checkout-copy">
-        <span className="inner-kicker">{ka ? "მხოლოდ სატესტო რეჟიმი" : "TEST MODE ONLY"}</span>
+        <span className="inner-kicker"><SiteCopyText id="premium.testMode" lang={lang}/></span>
         <h2><SiteCopyText id="premium.heading" lang={lang}/></h2>
         <p><SiteCopyText id="premium.instructions" lang={lang}/></p>
         <div className="premium-plan-options" role="group" aria-label={ka ? "Premium პაკეტის არჩევა" : "Choose a Premium plan"}>
           <button type="button" className={plan === "monthly" ? "selected" : ""} aria-pressed={plan === "monthly"} onClick={() => setPlan("monthly")}>
-            <strong>4.99 ₾</strong><span>{ka ? "თვეში · 30 დღე" : "monthly · 30 days"}</span>
+            <strong>4.99 ₾</strong><span><SiteCopyText id="premium.monthly" lang={lang}/></span>
           </button>
           <button type="button" className={plan === "yearly" ? "selected" : ""} aria-pressed={plan === "yearly"} onClick={() => setPlan("yearly")}>
-            <strong>49.90 ₾</strong><span>{ka ? "წელიწადში · 2 თვე უფასოდ" : "yearly · 2 months free"}</span><em>{ka ? "წლიური შეთავაზება" : "Annual offer"}</em>
+            <strong>49.90 ₾</strong><span><SiteCopyText id="premium.yearly" lang={lang}/></span><em><SiteCopyText id="premium.annualOffer" lang={lang}/></em>
           </button>
         </div>
         <div className="premium-price"><strong>{plan === "yearly" ? "49.90 ₾" : "4.99 ₾"}</strong><span>{plan === "yearly" ? (ka ? "/ წელი · ერთჯერადი სატესტო გადახდა" : "/ year · one-time test payment") : (ka ? "/ 30 დღე · ერთჯერადი სატესტო გადახდა" : "/ 30 days · one-time test payment")}</span></div>
@@ -98,8 +98,8 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
         {!active&&<p><a href="/login">{ka?'შესვლა':'Sign in'}</a> · <a href="/register">{ka?'ანგარიშის შექმნა':'Create account'}</a></p>}
       </div>
       <aside className="premium-test-note">
-        <strong>{ka ? "სატესტო გარემო" : "Sandbox environment"}</strong>
-        <p>{ka ? "რეალური თანხა არ ჩამოგეჭრება. გადახდის გვერდზე გამოიყენე Flitt-ის სატესტო ბარათი. ყოველთვიური პაკეტი 30 დღეს, წლიური კი 1 წელს ააქტიურებს." : "No real charge is made. Use a Flitt test card on hosted checkout. Monthly access lasts 30 days; annual access lasts one year."}</p>
+        <strong><SiteCopyText id="premium.sandbox" lang={lang}/></strong>
+        <p><SiteCopyText id="premium.sandboxNote" lang={lang}/></p>
         <a href="https://docs.flitt.com/api/testing/" target="_blank" rel="noreferrer"><SiteCopyText id="premium.testCards" lang={lang}/></a>
       </aside>
     </div>

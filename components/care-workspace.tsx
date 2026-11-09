@@ -253,9 +253,9 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                       void action({ action: "start", id: d.user_id })
                     }
                   >
-                    {ka ? "მიმოწერის დაწყება" : "Start chat"}
+                    <SiteCopyText id="care.startChat" lang={lang}/>
                   </button>
-                  <h3>{ka ? "თავისუფალი დროები" : "Available appointments"}</h3>
+                  <h3><SiteCopyText id="care.slots" lang={lang}/></h3>
                   {data.slots
                     .filter((s) => s.doctor_id === d.user_id)
                     .map((s) => (
@@ -276,7 +276,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                               void action({ action: "book", id: s.id });
                           }}
                         >
-                          {ka ? "დაჯავშნა" : "Book"}
+                          <SiteCopyText id="care.book" lang={lang}/>
                         </button>
                       </div>
                     ))}
@@ -293,7 +293,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
           <section className="workspace-card">
             <h2><SiteCopyText id="care.bookings" lang={lang}/></h2>
             {!data.bookings.length && (
-              <p>{ka ? "ჯავშნები ჯერ არ გაქვს." : "No appointments yet."}</p>
+              <p><SiteCopyText id="care.noBookings" lang={lang}/></p>
             )}
             {data.bookings.map((b) => (
               <article key={b.id}>
@@ -331,7 +331,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
           <section className="workspace-card workspace-form">
             <h2><SiteCopyText id="care.messages" lang={lang}/></h2>
             <label>
-              {ka ? "აირჩიე საუბარი" : "Choose conversation"}
+              <SiteCopyText id="care.conversation" lang={lang}/>
               <select
                 value={thread}
                 disabled={busy}
@@ -354,9 +354,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
             {thread && (
               <>
                 <p>
-                  {ka
-                    ? "შეტყობინებები გაგზავნიდან 48 საათში ავტომატურად იშლება. ჩატის არქივი არ ინახება. ნაჩვენებია ბოლო 100 მოქმედი შეტყობინება."
-                    : "Messages are automatically deleted 48 hours after sending. No chat archive is kept. Showing the latest 100 unexpired messages."}
+                  <SiteCopyText id="care.retention" lang={lang}/>
                 </p>
                 {chat.error && <p role="alert">{chat.error}</p>}
                 <div className="care-messages" aria-live="polite">
@@ -389,7 +387,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                   }}
                 >
                   <label>
-                    {ka ? "შეტყობინება" : "Message"}
+                    <SiteCopyText id="care.message" lang={lang}/>
                     <textarea
                       required
                       maxLength={2000}
@@ -407,7 +405,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                           data.userId)
                     }
                   >
-                    {ka ? "გაგზავნა" : "Send"}
+                    <SiteCopyText id="care.send" lang={lang}/>
                   </button>
                 </form>
               </>

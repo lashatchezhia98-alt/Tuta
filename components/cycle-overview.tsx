@@ -1,4 +1,5 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
 
 import { cycleAt, forecast, dateKey } from "../mobile/src/cycle.mjs";
 
@@ -21,18 +22,18 @@ export default function CycleOverview({ periods, cycleLength, lang, pregnancyAct
     <div className="app-content-cards">
       <article><small>{ka ? "ციკლის დღე" : "Cycle day"}</small><strong>{current.day}</strong></article>
       <article><small>{ka ? "სავარაუდო ფაზა" : "Estimated phase"}</small><strong>{ka ? phases[phase] : phase}</strong></article>
-      <article><small>{model.status === "overdue" ? (ka ? "სავარაუდო თარიღმა გაიარა" : "Estimated date has passed") : (ka ? "შემდეგი პერიოდის ვარაუდი" : "Next period estimate")}</small><strong>{model.expected ? format(model.expected) : ""}</strong></article>
+      <article><small><SiteCopyText id={model.status === "overdue" ? "tracker.datePassed" : "tracker.nextEstimate"} lang={lang}/></small><strong>{model.expected ? format(model.expected) : ""}</strong></article>
     </div>
     <p>{model.reliability === "limited"
       ? (ka ? `საწყისი შეფასება: ვიყენებთ შენს მითითებულ ${cycleLength} დღეს. პირადი საშუალოსთვის საჭიროა 3 დასრულებული ციკლი, ანუ 4 დაწყების თარიღი.` : `Initial estimate: using your chosen ${cycleLength} days. A personal average needs 3 completed cycles, meaning 4 start dates.`)
       : model.reliability === "low"
         ? (ka ? "ამ ჩანაწერებით პროგნოზის სიზუსტე შეზღუდულია. ზუსტ ნაყოფიერ დღეებს არ ვაჩვენებთ." : "These entries limit prediction accuracy. Precise fertile-day estimates are not shown.")
         : (ka ? "შეფასება შენს ჩაწერილ ისტორიას ეყრდნობა." : "Estimates use your recorded history.")}</p>
-    {model.status === "overdue" ? <p role="status">{ka ? "ახალი პერიოდი ჯერ არ არის ჩაწერილი. მომავალი პროგნოზები დროებით შეჩერებულია." : "No new period is logged. Future predictions are paused."}</p> : <>
+    {model.status === "overdue" ? <p role="status"><SiteCopyText id="tracker.overdue" lang={lang}/></p> : <>
       {model.earliest && model.latest ? <p>{ka ? "ისტორიული ხანგრძლივობების დიაპაზონი: " : "Range based on past cycle lengths: "}{format(model.earliest)} – {format(model.latest)}. {ka ? "ეს გარანტირებული თარიღები არ არის." : "These dates are not guaranteed."}</p> : null}
       {model.fertilityAvailable ? <p>{ka ? "სავარაუდო ნაყოფიერი დღეები: " : "Estimated fertile days: "}{format(current.fertileStart)} – {format(current.fertileEnd)}</p> : null}
-      <details><summary>{ka ? "შემდეგი 6 პერიოდის სავარაუდო დასაწყისი" : "Next 6 estimated period starts"}</summary><ul>{model.starts.map((date: string) => <li key={date}>{format(date)}</li>)}</ul></details>
+      <details><summary><SiteCopyText id="tracker.sixStarts" lang={lang}/></summary><ul>{model.starts.map((date: string) => <li key={date}>{format(date)}</li>)}</ul></details>
     </>}
-    <p className="mt-4 text-sm">{ka ? "კალენდარული შეფასება ოვულაციას არ ადასტურებს და კონტრაცეფციის მეთოდი არ არის." : "Calendar estimates do not confirm ovulation and are not contraception."}</p>
+    <p className="mt-4 text-sm"><SiteCopyText id="tracker.disclaimer" lang={lang}/></p>
   </section>;
 }

@@ -223,6 +223,7 @@ test("web checkout discards an old account response, including A → B → A", a
   try {
     const Component = sourceModule("components/marketplace.tsx", {
       react,
+      "@/components/site-copy-provider": { useSiteCopyText: () => "Add to cart" },
       "@/lib/supabase-browser": { getSupabaseBrowserClient: () => client },
     }).default;
     const render = () => {
