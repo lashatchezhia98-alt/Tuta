@@ -53,6 +53,8 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .auth-panel .password-field input{display:block;width:100%;min-width:0;height:50px;padding-right:58px;font-size:16px}
 .auth-panel form .password-toggle{position:absolute;right:3px;top:3px;display:grid;place-items:center;width:44px;min-width:44px;height:44px;margin:0;padding:0;border:0;border-radius:6px;background:transparent;color:var(--ink);cursor:pointer}
 .auth-panel form .password-toggle:hover{background:var(--lav)}
+.auth-panel form .email-code-secondary{background:transparent;color:var(--ink);border:1px solid var(--line);margin-top:0}
+.auth-panel input[name="email-code"]{letter-spacing:.3em;font-variant-numeric:tabular-nums;font-size:20px}
 .auth-panel .password-field input::-ms-reveal{display:none}
 .account-settings{max-width:680px;margin-top:28px}.account-settings h2{font-size:24px;overflow-wrap:anywhere;margin:12px 0}.account-settings p{line-height:1.65}.account-settings button,.account-settings-links a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 18px;border:0;border-radius:9px;background:var(--ink);color:#fff;font-weight:700;cursor:pointer;text-decoration:none}.account-settings button:disabled{opacity:.55;cursor:wait}.account-settings-links{display:flex;flex-wrap:wrap;gap:10px}.account-settings-links a+ a{background:var(--lav);color:var(--ink)}
 /* Admin feature management */

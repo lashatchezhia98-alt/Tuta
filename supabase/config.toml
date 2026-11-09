@@ -1,0 +1,10 @@
+# Only the explicitly declared settings are intended for the hosted project.
+project_id = "tuta-health"
+
+[auth.email]
+enable_confirmations = true
+otp_length = 6
+
+[auth.email.template.confirmation]
+subject = "თუთა · ელფოსტის დადასტურების კოდი / Email verification code"
+content_path = "./supabase/templates/confirmation.html"

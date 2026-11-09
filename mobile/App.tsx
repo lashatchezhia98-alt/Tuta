@@ -28,6 +28,9 @@ import { NotoSansGeorgian_700Bold } from "@expo-google-fonts/noto-sans-georgian/
 import { Icon, MoonFlower, Face, CycleOrbit } from "./src/Art";
 import { C, T, CTA, Chip, DateField, FieldLabel, Scale, s } from "./src/ui";
 import PasswordInput from "./src/PasswordInput";
+import EmailCodeScreen from "./src/EmailCodeScreen";
+import { EMAIL_RESEND_WAIT_MS, emailNotConfirmed } from "./src/email-verification.mjs";
+import type { PendingEmail } from "./src/use-email-verification";
 import { Data, Log, Tab, emptyData, validData } from "./src/types";
 import {
   dateKey,
@@ -2486,6 +2489,7 @@ function AuthScreen({
     [lastName, setLastName] = useState(""),
     [birthDate, setBirthDate] = useState(""),
     [message, setMessage] = useState("");
+  const [pendingEmail, setPendingEmail] = useState<PendingEmail | null>(null);
   const isReset = kind === "reset",
     isForgot = kind === "forgot";
   const title =
@@ -2594,21 +2598,14 @@ function AuthScreen({
               name: `${firstName.trim()} ${lastName.trim()}`,
               date_of_birth: birthDate,
             },
-            emailRedirectTo: "com.tutahealth.app://auth-callback",
           },
         });
         if (error) throw error;
-        setMessage(
-          session
-            ? t(
-                "ანგარიში შეიქმნა და შესული ხარ ✓",
-                "Account created and signed in ✓",
-              )
-            : t(
-                "ანგარიში შეიქმნა. ელფოსტაზე მოსული ბმულით დაადასტურე.",
-                "Account created. Confirm it using the email link.",
-              ),
-        );
+        if (!session) {
+          setPassword("");
+          setConfirm("");
+          setPendingEmail({ email: normalized, resendAt: Date.now() + EMAIL_RESEND_WAIT_MS });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: normalized,
@@ -2617,6 +2614,11 @@ function AuthScreen({
         if (error) throw error;
       }
     } catch (error) {
+      if (kind === "login" && emailNotConfirmed(error)) {
+        setPassword("");
+        setPendingEmail({ email: normalized, resendAt: 0 });
+        return;
+      }
       const raw = error instanceof Error ? error.message : "";
       const lower = raw.toLowerCase();
       setMessage(
@@ -2640,6 +2642,9 @@ function AuthScreen({
       setBusy(false);
     }
   };
+  if (pendingEmail && (kind === "register" || kind === "login")) {
+    return <EmailCodeScreen pending={pendingEmail} lang={lang} onBack={() => setPendingEmail(null)} />;
+  }
   return (
     <View style={s.content}>
       <Pressable

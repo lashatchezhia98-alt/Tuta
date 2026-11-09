@@ -18,6 +18,9 @@ import Library from "@/components/library";
 import CareWorkspace from "@/components/care-workspace";
 import Marketplace from "@/components/marketplace";
 import PasswordField from "@/components/password-field";
+import EmailCodeForm from "@/components/email-code-form";
+import { EMAIL_RESEND_WAIT_MS, emailNotConfirmed } from "../mobile/src/email-verification.mjs";
+import type { PendingEmail } from "../mobile/src/use-email-verification";
 import {authDestination} from '@/lib/auth-destination';
 import FreeCalculator from '@/components/free-calculator';
 import { featureForRoute, useSiteFeatures,useSiteFeaturesStatus } from "@/lib/site-features";
@@ -70,6 +73,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
   const [recoveryReady,setRecoveryReady]=useState(false);
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
+  const [pendingEmail,setPendingEmail]=useState<PendingEmail|null>(null);
   const ka=lang==="ka";
 
   useEffect(()=>{
@@ -130,13 +134,19 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
       }else{
         const result=login
           ? await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password})
-          : await supabase.auth.signUp({email:email.trim().toLowerCase(),password,options:{data:{first_name:firstName.trim(),last_name:lastName.trim(),name:`${firstName.trim()} ${lastName.trim()}`,date_of_birth:birthDate},emailRedirectTo:`${redirectBase}/login`}});
+          : await supabase.auth.signUp({email:email.trim().toLowerCase(),password,options:{data:{first_name:firstName.trim(),last_name:lastName.trim(),name:`${firstName.trim()} ${lastName.trim()}`,date_of_birth:birthDate}}});
         if(result.error)throw result.error;
         if(register&&!result.data.session){
-        setNotice(ka?"ანგარიში შეიქმნა. შესვლისთვის ელფოსტაზე გამოგზავნილი ბმული დაადასტურე.":"Account created. Confirm your email using the link we sent before signing in.");
+          setPassword("");setConfirmPassword("");
+          setPendingEmail({email:email.trim().toLowerCase(),resendAt:Date.now()+EMAIL_RESEND_WAIT_MS});
         }else{router.replace(authDestination(window.location.search))}
       }
     }catch(cause){
+      if(login&&emailNotConfirmed(cause)){
+        setPassword("");
+        setPendingEmail({email:email.trim().toLowerCase(),resendAt:0});
+        return;
+      }
       const message=cause instanceof Error?cause.message:"";
       if(/invalid login credentials/i.test(message))setError(ka?"ელფოსტა ან პაროლი არასწორია.":"Email or password is incorrect.");
       else if(/already registered|user already exists/i.test(message))setError(ka?"ამ ელფოსტით ანგარიში უკვე არსებობს. შედი ან პაროლის აღდგენა გამოიყენე.":"An account with this email already exists. Sign in or reset your password.");
@@ -146,7 +156,11 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     }finally{setBusy(false)}
   }
 
-  return <section className="auth-page"><div className="auth-panel"><InnerLogo lang={lang}/><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p><form onSubmit={submit} noValidate={false}>
+  return <section className="auth-page"><div className="auth-panel"><InnerLogo lang={lang}/>{pendingEmail?<>
+    <h1>{ka?"დაადასტურე ელფოსტა":"Confirm your email"}</h1>
+    <p>{ka?"შეიყვანე ამ მისამართზე მიღებული ექვსნიშნა კოდი:":"Enter the six-digit code sent to:"} <strong>{pendingEmail.email}</strong>. {ka?"თუ წერილი არ ჩანს, შეამოწმე სპამი.":"Check spam if you don’t see the email."}</p>
+    <EmailCodeForm pending={pendingEmail} lang={lang} onBack={()=>setPendingEmail(null)} onVerified={()=>router.replace(authDestination(window.location.search))}/>
+    </>:<><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p><form onSubmit={submit} noValidate={false}>
     {!reset&&<label>{ka?"ელფოსტა (მომხმარებლის სახელი)":"Email (username)"}<input type="email" placeholder="name@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>}
     {register&&<label>{ka?"სახელი":"First name"}<input type="text" autoComplete="given-name" value={firstName} onChange={e=>setFirstName(e.target.value)} required maxLength={80}/></label>}
     {register&&<label>{ka?"გვარი":"Last name"}<input type="text" autoComplete="family-name" value={lastName} onChange={e=>setLastName(e.target.value)} required maxLength={80}/></label>}
@@ -156,7 +170,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
     {register&&<p>{ka?'ანგარიშის შექმნამდე გაეცანი':'Before creating an account, read our'} <a href="/terms" target="_blank" rel="noreferrer">{ka?'წესებსა და პირობებს':'Terms of use'}</a> {ka?'და':'and'} <a href="/privacy" target="_blank" rel="noreferrer">{ka?'კონფიდენციალურობის წესებს':'Privacy notice'}</a>.</p>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}>{busy?(ka?"მუშავდება…":"Please wait…"):login?(ka?"შესვლა":"Sign in"):register?(ka?"ანგარიშის შექმნა":"Create account"):forgot?(ka?"ბმულის გაგზავნა":"Send recovery link"):(ka?"პაროლის შეცვლა":"Update password")}</button>
-  </form>{login&&<a href="/forgot-password">{ka?"დაგავიწყდა პაროლი?":"Forgot password?"}</a>}<a href={login?"/register":"/login"}>{login?(ka?"არ გაქვს ანგარიში?":"Need an account?"):(ka?"შესვლაზე დაბრუნება":"Back to sign in")}</a></div><div className="auth-art"><div className="auth-moon"/><p>{ka?"შენი მონაცემები შენ გეკუთვნის.":"Your data belongs to you."}</p></div></section>
+  </form>{login&&<a href="/forgot-password">{ka?"დაგავიწყდა პაროლი?":"Forgot password?"}</a>}<a href={login?"/register":"/login"}>{login?(ka?"არ გაქვს ანგარიში?":"Need an account?"):(ka?"შესვლაზე დაბრუნება":"Back to sign in")}</a></>}</div><div className="auth-art"><div className="auth-moon"/><p>{ka?"შენი მონაცემები შენ გეკუთვნის.":"Your data belongs to you."}</p></div></section>
 }
 
 function Calculator({kind,lang}:{kind:"period"|"ovulation",lang:Lang}){const [date,setDate]=useState("");const [length,setLength]=useState(28);const result=useMemo(()=>{if(!date||length<21||length>45)return null;try{return getCycle(date,length,5)}catch{return null}},[date,length]);const format=(v:string)=>new Intl.DateTimeFormat(lang==="ka"?"ka-GE":"en-GB",{day:"numeric",month:"long",year:"numeric"}).format(new Date(`${v}T12:00:00`));return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA TOOLS</span><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p></div></section><section className="calculator inner-container"><label>{lang==="ka"?"ბოლო პერიოდის პირველი დღე":"First day of last period"}<input type="date" value={date} onChange={e=>setDate(e.target.value)} max={isoDate(new Date())}/></label><label>{lang==="ka"?"ციკლის საშუალო ხანგრძლივობა":"Average cycle length"}<input type="number" min="21" max="45" value={length} onChange={e=>setLength(Math.round(Number(e.target.value)))}/></label>{date&&(!result||length<21||length>45)&&<p style={{gridColumn:"1/-1",color:"#9b2c3b"}}>{lang==="ka"?"შეიყვანე სწორი თარიღი და ციკლის ხანგრძლივობა (21–45 დღე).":"Enter a valid date and cycle length (21–45 days)."}</p>}<div className="calculator-result"><small>{kind==="period"?(lang==="ka"?"შემდეგი პერიოდი":"Next period"):(lang==="ka"?"სავარაუდო ოვულაცია":"Estimated ovulation")}</small><strong>{result?(kind==="period"?format(result.nextPeriod):format(result.ovulation)):"..."}</strong>{result&&<><small style={{display:"block",marginTop:18}}>{lang==="ka"?"ნაყოფიერი ფანჯარა":"Fertile window"}</small><strong>{format(result.fertileStart)} – {format(result.fertileEnd)}</strong></>}</div></section></>}

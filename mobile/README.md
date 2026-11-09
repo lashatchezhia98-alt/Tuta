@@ -1,4 +1,4 @@
-# Tuta mobile 1.1.0
+# Tuta mobile 1.1.2
 
 Shared React Native / Expo app for iOS and Android. The Next.js website uses the same account, health records, community, product catalogue, care service and membership APIs.
 
@@ -21,6 +21,7 @@ The header contains sign-in/registration or account access. The hamburger holds 
 - Health records live in Supabase `health_state` under RLS. No new health record is saved to device storage. Foreground/realtime refresh and revision checks protect synchronization. Account changes invalidate pending private reads and writes.
 - Cycle predictions use actual history and the shared tested cycle engine. Estimates are not confirmed ovulation, diagnosis or contraception. Pregnancy pauses period predictions.
 - The existing community supports topic filtering, anonymous posts/replies, threaded comments, author editing/deletion, reports and verified doctor labels.
+- Comments can load older pages beyond the initial page. Only verified doctors can have a profile photo.
 - Library content and verified doctor profiles come from real website APIs; empty services are not replaced with invented records.
 - Doctor messaging and new appointments require server-verified Premium. History and cancellation remain available to the authorized participant.
 - Premium and market checkout use the existing **Flitt test integration**, not live charging. Prices: 4.99 GEL monthly / 49.90 GEL yearly. Successful browser return alone never grants access or marks an order paid. No automatic renewal is promised.
@@ -31,6 +32,8 @@ The header contains sign-in/registration or account access. The hamburger holds 
 ## Privacy
 
 AsyncStorage holds the authentication session, language and only product IDs/quantities for the cart, not delivery addresses, pins or health records. Legacy local health records may be imported once and removed after successful cloud save. Explicit PDF/calendar exports use temporary cache files, deleted after the share sheet closes; copies the user shares remain at their chosen destination.
+
+Chat messages expire 48 hours after sending. The app removes expired messages from its in-memory view and does not keep a local chat archive.
 
 Photos use signed Cloudinary uploads through the website server. Community access is members-only, but a copied Cloudinary image URL is not an independently authenticated private file.
 
@@ -63,6 +66,6 @@ open Tuta.xcworkspace
 
 Open **Tuta.xcworkspace**, not Tuta.xcodeproj, so CocoaPods modules are included. The current iOS deployment target is 26.6. Device installation requires a matching signing team and an unexpired profile. Personal Team builds expire and must be signed/installed again.
 
-The Android preview is `../android/releases/Tuta-1.1.0-preview.apk` (versionCode 4). It uses development signing for direct testing, not a production Play Store release key. Do not uninstall an existing app merely to update it.
+The Android preview is `../android/releases/Tuta-1.1.2-preview.apk` (versionCode 6). It uses development signing for direct testing, not a production Play Store release key. Do not uninstall an existing app merely to update it.
 
 Before distribution, run native builds and physical-device checks in addition to JavaScript tests. Payment settlement, medical content review, actual doctor operations, store approval and external email/delivery reliability are not proven by a successful build.
