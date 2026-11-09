@@ -30,6 +30,7 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     },
   };
   const checkoutUrl = "https://pay.flitt.com/merchants/test/index.html?token=fixture";
+  const returns = [];
   const savedFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     assert.equal(url, "https://pay.flitt.com/api/checkout/url");
@@ -40,11 +41,12 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     assert.equal(request.currency, "GEL");
     assert.equal(request.sender_email, undefined);
     assert.equal(request.address, undefined);
+    returns.push(new URL(request.response_url));
     return Response.json({ response: { checkout_url: checkoutUrl, payment_id: "12345", response_status: "success" } });
   };
   try {
     for (const [path, body] of [
-      ["api/payments/flitt/checkout", { plan: "monthly" }],
+      ["api/payments/flitt/checkout", { plan: "monthly", returnTo: "app" }],
       ["api/market/checkout", { recipientName: "Test Recipient", address: "Test address", items: [{ productId, quantity: 1 }] }],
     ]) {
       const route = sourceModule(`app/${path}/route.ts`, dependencies);
@@ -57,9 +59,42 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     assert.deepEqual(orders.map(({ table, status, mode }) => [table, status, mode]), [
       ["premium_payments", "pending", "test"], ["market_orders", "pending", "test"],
     ]);
+    assert.equal(returns[0].origin, "https://tutahealth.ge");
+    assert.equal(returns[0].searchParams.get("client"), "app");
+    assert.equal(returns[0].searchParams.get("order"), orders[0].order_id);
+    assert.equal(returns[1].searchParams.get("client"), null);
+    assert.equal(returns[1].searchParams.get("order"), orders[1].order_id);
   } finally {
     globalThis.fetch = savedFetch;
   }
+});
+
+test("Flitt's mobile return uses POST-to-GET, opens the correct screen, and ignores payment data", async () => {
+  const route = sourceModule("app/api/payments/flitt/return/route.ts");
+  const { flittReturnUrl } = sourceModule("lib/flitt-return.ts");
+  for (const kind of ["premium", "market"]) {
+    const order = `tuta-${kind === "market" ? "market-" : ""}12345678-1234-4234-8234-123456789abc`;
+    const url = flittReturnUrl("https://tutahealth.ge", kind, order, true);
+    const post = route.POST(new Request(url + "&status=approved&redirect=https://evil.test", {
+      method: "POST",
+      body: "order_status=approved&card=private",
+    }));
+    assert.equal(post.status, 303);
+    const target = new URL(post.headers.get("location"));
+    assert.equal(target.origin, "https://tutahealth.ge");
+    assert.equal(target.searchParams.get("client"), "app");
+    assert.equal(target.searchParams.get("status"), null);
+    assert.equal(target.searchParams.get("redirect"), null);
+    const get = route.GET(new Request(target));
+    assert.equal(get.status, 200);
+    assert.equal(get.headers.get("cache-control"), "private, no-store");
+    const html = await get.text();
+    assert.ok(html.includes(`href="com.tutahealth.app://payment-return/${kind}/${order}"`));
+    assert.ok(html.includes(kind === "market" ? "/market/orders?payment=returned" : "/premium?payment=returned"));
+    assert.doesNotMatch(html, /approved|evil\.test|card=private/);
+  }
+  const invalid = route.GET(new Request("https://tutahealth.ge/api/payments/flitt/return?client=app&type=market&order=%22%3E%3Cscript%3Eattack%3C%2Fscript%3E"));
+  assert.doesNotMatch(await invalid.text(), /attack/);
 });
 
 test("checkout rejects untrusted URLs, provider errors, and a bad signature when supplied", async () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { bearerToken, createFlittCheckout, flittEnvironment, FLITT_TEST_MERCHANT_ID } from "@/lib/flitt";
 import { ApiError, checked, failure, requireFeature, requireUser } from "@/lib/platform-server";
+import { flittReturnUrl } from "@/lib/flitt-return";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
     checked(await clients.admin.from("market_orders").insert({ order_id: orderId, user_id: user.id, items: snapshot, total_tetri: total, recipient_name: recipient, address, latitude: lat, longitude: lon, status: "pending", mode: "test" }));
     const origin = new URL(request.url).origin;
     const params: Record<string, unknown> = {
-      order_id: orderId, merchant_id: FLITT_TEST_MERCHANT_ID, order_desc: `Tuta market order (${snapshot.length} items)`, amount: total, currency: "GEL", response_url: `${origin}/api/payments/flitt/return?type=market&order=${encodeURIComponent(orderId)}`, server_callback_url: `${origin}/api/payments/flitt/callback`, lang: "ka", merchant_data: JSON.stringify({ type: "market-order", mode: "test" }),
+      order_id: orderId, merchant_id: FLITT_TEST_MERCHANT_ID, order_desc: `Tuta market order (${snapshot.length} items)`, amount: total, currency: "GEL", response_url: flittReturnUrl(origin, "market", orderId, body.returnTo === "app"), server_callback_url: `${origin}/api/payments/flitt/callback`, lang: "ka", merchant_data: JSON.stringify({ type: "market-order", mode: "test" }),
     };
     const checkoutUrl = await createFlittCheckout(params).catch(() => null);
     if (!checkoutUrl) {

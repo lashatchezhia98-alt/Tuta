@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
-  Linking,
   Pressable,
   TextInput,
   View,
@@ -14,7 +13,8 @@ import { File, Paths } from "expo-file-system";
 import type { Session } from "@supabase/supabase-js";
 import { C, T, s, CTA, Chip, DateField, FieldLabel } from "./ui";
 import type { Data, Lang, Tab } from "./types";
-import { api, apiRoot, checkoutDestination } from "./api";
+import { api, apiRoot } from "./api";
+import { checkoutInApp, openPaymentCheckout } from "./open-payment-checkout";
 import { useResource } from "./useResource";
 import { useMembership } from "./useMembership";
 import { useFeatureEnabled } from "./useJourneyEnabled";
@@ -164,7 +164,10 @@ export function LibraryScreen({ lang }: Nav) {
     </View>
   );
 }
-export function PremiumScreen({ lang, session }: Nav & { session: Session }) {
+export function PremiumScreen({ lang, session, onPaymentReturn }: Nav & {
+  session: Session;
+  onPaymentReturn: (url: string) => void;
+}) {
   const ka = lang === "ka",
     membership = useResource<{ active: boolean; expiresAt: string | null }>(
       "/api/payments/flitt/status",
@@ -183,13 +186,17 @@ export function PremiumScreen({ lang, session }: Nav & { session: Session }) {
   );
   async function checkout() {
     setBusy(true);
+    setMessage("");
     try {
       const result = await api("/api/payments/flitt/checkout", {
-        body: { plan },
+        body: { plan, ...(checkoutInApp ? { returnTo: "app" } : {}) },
         userId: session.user.id,
       });
-      if (alive.current)
-        await Linking.openURL(checkoutDestination(result.checkoutUrl));
+      if (!alive.current) return;
+      const returned = await openPaymentCheckout(result.checkoutUrl);
+      if (!alive.current) return;
+      if (returned) onPaymentReturn(returned);
+      if (checkoutInApp) void membership.refresh();
     } catch (e) {
       if (alive.current)
         setMessage(e instanceof Error ? e.message : "Connection unavailable");

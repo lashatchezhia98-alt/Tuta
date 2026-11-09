@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bearerToken, createFlittCheckout, flittEnvironment, FLITT_TEST_AMOUNTS, FLITT_TEST_MERCHANT_ID, type PremiumPlan } from "@/lib/flitt";
+import { flittReturnUrl } from "@/lib/flitt-return";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,11 @@ export async function POST(request: Request) {
   if (authError || !user || user.is_anonymous) return NextResponse.json({ error: "გადახდის დაწყება მხოლოდ რეგისტრირებული ანგარიშით შეიძლება." }, { status: 401 });
 
   let requestedPlan: unknown;
+  let mobile = false;
   try {
-    requestedPlan = (await request.json()).plan;
+    const body = await request.json();
+    requestedPlan = body.plan;
+    mobile = body.returnTo === "app";
   } catch {
     return NextResponse.json({ error: "აირჩიე Premium პაკეტი." }, { status: 400 });
   }
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
     order_desc: `TUTA Premium ${plan} test access`,
     amount,
     currency: "GEL",
-    response_url: `${origin}/api/payments/flitt/return?type=premium`,
+    response_url: flittReturnUrl(origin, "premium", orderId, mobile),
     server_callback_url: `${origin}/api/payments/flitt/callback`,
     lang: "ka",
     merchant_data: JSON.stringify({ product: `premium-${plan}`, test: true }),

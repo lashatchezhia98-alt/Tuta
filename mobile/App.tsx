@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -85,6 +85,7 @@ import {
 } from "./src/MarketScreens";
 import { useMembership } from "./src/useMembership";
 import { apiRoot } from "./src/api";
+import { parsePaymentReturn } from "./src/payment-return.mjs";
 
 const KEY = "tuta.mobile.v1";
 const moods = [
@@ -152,6 +153,7 @@ function Shell() {
   const scroll = useRef<ScrollView>(null);
   const saving = useRef(false);
   const handledAuthLink = useRef<string | null>(null);
+  const handledPaymentLink = useRef<string | null>(null);
   const revision = useRef<number | null>(null);
   const activeUser = useRef<string | null>(null);
   const epoch = useRef(0),
@@ -460,6 +462,27 @@ function Shell() {
     setTab(next);
     scroll.current?.scrollTo({ y: 0, animated: false });
   };
+  const receivePaymentReturn = (url: string | null) => {
+    const target = parsePaymentReturn(url);
+    if (!target || url === handledPaymentLink.current) return;
+    handledPaymentLink.current = url;
+    setMenuOpen(false);
+    nav(target);
+  };
+  const receiveExternalPaymentReturn = useEffectEvent(receivePaymentReturn);
+  useEffect(() => {
+    let active = true;
+    void Linking.getInitialURL().then((url) => {
+      if (active) receiveExternalPaymentReturn(url);
+    }).catch(() => {});
+    const listener = Linking.addEventListener("url", ({ url }) =>
+      receiveExternalPaymentReturn(url),
+    );
+    return () => {
+      active = false;
+      listener.remove();
+    };
+  }, []);
   const back = () => {
     const parent = primaryTab(tab);
     const target = trail.at(-1) || ((parent === tab ? "home" : parent) as Tab);
@@ -522,7 +545,7 @@ function Shell() {
       );
     if (tab === "blog") return <LibraryScreen {...props} />;
     if (tab === "market") return <MarketScreen {...props} />;
-    if (tab === "cart") return <CartScreen {...props} session={session} />;
+    if (tab === "cart") return <CartScreen {...props} session={session} onPaymentReturn={receivePaymentReturn} />;
     if (tab === "period-calculator" || tab === "ovulation-calculator")
       return (
         <CalculatorScreen
@@ -553,7 +576,7 @@ function Shell() {
     if (tab === "care") return <CareScreen {...props} session={session} />;
     if (tab === "orders") return <OrdersScreen {...props} session={session} />;
     if (tab === "premium")
-      return <PremiumScreen {...props} session={session} />;
+      return <PremiumScreen {...props} session={session} onPaymentReturn={receivePaymentReturn} />;
     if (tab === "profile")
       return (
         <Profile

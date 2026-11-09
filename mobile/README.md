@@ -1,4 +1,4 @@
-# Tuta mobile 1.1.2
+# Tuta mobile 1.1.3
 
 Shared React Native / Expo app for iOS and Android. The Next.js website uses the same account, health records, community, product catalogue, care service and membership APIs.
 
@@ -66,6 +66,8 @@ open Tuta.xcworkspace
 
 Open **Tuta.xcworkspace**, not Tuta.xcodeproj, so CocoaPods modules are included. The current iOS deployment target is 26.6. Device installation requires a matching signing team and an unexpired profile. Personal Team builds expire and must be signed/installed again.
 
-The Android preview is `../android/releases/Tuta-1.1.2-preview.apk` (versionCode 6). It uses development signing for direct testing, not a production Play Store release key. Do not uninstall an existing app merely to update it.
+The Android preview is `../android/releases/Tuta-1.1.3-preview.apk` (versionCode 7). It uses development signing for direct testing, not a production Play Store release key. Do not uninstall an existing app merely to update it.
+
+Flitt checkout started from the native app uses an HTTPS return page to reopen Premium or Orders. Returning from the browser does not confirm a payment; only the independently verified Flitt server callback can do that.
 
 Before distribution, run native builds and physical-device checks in addition to JavaScript tests. Payment settlement, medical content review, actual doctor operations, store approval and external email/delivery reliability are not proven by a successful build.

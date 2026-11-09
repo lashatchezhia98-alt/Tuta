@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Image,
-  Linking,
   Pressable,
   ScrollView,
   TextInput,
@@ -12,7 +11,8 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Session } from "@supabase/supabase-js";
 import { C, T, CTA, Chip, FieldLabel, s } from "./ui";
-import { api, checkoutDestination } from "./api";
+import { api } from "./api";
+import { checkoutInApp, openPaymentCheckout } from "./open-payment-checkout";
 import { useResource } from "./useResource";
 import { ResourceStatus } from "./ServiceScreens";
 import {
@@ -382,7 +382,8 @@ export function CartScreen({
   lang,
   onNavigate,
   session,
-}: Nav & { session: Session | null }) {
+  onPaymentReturn,
+}: Nav & { session: Session | null; onPaymentReturn: (url: string) => void }) {
   const ka = lang === "ka",
     cart = useCart(),
     resource = useResource<{ products: Product[] }>("/api/market/products");
@@ -410,10 +411,12 @@ export function CartScreen({
   async function checkout() {
     if (!session) return;
     setBusy(true);
+    setMessage("");
     try {
       const result = await api("/api/market/checkout", {
         userId: session.user.id,
         body: {
+          ...(checkoutInApp ? { returnTo: "app" } : {}),
           recipientName: recipientName.trim(),
           address: address.trim(),
           latitude: pin?.latitude ?? null,
@@ -424,11 +427,11 @@ export function CartScreen({
           })),
         },
       });
-      const url = checkoutDestination(result.checkoutUrl);
-      if (alive.current) {
-        await Linking.openURL(url);
-        onNavigate("orders");
-      }
+      if (!alive.current) return;
+      const returned = await openPaymentCheckout(result.checkoutUrl);
+      if (!alive.current) return;
+      if (returned) onPaymentReturn(returned);
+      else if (!checkoutInApp) onNavigate("orders");
     } catch (e) {
       if (alive.current)
         setMessage(e instanceof Error ? e.message : "Connection unavailable");
