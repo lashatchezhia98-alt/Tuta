@@ -7,7 +7,6 @@ import { CycleSettings, getCycle, isoDate } from "../lib/cycle";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { authRedirectBase } from "../lib/auth-redirect";
 import {useHealthState,type HealthData} from "./use-health-state";
-import AdminFeaturePanel from "@/components/admin-feature-panel";
 import BrandMark from '@/components/brand-mark';
 import HeaderActions from '@/components/header-actions';
 import CycleOverview from "@/components/cycle-overview";
@@ -162,8 +161,6 @@ function Calculator({kind,lang}:{kind:"period"|"ovulation",lang:Lang}){const [da
 
 function Consultation({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA CARE</span><h1>{pageInfo.consultation[lang][0]}</h1><p>{pageInfo.consultation[lang][1]}</p></div></section><section className="inner-container" style={{padding:"60px 20px 100px"}}><div className="calculator-result"><small>{lang==="ka"?"დაგეგმილი სერვისი":"PLANNED SERVICE"}</small><h2 style={{margin:"10px 0"}}>{lang==="ka"?"კონსულტაცია ჯერ მიუწვდომელია":"Consultations are not available yet"}</h2><p>{lang==="ka"?"ექიმების სია, ჩატი და ჯავშანი ამ ვერსიაში არ მუშაობს. Premium გამოწერაც ჯერ არ იყიდება.":"Doctor profiles, chat and booking are not active in this version. Premium subscriptions are not on sale yet."}</p></div></section></>}
 
-function Admin({lang}:{lang:Lang}){return <AdminFeaturePanel initialLang={lang}/>}
-
 function AppDashboard({kind,lang}:{kind:PageKind,lang:Lang}){
  const items=["dashboard","log","insights","report","settings"] as PageKind[];
  const health=useHealthState();const {data,session,loaded,error}=health;
@@ -177,7 +174,7 @@ function AppDashboard({kind,lang}:{kind:PageKind,lang:Lang}){
 function FeatureAppPage({kind,lang,data,save}:{kind:PageKind,lang:Lang,data:HealthData,save:(next:HealthData)=>Promise<void>}){if(kind==="log")return <DailyLog lang={lang} data={data} save={save}/>;if(kind==="settings")return <AccountSettings lang={lang}/>;if(kind==="insights"){const model=forecast(data.periods,data.cycleLength);const avg=Math.round(model.averageLength);return <div className="app-content-cards"><article><small>{lang==="ka"?"საშუალო ციკლი":"Average cycle"}</small><strong>{avg} {lang==="ka"?"დღე":"days"}</strong></article><article><small>{lang==="ka"?"ჩანაწერები":"Daily logs"}</small><strong>{data.logs.length}</strong></article><article><small>{lang==="ka"?"სტატუსი":"Status"}</small><strong>{model.reliability==="limited"?(lang==="ka"?"არასაკმარისი ისტორია":"Limited history"):model.reliability==="low"?(lang==="ka"?"ცვალებადი":"Variable"):(lang==="ka"?"ისტორია თანმიმდევრულია":"Consistent history")}</strong></article></div>};return <div className="app-content-cards"><article><small>{lang==="ka"?"შემდეგი ნაბიჯი":"Next step"}</small><strong>{lang==="ka"?"დაამატე ციკლი":"Add a cycle"}</strong></article></div>}
 
 function AccountSettings({lang}:{lang:Lang}){
-  return <><AccountSettingsCard lang={lang}/><nav className="account-history-links" aria-label={lang==='ka'?'არსებული სერვისების მართვა':'Manage existing services'}><a href="/consultation"><SiteCopyText id="settings.care" lang={lang}/></a><a href="/app/partners"><SiteCopyText id="settings.sharing" lang={lang}/></a><a href="/market/orders"><SiteCopyText id="settings.orderHistory" lang={lang}/></a></nav></>;
+  return <><AccountSettingsCard lang={lang}/><nav className="account-history-links" aria-label={lang==='ka'?'არსებული სერვისების მართვა':'Manage existing services'}><a href="/app/notifications">{lang==='ka'?'შეტყობინებები':'Announcements'}</a><a href="/consultation"><SiteCopyText id="settings.care" lang={lang}/></a><a href="/app/partners"><SiteCopyText id="settings.sharing" lang={lang}/></a><a href="/market/orders"><SiteCopyText id="settings.orderHistory" lang={lang}/></a></nav></>;
 }
 function AccountSettingsCard({lang}:{lang:Lang}){
   const [session,setSession]=useState<Session|null>(null);
@@ -222,7 +219,7 @@ export default function InnerPage({kind}:{kind:PageKind}){
   if(["dashboard","log","insights","report"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation}/><HealthWorkspace kind={kind} lang={lang}/></>;
   return <>
     <InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} showActions={kind!=="admin"}/>
-    {kind==="consultation"?<CareWorkspace lang={lang}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="admin"?<Admin lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
+    {kind==="consultation"?<CareWorkspace lang={lang}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
     {kind!=="admin"&&<footer className="inner-footer"><div className="inner-container"><InnerLogo lang={lang} inverse/><p>{lang==="ka"?"შენი ჯანმრთელობის ცნობიერება იწყება აქ.":"Your health awareness starts here."}</p></div></footer>}
   </>
 }

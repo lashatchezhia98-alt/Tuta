@@ -11,9 +11,10 @@ import MarketOrders from "@/components/market-orders";
 import BrandMark from "@/components/brand-mark";
 import AdminWebsiteCopy from "@/components/admin-website-copy";
 import AdminInvitations from "@/components/admin-invitations";
+import { AdminAnalytics, AdminBilling, AdminNotifications, AdminUsers } from "@/components/admin-operations";
+import { canAccessAdminSection, type AdminAccess, type AdminSection as Section } from "@/lib/admin-sections";
 
 type Lang = "ka" | "en";
-type Section = "overview" | "features" | "reports" | "content" | "doctors" | "care" | "market" | "orders" | "tools" | "website-copy" | "invitations";
 type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; created_at: string } };
 
 const reasonNames: Record<string, [string, string]> = {
@@ -43,10 +44,15 @@ const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "care", href: "/admin/care", ka: "პროფილები და ვიზიტები", en: "Profiles & visits" },
   { section: "market", href: "/admin/market", ka: "მარკეტი / მაღაზია", en: "Market / shop" },
   { section: "orders", href: "/admin/orders", ka: "მარკეტის შეკვეთები", en: "Market orders" },
-  { section: "tools", href: "/admin/tools", ka: "მომავალი ფუნქციები", en: "Planned tools" },
+  { section: "users", href: "/admin/users", ka: "მომხმარებლები და როლები", en: "Users & roles" },
+  { section: "billing", href: "/admin/billing", ka: "Premium და გადახდები", en: "Premium & payments" },
+  { section: "notifications", href: "/admin/notifications", ka: "შეტყობინებები", en: "Announcements" },
+  { section: "analytics", href: "/admin/analytics", ka: "ანონიმური სტატისტიკა", en: "Anonymous analytics" },
 ];
+const operations = nav.filter(item => ["users", "billing", "notifications", "analytics"].includes(item.section));
 
-export default function AdminFeaturePanel({ section = "overview", initialLang = "ka", owner = false }: { section?: Section; initialLang?: Lang; owner?: boolean }) {
+export default function AdminFeaturePanel({ section = "overview", initialLang = "ka", access, initialFilter = "" }: { section?: Section; initialLang?: Lang; access: AdminAccess; initialFilter?: string }) {
+  const owner = access === "owner";
   const lang = useSyncExternalStore(subscribeAdminLanguage, getAdminLanguage, () => initialLang);
   const ka = lang === "ka";
   const features = useSiteFeatures();
@@ -120,7 +126,11 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     content: ["ბლოგები და ბიბლიოთეკა", "Blog & health library"],
     care: ["ექიმები და ვიზიტები", "Doctors & appointments"],
     doctors: ["ექიმების რეგისტრაცია", "Doctor registration"],
-    tools: ["მომავალი ხელსაწყოები", "Planned admin tools"],
+    tools: ["მართვის ხელსაწყოები", "Administration tools"],
+    users: ["მომხმარებლები და როლები", "Users & roles"],
+    billing: ["Premium და გადახდები", "Premium & payments"],
+    notifications: ["შეტყობინებები", "Announcements"],
+    analytics: ["ანონიმური სტატისტიკა", "Anonymous analytics"],
     market: ["მარკეტის პროდუქტები", "Market products"],
     orders: ["მარკეტის შეკვეთები", "Market orders"],
   };
@@ -133,7 +143,11 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     content: ["მართე სტატიები, კატეგორიები, ენები და გამოქვეყნების სტატუსი.", "Manage articles, categories, languages and publication status."],
     care: ["მართე გადამოწმებული ექიმების პროფილები და ხელმისაწვდომი ვიზიტის დროები.", "Manage verified doctor profiles and available appointment times."],
     doctors: ["დაამატე ექიმი, დააკავშირე ანგარიში და გადაამოწმე პროფესიული კვალიფიკაცია.", "Register a doctor, link their account and verify professional qualifications."],
-    tools: ["ეს ხელსაწყოები ჯერ არ არის ჩართული და ამ გვერდიდან მოქმედება შეუძლებელია.", "These tools are not active yet and cannot be managed here."],
+    tools: ["აირჩიე მართვის სექცია.", "Choose an administration area."],
+    users: ["იპოვე ანგარიში, ნახე გეგმა და მართე წვდომა. ჯანმრთელობის ჩანაწერები აქ არ ჩანს.", "Find accounts, review plans and manage access. Health records are not shown."],
+    billing: ["ნახე გადახდების ისტორია და Premium-ზე მინიჭებული წვდომა.", "Review payments and Premium grants."],
+    notifications: ["გამოაქვეყნე ან დაგეგმე ანგარიშში გამოსაჩენი შეტყობინება.", "Publish or schedule an announcement for member accounts."],
+    analytics: ["ნახე საერთო ტენდენციები ინდივიდუალური ჩანაწერების გარეშე.", "Review overall trends without individual records."],
     market: ["დაამატე ან შეცვალე პროდუქტი, აღწერა, ფასი და გამოჩენა მომხმარებლის მარკეტში.", "Add or edit products, descriptions, prices and visibility in the customer shop."],
     orders: ["მართე მიწოდების სტატუსი; გადახდის სტატუსი მხოლოდ პროვაიდერის დადასტურებით იცვლება.", "Manage delivery separately from provider-confirmed payments."],
   };
@@ -157,6 +171,10 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
   );
 
   function renderSection(current: Section) {
+    if (current === "users") return <AdminUsers lang={lang} owner={owner} initialQuery={initialFilter}/>;
+    if (current === "billing") return <AdminBilling lang={lang} owner={owner} initialUser={initialFilter}/>;
+    if (current === "notifications") return <AdminNotifications lang={lang}/>;
+    if (current === "analytics") return <AdminAnalytics lang={lang}/>;
     if (current === "website-copy") return <AdminWebsiteCopy lang={lang}/>;
     if (current === "invitations" && owner) return <AdminInvitations lang={lang}/>;
     if(current==='orders')return <MarketOrders lang={lang} admin/>;
@@ -177,7 +195,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     if (current === "doctors") return <DoctorEnrollment lang={lang}/>;
     if (current === "care") return <AdminCare lang={lang}/>;
     if (current === "market") return <AdminMarket lang={lang}/>;
-    if (current === "tools") return <div className="admin-roadmap-grid">{(ka ? ["მომხმარებლების ანგარიშები და როლები", "პრემიუმ გამოწერები და გადახდები", "შეტყობინებების გაგზავნა და ისტორია", "ანონიმური, აგრეგირებული ანალიტიკა"] : ["User accounts and roles", "Premium subscriptions and payments", "Notifications and history", "Anonymous aggregated analytics"]).map(item => <div key={item}><span>◷</span><strong>{item}</strong><small>{ka ? "დაგეგმილია · მართვა ჯერ მიუწვდომელია" : "Planned · controls not available yet"}</small></div>)}</div>;
+    if (current === "tools") return <div className="ops-tool-links">{operations.map(item => <Link key={item.section} href={item.href}><strong>{ka ? item.ka : item.en}</strong><span>{description[item.section][ka ? 0 : 1]}</span></Link>)}</div>;
     return <div className="admin-summary admin-summary-overview">
       <Link href="/admin/features"><span>{ka ? "ჩართული ფუნქციები" : "Enabled features"}</span><strong>{enabledFeatures}<small> / {SITE_FEATURES.length}</small></strong><em>{ka ? "ფუნქციების მართვა →" : "Manage features →"}</em></Link>
       <Link href="/admin/reports"><span>{ka ? "ღია საჩივრები" : "Open reports"}</span><strong>{reportsLoading || reportMessage ? "—" : reports.length}</strong><em>{ka ? "საჩივრების ნახვა →" : "Review reports →"}</em></Link>
@@ -193,7 +211,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
       <aside className="admin-sidebar">
         <div className="admin-sidebar-brand"><span>TUTA</span><strong>{ka ? "ადმინისტრაცია" : "Administration"}</strong></div>
         <nav aria-label={ka ? "ადმინის მენიუ" : "Admin navigation"}>
-          {nav.filter(item => item.section !== "invitations" || owner).map(item => <Link key={item.section} href={item.href} className={section === item.section ? "active" : undefined} aria-current={section === item.section ? "page" : undefined}>{ka ? item.ka : item.en}</Link>)}
+          {nav.filter(item => canAccessAdminSection(access, item.section)).map(item => <Link key={item.section} href={item.href} className={section === item.section ? "active" : undefined} aria-current={section === item.section ? "page" : undefined}>{ka ? item.ka : item.en}</Link>)}
         </nav>
         <form action="/api/admin/logout" method="post"><button className="admin-signout" type="submit">{ka ? "გამოსვლა" : "Sign out"}</button></form>
       </aside>
@@ -202,7 +220,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
         {section === "overview" ? <>
           <div className="admin-dashboard-notice">{ka ? "ადმინისტრატორს მომხმარებლების ჯანმრთელობის ჩანაწერები და პირადი მიმოწერა არ უჩანს." : "Admins cannot access users’ health records or private messages."}</div>
           {renderSection("overview")}
-          <section className="admin-overview-roadmap"><h2>{ka ? "დაგეგმილი მართვის ნაწილები" : "Planned admin areas"}</h2><p>{ka ? "ეს ფუნქციები ჯერ არ არის აქტიური." : "These features are not active yet."} <Link href="/admin/tools">{ka ? "დეტალები" : "Details"} →</Link></p></section>
+          <section className="admin-overview-roadmap"><h2>{ka ? "მართვის ხელსაწყოები" : "Administration tools"}</h2>{renderSection("tools")}</section>
         </> : <section className="admin-section">{renderSection(section)}</section>}
       </div>
     </main>

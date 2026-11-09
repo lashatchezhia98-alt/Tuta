@@ -2,6 +2,7 @@ import { isSameOrigin, readAdminJson } from "@/lib/admin-request";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getAdminIdentity } from "@/lib/platform-server";
+import { canAccessAdminSection } from "@/lib/admin-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,8 @@ function getAdminClient() {
 }
 
 async function isAdmin() {
-  return getAdminIdentity();
+  const identity = await getAdminIdentity();
+  return identity && canAccessAdminSection(identity.access, "reports");
 }
 
 export async function GET() {

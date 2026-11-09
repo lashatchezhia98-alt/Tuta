@@ -128,7 +128,7 @@ test('invite creation is owner-only and saves a hash instead of the shareable li
       return db;
     },
   } });
-  const create = () => route.POST(request('/api/admin/invitations', 'POST', { action: 'create', email: ' Invite@Example.test ' }));
+  const create = () => route.POST(request('/api/admin/invitations', 'POST', { action: 'create', email: ' Invite@Example.test ', role: 'support' }));
   assert.equal((await create()).status, 403);
   assert.equal(insert, undefined);
   owner = true;
@@ -137,7 +137,7 @@ test('invite creation is owner-only and saves a hash instead of the shareable li
   const { path } = await response.json();
   const token = new URL(path, host).hash.slice(1);
   assert.equal(validAdminInviteToken(token), true);
-  assert.deepEqual(insert, { email: 'invite@example.test', token_hash: adminInviteHash(token) });
+  assert.deepEqual(insert, { email: 'invite@example.test', token_hash: adminInviteHash(token), access_role: 'support' });
   assert.ok(!JSON.stringify(insert).includes(token));
 });
 

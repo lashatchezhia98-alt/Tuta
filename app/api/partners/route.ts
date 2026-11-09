@@ -3,11 +3,12 @@ import { ApiError,checked,failure,requireFeature,requireUser,result } from '@/li
 import { readAdminJson } from '@/lib/admin-request';
 import { textField,uuid } from '@/lib/content-validation';
 import { sharedHealth,shareScopes } from '@/lib/partner-sharing';
+import { premiumExpiry } from '@/lib/admin-operations';
 
 type Db=ReturnType<typeof import('@/lib/platform-server').dbClient>;
 async function premium(db:Db,id:string) {
-  const member=checked(await db.from('premium_memberships').select('expires_at').eq('user_id',id).maybeSingle());
-  return Boolean(member&&Date.parse(member.expires_at)>Date.now());
+  const expiry=await premiumExpiry(db,id);
+  return Boolean(expiry&&Date.parse(expiry)>Date.now());
 }
 export async function GET(request:Request) {
   try {

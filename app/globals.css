@@ -229,3 +229,34 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 @media(max-width:900px){.admin-wrap{grid-template-columns:190px minmax(0,1fr);gap:16px}.admin-sidebar{padding:12px}.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.admin-topbar{height:64px}.admin-topbar-inner{width:calc(100% - 32px)}.admin-topbar .inner-logo .tuta-brand-mark{width:38px;height:38px}.admin-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-top:10px;padding-bottom:48px}.admin-sidebar{position:sticky;top:0;z-index:40;display:flex;gap:7px;padding:8px;border-radius:14px}.admin-sidebar-brand{display:none}.admin-sidebar nav{display:flex;flex-direction:row;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;gap:5px}.admin-sidebar nav a{flex:none;justify-content:center;min-height:42px;padding:8px 11px;white-space:nowrap;font-size:11px}.admin-signout{flex:none;min-height:40px;padding:7px 10px;font-size:10px;white-space:nowrap}.admin-page-heading{margin:5px 0 12px}.admin-page-heading h1{font-size:26px}.admin-page-heading p{font-size:12px}.admin-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.admin-summary>a{min-height:116px;padding:13px}.admin-section{padding:14px;border-radius:15px}.admin-section .admin-panel-heading{align-items:flex-start;flex-direction:column}.admin-feature-count{align-self:flex-start}.admin-roadmap-grid{grid-template-columns:1fr}.admin-report-meta{align-items:flex-start;flex-direction:column}.admin-topbar-inner>span{font-size:10px}}
 .doctor-avatar{display:inline-block;object-fit:cover;border-radius:50%;flex-shrink:0;margin-bottom:8px}
+
+.ops-stack{display:grid;gap:16px;min-width:0}
+.ops-stack h2,.ops-stack p,.ops-stack dl{margin:0}
+.ops-stack h2{font-size:clamp(18px,2vw,24px);line-height:1.4}
+.ops-stack label{display:grid;gap:6px;font-weight:650;min-width:0}
+.ops-stack input,.ops-stack select,.ops-stack textarea{width:100%;min-width:0;min-height:44px;padding:9px 12px;border:1px solid #ded7e8;border-radius:10px;background:white;color:var(--ink);font-size:16px}
+.ops-stack button{justify-self:start;min-height:44px;padding:8px 13px;border:1px solid #d8cee6;border-radius:10px;background:#f2ecf8;color:var(--ink);font-weight:650;cursor:pointer}
+.ops-stack button:hover:not(:disabled){background:#e3d8f1}
+.ops-stack button:disabled{opacity:.55;cursor:not-allowed}
+.ops-stack a{text-decoration:underline;text-underline-offset:3px}
+.ops-filters,.ops-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ops-filters{align-items:end}
+.ops-filters label{flex:1 1 155px}
+.ops-table-wrap{width:100%;overflow-x:auto}
+.ops-table{width:100%;min-width:610px;text-align:start;border-collapse:collapse}
+.ops-table th,.ops-table td{text-align:start;padding:10px 12px;border-bottom:1px solid #ebe6f0;vertical-align:top}
+.ops-table th{background:#f7f3fb;font-size:13px}
+.ops-table td{font-size:14px;overflow-wrap:anywhere}
+.ops-entry small,.ops-table small{display:block;color:var(--text-muted);margin-top:4px}
+.ops-table .ops-actions select{width:auto;max-width:100%}
+.ops-metrics,.ops-tool-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ops-metrics div,.ops-entry,.ops-tool-links a{min-width:0;padding:14px;border:1px solid #e8e0ef;border-radius:12px;background:#fcfafe;overflow-wrap:anywhere}
+.ops-metrics dt,.ops-tool-links span{font-size:13px;color:var(--text-muted)}
+.ops-metrics dd{margin:6px 0 0;font-size:clamp(16px,2vw,24px);font-weight:700}
+.ops-tool-links a{display:grid;gap:4px}
+.ops-tool-links a:hover{background:#f3ecf9}
+.ops-rank{display:grid;gap:6px;padding:0;margin:0;list-style:none}
+.ops-rank li{display:flex;justify-content:space-between;gap:12px}
+.ops-message{white-space:pre-wrap;overflow-wrap:anywhere}
+@media(min-width:701px){.admin-sidebar{max-height:calc(100dvh - 108px)}.admin-sidebar nav{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}
+@media(max-width:600px){.ops-tool-links{grid-template-columns:minmax(0,1fr)}.ops-stack .ops-filters label{flex-basis:100%}}

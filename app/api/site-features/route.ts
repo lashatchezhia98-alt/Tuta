@@ -2,6 +2,7 @@ import { isSameOrigin, readAdminJson } from "@/lib/admin-request";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getAdminIdentity } from "@/lib/platform-server";
+import { canAccessAdminSection } from "@/lib/admin-sections";
 import { defaultSiteFeatures, SITE_FEATURES, type SiteFeatureSettings } from "@/lib/site-feature-definitions";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export async function PUT(request: Request) {
   if (!isSameOrigin(request)) return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
   const authenticated = await getAdminIdentity();
   if (!authenticated) return NextResponse.json({ error: "ადმინის შესვლა ხელახლა გაიარე." }, { status: 401 });
+  if (!canAccessAdminSection(authenticated.access, "features")) return NextResponse.json({ error: "ამ სექციაზე წვდომა არ გაქვს." }, { status: 403 });
 
   const supabase = getSupabase(true);
   if (!supabase) return NextResponse.json({ error: "სერვერის Supabase გასაღები ჯერ დაყენებული არ არის." }, { status: 503 });

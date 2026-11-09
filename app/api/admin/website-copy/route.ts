@@ -11,7 +11,7 @@ function editorState(row: { draft: unknown; published: unknown; revision: number
 
 export async function GET(request: Request) {
   try {
-    const db = await requireAdmin(request);
+    const db = await requireAdmin(request, false, "website-copy");
     const row = checked(await db.from("website_copy").select(columns).eq("id", "global").single());
     if (!row) throw new ApiError(503, "ტექსტების საცავი არ არის ხელმისაწვდომი.");
     return result(editorState(row));
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const db = await requireAdmin(request);
+    const db = await requireAdmin(request, false, "website-copy");
     let input;
     let draft;
     try {

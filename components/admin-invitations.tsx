@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { adminRoleLabels } from "@/lib/admin-sections";
 
-type Invite = { id: string; email: string; expires_at: string; used_at: string | null; revoked_at: string | null };
-type Member = { user_id: string; email: string; granted_at: string };
+type InviteRole = keyof typeof adminRoleLabels;
+type Invite = { id: string; email: string; expires_at: string; used_at: string | null; revoked_at: string | null; access_role: InviteRole };
+type Member = { user_id: string; email: string; granted_at: string; access_role: InviteRole };
 const endpoint = "/api/admin/invitations";
 
 export default function AdminInvitations({ lang }: { lang: "ka" | "en" }) {
@@ -11,6 +13,7 @@ export default function AdminInvitations({ lang }: { lang: "ka" | "en" }) {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<InviteRole>("support");
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -35,7 +38,7 @@ export default function AdminInvitations({ lang }: { lang: "ka" | "en" }) {
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [load]);
 
-  async function act(body: { action: "create"; email: string } | { action: "revoke-invite" | "revoke-member"; id: string }) {
+  async function act(body: { action: "create"; email: string; role: InviteRole } | { action: "revoke-invite" | "revoke-member"; id: string }) {
     if (busy) return;
     setBusy(true); setError(""); setNotice(""); setLink("");
     try {
@@ -58,13 +61,14 @@ export default function AdminInvitations({ lang }: { lang: "ka" | "en" }) {
 
   function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void act({ action: "create", email });
+    void act({ action: "create", email, role });
   }
 
   const format = (value: string) => new Intl.DateTimeFormat(ka ? "ka-GE" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
   return <div className="copy-editor admin-invites">
-    <form onSubmit={create}>
+    <form className="ops-stack" onSubmit={create}>
       <label>{ka ? "მოწვეული პირის ელფოსტა" : "Invitee email"}<input type="email" maxLength={254} required autoComplete="off" value={email} onChange={event => setEmail(event.target.value)}/></label>
+      <label>{ka ? "ადმინის როლი" : "Admin role"}<select value={role} onChange={event => setRole(event.target.value as InviteRole)}>{Object.entries(adminRoleLabels).map(([key, labels]) => <option key={key} value={key}>{labels[ka ? 0 : 1]}</option>)}</select></label>
       <button type="submit" disabled={busy} className="copy-editor-primary">{ka ? "ბმულის შექმნა" : "Create link"}</button>
     </form>
     <p>{ka ? "ბმული 24 საათით მოქმედებს. დააკოპირე და მხოლოდ მოწვეულ ადამიანს გაუგზავნე." : "The link is valid for 24 hours. Copy it and send it only to the invitee."}</p>
@@ -76,12 +80,12 @@ export default function AdminInvitations({ lang }: { lang: "ka" | "en" }) {
       {invites.map(invite => {
         const expired = Date.parse(invite.expires_at) <= loadedAt;
         const state = invite.used_at ? (ka ? "გამოყენებულია" : "Used") : invite.revoked_at ? (ka ? "გაუქმებულია" : "Revoked") : expired ? (ka ? "ვადაგასულია" : "Expired") : (ka ? "მოქმედია" : "Active");
-        return <div className="admin-invite-row" key={invite.id}><div><strong>{invite.email}</strong><small>{state} · {format(invite.expires_at)}</small></div>{!invite.used_at && !invite.revoked_at && !expired && <button type="button" disabled={busy} onClick={() => void act({ action: "revoke-invite", id: invite.id })}>{ka ? "მოწვევის გაუქმება" : "Revoke invite"}</button>}</div>;
+        return <div className="admin-invite-row" key={invite.id}><div><strong>{invite.email}</strong><small>{adminRoleLabels[invite.access_role][ka ? 0 : 1]} · {state} · {format(invite.expires_at)}</small></div>{!invite.used_at && !invite.revoked_at && !expired && <button type="button" disabled={busy} onClick={() => void act({ action: "revoke-invite", id: invite.id })}>{ka ? "მოწვევის გაუქმება" : "Revoke invite"}</button>}</div>;
       })}
     </section>
     <section><h2>{ka ? "მოწვეული ადმინები" : "Invited admins"}</h2>
       {!busy && !members.length && <p>{ka ? "მოწვეული ადმინები ჯერ არ არიან." : "No invited admins yet."}</p>}
-      {members.map(member => <div className="admin-invite-row" key={member.user_id}><div><strong>{member.email}</strong><small>{format(member.granted_at)}</small></div><button type="button" disabled={busy} onClick={() => { if (window.confirm(ka ? "გავაუქმოთ ამ ადმინის წვდომა?" : "Revoke this administrator’s access?")) void act({ action: "revoke-member", id: member.user_id }); }}>{ka ? "წვდომის გაუქმება" : "Revoke access"}</button></div>)}
+      {members.map(member => <div className="admin-invite-row" key={member.user_id}><div><strong>{member.email}</strong><small>{adminRoleLabels[member.access_role][ka ? 0 : 1]} · {format(member.granted_at)}</small></div><button type="button" disabled={busy} onClick={() => { if (window.confirm(ka ? "გავაუქმოთ ამ ადმინის წვდომა?" : "Revoke this administrator’s access?")) void act({ action: "revoke-member", id: member.user_id }); }}>{ka ? "წვდომის გაუქმება" : "Revoke access"}</button></div>)}
     </section>
   </div>;
 }

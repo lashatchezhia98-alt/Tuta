@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { COOKIE_NAME, readAdminIdentity } from "./admin-auth";
 import { isSameOrigin } from "./admin-request";
+import { canAccessAdminSection, type AdminAccess, type AdminSection } from "./admin-sections";
 
 export class ApiError extends Error {
   constructor(
@@ -39,20 +40,28 @@ export async function requireUser(request: Request) {
 }
 export async function getAdminIdentity() {
   const identity = await readAdminIdentity((await cookies()).get(COOKIE_NAME)?.value);
-  if (!identity || identity.role === "owner") return identity;
+  if (!identity) return null;
+  if (identity.role === "owner") return { ...identity, access: "owner" as const };
   try {
-    const { data, error } = await dbClient().from("admin_memberships").select("user_id")
+    const { data, error } = await dbClient().from("admin_memberships").select("access_role")
       .eq("user_id", identity.userId).eq("invite_id", identity.grantId).is("revoked_at", null).maybeSingle();
-    return !error && data ? identity : null;
+    const access: AdminAccess = data?.access_role;
+    return !error && (access === "admin" || access === "content_editor" || access === "support") ? { ...identity, access } : null;
   } catch { return null; }
 }
 
-export async function requireAdmin(request: Request, ownerOnly = false) {
+export async function requireAdminIdentity(request: Request, ownerOnly = false, section: AdminSection = "overview") {
   if (request.method !== "GET" && !isSameOrigin(request))
     throw new ApiError(403, "მოთხოვნა დაუშვებელია.");
   const identity = await getAdminIdentity();
   if (!identity) throw new ApiError(401, "ადმინის შესვლა ხელახლა გაიარე.");
   if (ownerOnly && identity.role !== "owner") throw new ApiError(403, "ეს მოქმედება მხოლოდ მთავარ ადმინს შეუძლია.");
+  if (!canAccessAdminSection(identity.access, section)) throw new ApiError(403, "ამ სექციაზე წვდომა არ გაქვს.");
+  return identity;
+}
+
+export async function requireAdmin(request: Request, ownerOnly = false, section?: AdminSection) {
+  await requireAdminIdentity(request, ownerOnly, section);
   return dbClient();
 }
 export async function requireFeature(

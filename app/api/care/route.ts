@@ -7,6 +7,7 @@ import {
   ApiError,
 } from "@/lib/platform-server";
 import { readAdminJson } from "@/lib/admin-request";
+import { premiumExpiry } from "@/lib/admin-operations";
 import { textField, uuid } from "@/lib/content-validation";
 import { chatCutoff } from "@/mobile/src/chat-retention.mjs";
 import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
@@ -59,11 +60,7 @@ export async function GET(request: Request) {
         .or(`patient_id.eq.${user.id},doctor_id.eq.${user.id}`)
         .order("created_at", { ascending: false })
         .limit(100),
-      db
-        .from("premium_memberships")
-        .select("expires_at")
-        .eq("user_id", user.id)
-        .maybeSingle(),
+      premiumExpiry(db, user.id),
       db
         .from("doctor_profiles")
         .select("user_id")
@@ -73,10 +70,7 @@ export async function GET(request: Request) {
     ]);
     const profiles = checked(doctors) || [],
       isDoctor = Boolean(checked(ownDoctor)),
-      active = Boolean(
-        checked(membership) &&
-          Date.parse(membership.data!.expires_at) > Date.now(),
-      );
+      active = Boolean(membership && Date.parse(membership) > Date.now());
     // Only return the user's own bookings, plus bookings for a verified doctor's own slots.
     const ownBookings = db
       .from("consultation_bookings")
@@ -203,16 +197,8 @@ export async function POST(request: Request) {
       return result({ ok: true });
     }
     await requireFeature(db, "doctorConsultation");
-    const member = checked(
-      await db
-        .from("premium_memberships")
-        .select("expires_at")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-    );
-    const premium = Boolean(
-      member && Date.parse(member.expires_at) > Date.now(),
-    );
+    const expiry = await premiumExpiry(db, user.id);
+    const premium = Boolean(expiry && Date.parse(expiry) > Date.now());
     if (body.action === "book" || body.action === "start") {
       if (!premium)
         throw new ApiError(403, "კონსულტაცია მხოლოდ აქტიური პრემიუმისთვისაა.");

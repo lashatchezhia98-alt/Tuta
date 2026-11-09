@@ -9,7 +9,7 @@ import { readAdminJson } from "@/lib/admin-request";
 import { articleInput, uuid } from "@/lib/content-validation";
 export async function GET(request: Request) {
   try {
-    const db = await requireAdmin(request);
+    const db = await requireAdmin(request, false, "content");
     return result({
       articles: checked(
         await db
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 }
 export async function POST(request: Request) {
   try {
-    const db = await requireAdmin(request);
+    const db = await requireAdmin(request, false, "content");
     let body: Record<string, unknown>,
       entry: ReturnType<typeof articleInput> | undefined,
       id: string | undefined;
