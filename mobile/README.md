@@ -1,4 +1,4 @@
-# Tuta mobile 1.1.3
+# Tuta mobile 1.1.4
 
 Shared React Native / Expo app for iOS and Android. The Next.js website uses the same account, health records, community, product catalogue, care service and membership APIs.
 
@@ -24,7 +24,7 @@ The header contains sign-in/registration or account access. The hamburger holds 
 - Comments can load older pages beyond the initial page. Only verified doctors can have a profile photo.
 - Library content and verified doctor profiles come from real website APIs; empty services are not replaced with invented records.
 - Doctor messaging and new appointments require server-verified Premium. History and cancellation remain available to the authorized participant.
-- Premium and market checkout use the existing **Flitt test integration**, not live charging. Prices: 4.99 GEL monthly / 49.90 GEL yearly. Successful browser return alone never grants access or marks an order paid. No automatic renewal is promised.
+- Premium and market checkout use the existing **Flitt test integration**, not live charging. Prices: 4.99 GEL for 30 days or 49.90 GEL per year. The server blocks a repeat Premium purchase during paid coverage. New Premium subscriptions can opt into test renewal, which can be paused or resumed without shortening paid access. Successful browser return alone never grants access or marks an order paid.
 - Doctor PDF report uses the last six months of the same report model as the website, with cycles, symptom frequency and irregularity flags. Export requires confirmation and membership verification.
 - Reminders export a calendar file. **Native push notification delivery is not implemented.**
 - Automated medical symptom review and full account deletion remain clearly labelled as planned, matching the website. A health-record reset is not account deletion. No AI assistant is included.
@@ -66,7 +66,7 @@ open Tuta.xcworkspace
 
 Open **Tuta.xcworkspace**, not Tuta.xcodeproj, so CocoaPods modules are included. The current iOS deployment target is 26.6. Device installation requires a matching signing team and an unexpired profile. Personal Team builds expire and must be signed/installed again.
 
-The Android preview is `../android/releases/Tuta-1.1.3-preview.apk` (versionCode 7). It uses development signing for direct testing, not a production Play Store release key. Do not uninstall an existing app merely to update it.
+The Android preview is `../android/releases/Tuta-1.1.4-preview.apk` (versionCode 8). It uses development signing for direct testing, not a production Play Store release key. Do not uninstall an existing app merely to update it.
 
 Flitt checkout started from the native app uses an HTTPS return page to reopen Premium or Orders. Returning from the browser does not confirm a payment; only the independently verified Flitt server callback can do that.
 
