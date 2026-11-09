@@ -98,13 +98,16 @@ test("auth forms call Supabase sign-up, password sign-in and recovery", async ()
   assert.match(page, /resetPasswordForEmail\(/);
   assert.match(page, /updateUser\(\{password\}\)/);
   assert.match(page, /type="submit"/);
-  assert.match(page, /Confirm your email|გამოგზავნილი ბმული/);
+  assert.match(page, /id="auth\.verifyTitle"/);
+  assert.match(page, /<EmailCodeForm /);
   assert.match(client, /NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY/);
 });
 
 test("all expected primary platform routes are present in the production build", async () => {
   const routes = [
     "index.html",
+    "admin/login.html",
+    "admin/invite.html",
     "register.html",
     "login.html",
     "forgot-password.html",
@@ -140,7 +143,17 @@ test("community page exposes topics and the post composer", async () => {
   assert.match(source, /წაშლა/);
   assert.match(admin, /საზოგადოების საჩივრები/);
   assert.match(admin, /Reporter identity is not shown to admins/);
-  assert.match(moderationApi, /verifyAdminSession/);
+  assert.match(moderationApi, /getAdminIdentity/);
   assert.match(moderationApi, /SUPABASE_SECRET_KEY/);
   assert.doesNotMatch(moderationApi, /reporter_id/);
+});
+
+test("the public homepage has no admin entry; the direct admin login renders its own form", async () => {
+  const [home, login] = await Promise.all([
+    readFile(new URL("index.html", appRoot), "utf8"),
+    readFile(new URL("admin/login.html", appRoot), "utf8"),
+  ]);
+  assert.doesNotMatch(home, /href="\/admin(?:\/|")/);
+  assert.match(login, /name="email"/);
+  assert.match(login, /name="password"/);
 });

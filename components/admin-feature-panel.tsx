@@ -9,9 +9,11 @@ import DoctorEnrollment from "@/components/doctor-enrollment";
 import AdminMarket from "@/components/admin-market";
 import MarketOrders from "@/components/market-orders";
 import BrandMark from "@/components/brand-mark";
+import AdminWebsiteCopy from "@/components/admin-website-copy";
+import AdminInvitations from "@/components/admin-invitations";
 
 type Lang = "ka" | "en";
-type Section = "overview" | "features" | "reports" | "content" | "doctors" | "care" | "market" | "orders" | "tools";
+type Section = "overview" | "features" | "reports" | "content" | "doctors" | "care" | "market" | "orders" | "tools" | "website-copy" | "invitations";
 type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; created_at: string } };
 
 const reasonNames: Record<string, [string, string]> = {
@@ -33,6 +35,8 @@ function getAdminLanguage(): Lang {
 const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "overview", href: "/admin", ka: "მიმოხილვა", en: "Overview" },
   { section: "features", href: "/admin/features", ka: "საიტის ფუნქციები", en: "Site features" },
+  { section: "website-copy", href: "/admin/website-copy", ka: "ტექსტების რედაქტირება", en: "Website copy" },
+  { section: "invitations", href: "/admin/invitations", ka: "ადმინის მოწვევები", en: "Admin invitations" },
   { section: "reports", href: "/admin/reports", ka: "საჩივრები", en: "Reports" },
   { section: "content", href: "/admin/content", ka: "ბლოგები და ბიბლიოთეკა", en: "Blog & library" },
   { section: "doctors", href: "/admin/doctors", ka: "ექიმების რეგისტრაცია", en: "Doctor registration" },
@@ -42,7 +46,7 @@ const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "tools", href: "/admin/tools", ka: "მომავალი ფუნქციები", en: "Planned tools" },
 ];
 
-export default function AdminFeaturePanel({ section = "overview", initialLang = "ka" }: { section?: Section; initialLang?: Lang }) {
+export default function AdminFeaturePanel({ section = "overview", initialLang = "ka", owner = false }: { section?: Section; initialLang?: Lang; owner?: boolean }) {
   const lang = useSyncExternalStore(subscribeAdminLanguage, getAdminLanguage, () => initialLang);
   const ka = lang === "ka";
   const features = useSiteFeatures();
@@ -110,6 +114,8 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
   const heading: Record<Section, [string, string]> = {
     overview: ["მართვის მიმოხილვა", "Admin overview"],
     features: ["საიტის ფუნქციები", "Site features"],
+    "website-copy": ["ვებსაიტის ტექსტები", "Website copy"],
+    invitations: ["ადმინის მოწვევები", "Admin invitations"],
     reports: ["საზოგადოების საჩივრები", "Community reports"],
     content: ["ბლოგები და ბიბლიოთეკა", "Blog & health library"],
     care: ["ექიმები და ვიზიტები", "Doctors & appointments"],
@@ -121,6 +127,8 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
   const description: Record<Section, [string, string]> = {
     overview: ["ერთი ადგილიდან გადადი პლატფორმის მართვის საჭირო ნაწილზე.", "Jump to the area you need to manage."],
     features: ["ჩართე ან გამორთე საიტის სექციები. ცვლილება Supabase-ში ინახება.", "Turn site sections on or off. Changes are saved to Supabase."],
+    "website-copy": ["შეცვალე ვებსაიტის ტექსტები ქართულად და ინგლისურად. აპლიკაციების ტექსტები არ იცვლება.", "Edit Georgian and English website copy. Mobile app copy is unaffected."],
+    invitations: ["შექმენი ერთჯერადი ბმული, გაუზიარე მოწვეულ პირს და საჭიროებისას გააუქმე წვდომა.", "Create and share a one-time link, or revoke access."],
     reports: ["შეამოწმე მონიშნული პოსტები. მომჩივნის ვინაობა ადმინისტრატორს არ უჩანს.", "Review flagged posts. Reporter identity is not shown to admins."],
     content: ["მართე სტატიები, კატეგორიები, ენები და გამოქვეყნების სტატუსი.", "Manage articles, categories, languages and publication status."],
     care: ["მართე გადამოწმებული ექიმების პროფილები და ხელმისაწვდომი ვიზიტის დროები.", "Manage verified doctor profiles and available appointment times."],
@@ -149,6 +157,8 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
   );
 
   function renderSection(current: Section) {
+    if (current === "website-copy") return <AdminWebsiteCopy lang={lang}/>;
+    if (current === "invitations" && owner) return <AdminInvitations lang={lang}/>;
     if(current==='orders')return <MarketOrders lang={lang} admin/>;
     if (current === "features") return <>
       <div className="admin-feature-groups">{(["ძირითადი", "სერვისები"] as const).map(group => <section className="admin-feature-group" key={group}>
@@ -183,7 +193,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
       <aside className="admin-sidebar">
         <div className="admin-sidebar-brand"><span>TUTA</span><strong>{ka ? "ადმინისტრაცია" : "Administration"}</strong></div>
         <nav aria-label={ka ? "ადმინის მენიუ" : "Admin navigation"}>
-          {nav.map(item => <Link key={item.section} href={item.href} className={section === item.section ? "active" : undefined} aria-current={section === item.section ? "page" : undefined}>{ka ? item.ka : item.en}</Link>)}
+          {nav.filter(item => item.section !== "invitations" || owner).map(item => <Link key={item.section} href={item.href} className={section === item.section ? "active" : undefined} aria-current={section === item.section ? "page" : undefined}>{ka ? item.ka : item.en}</Link>)}
         </nav>
         <form action="/api/admin/logout" method="post"><button className="admin-signout" type="submit">{ka ? "გამოსვლა" : "Sign out"}</button></form>
       </aside>

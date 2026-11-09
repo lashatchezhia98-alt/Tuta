@@ -1,8 +1,7 @@
 import { isSameOrigin, readAdminJson } from "@/lib/admin-request";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAdminSession } from "@/lib/admin-auth";
+import { getAdminIdentity } from "@/lib/platform-server";
 import { defaultSiteFeatures, SITE_FEATURES, type SiteFeatureSettings } from "@/lib/site-feature-definitions";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +26,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   if (!isSameOrigin(request)) return NextResponse.json({ error: "Request origin is not allowed." }, { status: 403 });
-  const cookieStore = await cookies();
-  const authenticated = await verifyAdminSession(cookieStore.get(COOKIE_NAME)?.value);
+  const authenticated = await getAdminIdentity();
   if (!authenticated) return NextResponse.json({ error: "ადმინის შესვლა ხელახლა გაიარე." }, { status: 401 });
 
   const supabase = getSupabase(true);

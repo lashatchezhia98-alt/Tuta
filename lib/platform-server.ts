@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAdminSession } from "./admin-auth";
+import { COOKIE_NAME, readAdminIdentity } from "./admin-auth";
 import { isSameOrigin } from "./admin-request";
 
 export class ApiError extends Error {
@@ -37,11 +37,22 @@ export async function requireUser(request: Request) {
     throw new ApiError(401, "გაიარე ავტორიზაცია.");
   return { db, user };
 }
-export async function requireAdmin(request: Request) {
+export async function getAdminIdentity() {
+  const identity = await readAdminIdentity((await cookies()).get(COOKIE_NAME)?.value);
+  if (!identity || identity.role === "owner") return identity;
+  try {
+    const { data, error } = await dbClient().from("admin_memberships").select("user_id")
+      .eq("user_id", identity.userId).eq("invite_id", identity.grantId).is("revoked_at", null).maybeSingle();
+    return !error && data ? identity : null;
+  } catch { return null; }
+}
+
+export async function requireAdmin(request: Request, ownerOnly = false) {
   if (request.method !== "GET" && !isSameOrigin(request))
     throw new ApiError(403, "მოთხოვნა დაუშვებელია.");
-  if (!(await verifyAdminSession((await cookies()).get(COOKIE_NAME)?.value)))
-    throw new ApiError(401, "ადმინის შესვლა ხელახლა გაიარე.");
+  const identity = await getAdminIdentity();
+  if (!identity) throw new ApiError(401, "ადმინის შესვლა ხელახლა გაიარე.");
+  if (ownerOnly && identity.role !== "owner") throw new ApiError(403, "ეს მოქმედება მხოლოდ მთავარ ადმინს შეუძლია.");
   return dbClient();
 }
 export async function requireFeature(

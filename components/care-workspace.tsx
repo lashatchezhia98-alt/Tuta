@@ -1,4 +1,6 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -181,7 +183,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
   return (
     <div className="inner-container">
       <section className="workspace-card">
-        <h1>{ka ? "ექიმები და კონსულტაცია" : "Doctors & consultations"}</h1>
+        <h1><SiteCopyText id="care.title" lang={lang}/></h1>
         {!enabled && (
           <p role="status">
             {ka
@@ -190,14 +192,10 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
           </p>
         )}
         <p>
-          {ka
-            ? "პირადი მიმოწერა არჩეულ ექიმთან და 30-წუთიანი ვიზიტის დაჯავშნა. ეს არ არის გადაუდებელი დახმარების სერვისი. ექიმი ვერ ხედავს შენს პერიოდის დღიურს."
-            : "Private messages with your chosen doctor and 30-minute appointments. This is not an emergency service. Doctors cannot access your period journal."}
+          <SiteCopyText id="care.intro" lang={lang}/>
         </p>
         <p>
-          {ka
-            ? "პრემიუმის გადახდა ამ ეტაპზე სატესტოა. ექიმები გამოჩნდებიან მხოლოდ ადმინისტრატორის მიერ მათი დამატების შემდეგ."
-            : "Premium checkout is currently test-only. Doctors appear only after an administrator adds them."}
+          <SiteCopyText id="care.note" lang={lang}/>
         </p>
         {error && <p role="alert">{error}</p>}
         <p role="status">
@@ -293,7 +291,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
             </p>
           )}
           <section className="workspace-card">
-            <h2>{ka ? "ჩემი ჯავშნები" : "My appointments"}</h2>
+            <h2><SiteCopyText id="care.bookings" lang={lang}/></h2>
             {!data.bookings.length && (
               <p>{ka ? "ჯავშნები ჯერ არ გაქვს." : "No appointments yet."}</p>
             )}
@@ -331,7 +329,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
             ))}
           </section>
           <section className="workspace-card workspace-form">
-            <h2>{ka ? "მიმოწერა" : "Messages"}</h2>
+            <h2><SiteCopyText id="care.messages" lang={lang}/></h2>
             <label>
               {ka ? "აირჩიე საუბარი" : "Choose conversation"}
               <select

@@ -1,4 +1,6 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
+
 import Link from 'next/link';
 import BrandMark from '@/components/brand-mark';
 import HeaderActions from '@/components/header-actions';
@@ -25,15 +27,15 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
   const features=useSiteFeatures();
   useEffect(()=>{const timer=setTimeout(()=>{if(localStorage.getItem('tuta-language')==='en')setLang('en')},0);return()=>clearTimeout(timer)},[]);
   const ka=lang==='ka'; const page=extraPages.find(p=>p.slug===slug);
-  if(page && page.slug!=='partners' && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></main>;
+  if(page && page.slug!=='partners' && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features"><SiteCopyText id="directory.title" lang={lang}/></Link></main>;
   return <div className="inner-container" style={{padding:'24px 16px 80px'}}>
     <header style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:32}}>
       <Link href="/" className="inner-logo"><BrandMark/>{ka?'თუთა':'TUTA'}</Link>
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
-    <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">{ka?'ყველა ფუნქცია':'All features'}</Link></nav>
+    <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features"><SiteCopyText id="directory.title" lang={lang}/></Link></nav>
     {page ? <main><h1>{ka?page.ka:page.en}</h1><p>{ka?page.description:page.english}</p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main>
-      <h1>{ka?'ყველა ფუნქცია':'All features'}</h1><p>{ka?'აირჩიე შენი სივრცე. მოსამზადებელი ფუნქციები ცალკეა მონიშნული.':'Choose your space. Features still in preparation are clearly marked.'}</p>
+      <h1><SiteCopyText id="directory.title" lang={lang}/></h1><p><SiteCopyText id="directory.intro" lang={lang}/></p>
       <div className="feature-directory-grid">{existing.filter(([url])=>{const id=featureForRoute(url);return !id||features[id]}).map(([url,a,b])=><Link className="workspace-card directory-link" key={url} href={url}>{ka?a:b}<span aria-hidden>↗</span></Link>)}</div>
       <div className="feature-directory-grid">{extraPages.filter(p=>['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}>{ka?p.ka:p.en} ↗</Link>)}</div>
       <h2>{ka?'მომზადების ეტაპზე':'In preparation'}</h2><div className="feature-directory-grid">{extraPages.filter(p=>!['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}>{ka?p.ka:p.en}<span aria-hidden>↗</span></Link>)}</div>

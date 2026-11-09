@@ -1,8 +1,7 @@
 import { isSameOrigin, readAdminJson } from "@/lib/admin-request";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAdminSession } from "@/lib/admin-auth";
+import { getAdminIdentity } from "@/lib/platform-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +14,7 @@ function getAdminClient() {
 }
 
 async function isAdmin() {
-  const cookieStore = await cookies();
-  return verifyAdminSession(cookieStore.get(COOKIE_NAME)?.value);
+  return getAdminIdentity();
 }
 
 export async function GET() {

@@ -1,3 +1,4 @@
+import { SiteCopyText } from "@/components/site-copy-provider";
 import { EMAIL_CODE_LENGTH } from "@/mobile/src/email-verification.mjs";
 import { useEmailVerification, type PendingEmail } from "@/mobile/src/use-email-verification";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -14,7 +15,7 @@ export default function EmailCodeForm({ pending, lang, onVerified, onBack }: {
   return (
     <form onSubmit={(event) => { event.preventDefault(); void verification.submit("verify"); }}>
       <label>
-        {ka ? "6-ნიშნა კოდი" : "6-digit code"}
+        <SiteCopyText id="auth.verifyCode" lang={lang}/>
         <input
           name="email-code"
           inputMode="numeric"
@@ -30,10 +31,10 @@ export default function EmailCodeForm({ pending, lang, onVerified, onBack }: {
       {verification.error && <p className="admin-login-error" role="alert">{verification.error}</p>}
       {verification.resent && <p className="auth-notice" role="status">{ka ? "ახალი კოდი გაიგზავნა. გამოიყენე ბოლო წერილი." : "A new code was sent. Use the latest email."}</p>}
       <button type="submit" disabled={busy || !verification.valid}>
-        {verification.operation === "verify" ? (ka ? "მოწმდება…" : "Verifying…") : (ka ? "ელფოსტის დადასტურება" : "Verify email")}
+        {verification.operation === "verify" ? (ka ? "მოწმდება…" : "Verifying…") : (<SiteCopyText id="auth.verifyAction" lang={lang}/>)}
       </button>
       <button type="button" className="email-code-secondary" disabled={busy || verification.wait > 0} onClick={() => void verification.submit("resend")}>
-        {verification.operation === "resend" ? (ka ? "იგზავნება…" : "Sending…") : (ka ? "კოდის ხელახლა გაგზავნა" : "Resend code")}
+        {verification.operation === "resend" ? (ka ? "იგზავნება…" : "Sending…") : (<SiteCopyText id="auth.resendCode" lang={lang}/>)}
         {verification.wait > 0 ? ` (${verification.wait}s)` : ""}
       </button>
       <button type="button" className="email-code-secondary" disabled={busy} onClick={onBack}>{ka ? "უკან" : "Back"}</button>

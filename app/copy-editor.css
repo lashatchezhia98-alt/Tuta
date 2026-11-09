@@ -1,0 +1,25 @@
+.copy-editor { display: grid; gap: 1rem; }
+.copy-editor-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.copy-editor-grid { display: grid; grid-template-columns: minmax(16rem, .85fr) minmax(0, 1.15fr); gap: 1.25rem; align-items: start; }
+.copy-editor-controls, .copy-editor-preview { display: grid; min-width: 0; gap: .75rem; }
+.copy-editor label { display: grid; gap: .35rem; font-weight: 600; }
+.copy-editor :is(button, select, input, textarea) { min-height: 44px; border: 1px solid #1e1b2e30; border-radius: .65rem; padding: .5rem .75rem; background: white; color: #1e1b2e; }
+.copy-editor textarea { resize: vertical; }
+.copy-editor button { cursor: pointer; }
+.copy-editor button:disabled { cursor: not-allowed; opacity: .55; }
+.copy-editor button[aria-pressed="true"] { background: #e3d8f1; border-color: #8067a3; }
+.copy-editor button.copy-editor-primary { background: #1e1b2e; color: white; }
+.copy-editor-list { display: grid; gap: .3rem; max-height: 16rem; overflow: auto; }
+.copy-editor-list button { display: grid; text-align: start; min-width: 0; overflow-wrap: anywhere; }
+.copy-editor-list small, .copy-editor-preview p { color: #635d72; }
+.copy-editor-error { color: #84263c; }
+.copy-editor iframe { display: block; width: 100%; height: min(70vh, 46rem); min-height: 28rem; border: 1px solid #1e1b2e30; border-radius: .8rem; background: #f9f8fc; }
+.site-copy-preview-text { outline: 1px dashed #8067a3; outline-offset: 2px; cursor: pointer; overflow-wrap: anywhere; }
+.site-copy-preview-text:hover { outline: 2px solid #8067a3; }
+.admin-invites form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.admin-invites input { flex: 1 1 15rem; min-width: 0; }
+.admin-invite-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding: .85rem 0; border-bottom: 1px solid #1e1b2e20; }
+.admin-invite-row strong, .admin-invite-row small { display: block; overflow-wrap: anywhere; }
+.admin-invite-row small { color: #635d72; }
+.admin-invite-intro { padding: 1.5rem; max-width: 52rem; margin: auto; }
+@media (max-width: 1050px) { .copy-editor-grid { grid-template-columns: minmax(0, 1fr); } }

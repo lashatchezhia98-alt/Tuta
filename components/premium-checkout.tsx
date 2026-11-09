@@ -1,4 +1,6 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
+
 
 import { useCallback, useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -73,8 +75,8 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
     <div className="premium-checkout-card">
       <div className="premium-checkout-copy">
         <span className="inner-kicker">{ka ? "მხოლოდ სატესტო რეჟიმი" : "TEST MODE ONLY"}</span>
-        <h2>{ka ? "TUTA Premium" : "TUTA Premium"}</h2>
-        <p>{ka ? "აირჩიე პაკეტი. სატესტო გადახდის წარმატებით დასრულებისას Premium ავტომატურად გააქტიურდება." : "Choose a plan. Premium activates after a successful test payment."}</p>
+        <h2><SiteCopyText id="premium.heading" lang={lang}/></h2>
+        <p><SiteCopyText id="premium.instructions" lang={lang}/></p>
         <div className="premium-plan-options" role="group" aria-label={ka ? "Premium პაკეტის არჩევა" : "Choose a Premium plan"}>
           <button type="button" className={plan === "monthly" ? "selected" : ""} aria-pressed={plan === "monthly"} onClick={() => setPlan("monthly")}>
             <strong>4.99 ₾</strong><span>{ka ? "თვეში · 30 დღე" : "monthly · 30 days"}</span>
@@ -85,10 +87,10 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
         </div>
         <div className="premium-price"><strong>{plan === "yearly" ? "49.90 ₾" : "4.99 ₾"}</strong><span>{plan === "yearly" ? (ka ? "/ წელი · ერთჯერადი სატესტო გადახდა" : "/ year · one-time test payment") : (ka ? "/ 30 დღე · ერთჯერადი სატესტო გადახდა" : "/ 30 days · one-time test payment")}</span></div>
         <button className="premium-pay-button" type="button" disabled={busy} onClick={() => void startCheckout()}>
-          {busy ? (ka ? "მზადდება…" : "Preparing…") : (ka ? "სატესტო გადახდა" : "Test payment")}
+          {busy ? (ka ? "მზადდება…" : "Preparing…") : (<SiteCopyText id="premium.pay" lang={lang}/>)}
         </button>
         <button className="premium-status-button" type="button" onClick={() => void refreshMembership()}>
-          {ka ? "გადახდის სტატუსის შემოწმება" : "Check payment status"}
+          <SiteCopyText id="premium.status" lang={lang}/>
         </button>
         {active && <p className="premium-active" role="status">{ka ? `Premium აქტიურია ${dateText}-მდე.` : `Premium is active until ${dateText}.`}</p>}
         {notice && <p className="premium-notice" role="status">{notice}</p>}
@@ -98,7 +100,7 @@ export default function PremiumCheckout({ lang }: { lang: Lang }) {
       <aside className="premium-test-note">
         <strong>{ka ? "სატესტო გარემო" : "Sandbox environment"}</strong>
         <p>{ka ? "რეალური თანხა არ ჩამოგეჭრება. გადახდის გვერდზე გამოიყენე Flitt-ის სატესტო ბარათი. ყოველთვიური პაკეტი 30 დღეს, წლიური კი 1 წელს ააქტიურებს." : "No real charge is made. Use a Flitt test card on hosted checkout. Monthly access lasts 30 days; annual access lasts one year."}</p>
-        <a href="https://docs.flitt.com/api/testing/" target="_blank" rel="noreferrer">{ka ? "სატესტო ბარათები" : "Test cards"}</a>
+        <a href="https://docs.flitt.com/api/testing/" target="_blank" rel="noreferrer"><SiteCopyText id="premium.testCards" lang={lang}/></a>
       </aside>
     </div>
     <section className="workspace-card premium-benefits"><h2>{ka?'უფასო და Premium':'Free & Premium'}</h2><div className="workspace-grid"><article><h3>{ka?'უფასო':'Free'}</h3><ul>{(ka?['პერიოდის კალენდარი და სავარაუდო პროგნოზები','დღიური და სიმპტომების აღრიცხვა','ციკლების ისტორია და ძირითადი შეჯამება','საზოგადოება, ბლოგები და მარკეტის დათვალიერება']:['Period calendar and estimated predictions','Daily journal and symptom logging','Cycle history and basic summaries','Community, articles and browsing the market']).map(item=><li key={item}>{item}</li>)}</ul></article><article><h3>Premium</h3><ul>{(ka?['უფასო პაკეტის ყველა ფუნქცია','განმეორებადი სიმპტომების ანალიზი','ექიმისთვის ანგარიშის მომზადება','ორსულობის დამატებითი თვალყურის დევნება','თანხმობით გაზიარება პარტნიორთან','ხელმისაწვდომ ექიმთან ჩატი და ვიზიტის დაჯავშნა']:['Everything in Free','Repeating symptom analysis','Doctor-ready reports','Additional pregnancy tracking','Consent-based partner sharing','Chat and booking with available doctors']).map(item=><li key={item}>{item}</li>)}</ul><p>{ka?'ექიმების ხელმისაწვდომობა ცალკე მოწმდება; გადახდა ჯერ მხოლოდ სატესტოა.':'Doctor availability is checked separately; payments remain test-only.'}</p></article></div></section>

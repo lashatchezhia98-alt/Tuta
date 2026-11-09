@@ -23,29 +23,41 @@ function safeEqual(left: string, right: string) {
   return mismatch === 0;
 }
 
-export async function createAdminSession(email: string) {
-  const payload = encode(JSON.stringify({ email, expiresAt: Date.now() + SESSION_SECONDS * 1000 }));
+type AdminIdentity = { role: "owner" } | { role: "admin"; userId: string; grantId: string };
+type Credentials = { email: string } | { userId: string; grantId: string };
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function createSession(identity: Credentials) {
+  const payload = encode(JSON.stringify({ ...identity, expiresAt: Date.now() + SESSION_SECONDS * 1000 }));
   const signature = await sign(payload);
   return signature ? `${payload}.${signature}` : null;
 }
 
-export async function verifyAdminSession(value?: string) {
-  if (!value || value.length > 4096 || value.split(".").length !== 2) return false;
+export const createAdminSession = (email: string) => createSession({ email });
+export const createInvitedAdminSession = (userId: string, grantId: string) => createSession({ userId, grantId });
+
+export async function readAdminIdentity(value?: string): Promise<AdminIdentity | null> {
+  if (!value || value.length > 4096 || value.split(".").length !== 2) return null;
   const [payload, signature] = value.split(".");
-  if (!payload || !signature) return false;
+  if (!payload || !signature) return null;
   const expected = await sign(payload);
-  if (!expected || !safeEqual(signature, expected)) return false;
+  if (!expected || !safeEqual(signature, expected)) return null;
   try {
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
     const decoded = atob(normalized);
     const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(decoded, char => char.charCodeAt(0))));
-    return typeof data.email === "string" && Boolean(process.env.ADMIN_EMAIL)
-      && data.email === process.env.ADMIN_EMAIL
-      && typeof data.expiresAt === "number" && Number.isSafeInteger(data.expiresAt)
-      && data.expiresAt > Date.now();
+    if (typeof data.expiresAt !== "number" || !Number.isSafeInteger(data.expiresAt) || data.expiresAt <= Date.now()) return null;
+    if (typeof data.email === "string" && process.env.ADMIN_EMAIL && data.email === process.env.ADMIN_EMAIL) return { role: "owner" };
+    if (typeof data.userId === "string" && uuid.test(data.userId) && typeof data.grantId === "string" && uuid.test(data.grantId))
+      return { role: "admin", userId: data.userId, grantId: data.grantId };
+    return null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function verifyAdminSession(value?: string) {
+  return (await readAdminIdentity(value))?.role === "owner";
 }
 
 export { COOKIE_NAME, SESSION_SECONDS };

@@ -25,39 +25,21 @@ import {authDestination} from '@/lib/auth-destination';
 import FreeCalculator from '@/components/free-calculator';
 import { featureForRoute, useSiteFeatures,useSiteFeaturesStatus } from "@/lib/site-features";
 
+import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
+
 type Lang = "ka" | "en";
 function validBirthDate(value:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(`${value}T12:00:00Z`);if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==value)return false;const today=isoDate(new Date());const age=Number(today.slice(0,4))-Number(value.slice(0,4))-(today.slice(5)<value.slice(5)?1:0);return age>=1&&age<=120&&value<=today}
-type PageKind = "about"|"blog"|"market"|"premium"|"register"|"login"|"forgot-password"|"reset-password"|"dashboard"|"log"|"insights"|"report"|"settings"|"ovulation"|"period"|"admin"|"consultation";
-
-const pageInfo: Record<PageKind, {ka:[string,string],en:[string,string]}> = {
-  about:{ka:["თუთას შესახებ","თუთა შეიქმნა იმისთვის, რომ ჯანმრთელობაზე ზრუნვა იყოს მარტივი, პირადი და გასაგები."],en:["About TUTA","TUTA was created to make health awareness simple, private and easy to understand."]},
-  blog:{ka:["ჯანმრთელობის ბიბლიოთეკა","ზოგადი საკითხავი მასალა პერიოდზე, ყოველდღიურ კეთილდღეობასა და ექიმთან ვიზიტისთვის მომზადებაზე."],en:["Health library","General reading on periods, everyday wellbeing and preparing for a doctor visit."]},
-  market:{ka:["მარკეტი / მაღაზია","შერჩეული პროდუქტები ყოველდღიური თავის მოვლისთვის."],en:["Market / shop","Thoughtfully selected products for everyday care."]},
-  premium:{ka:["TUTA Premium","ფასიანი ფუნქციები მზადდება და ამ ვერსიაში ჯერ არ არის ჩართული."],en:["TUTA Premium","Paid features are in development and are not active in this version."]},
-  register:{ka:["შექმენი ანგარიში","დაიწყე შენი ციკლის გაცნობიერება უსაფრთხო და პირად სივრცეში."],en:["Create your account","Start understanding your cycle in a safe and private space."]},
-  login:{ka:["კეთილი იყოს შენი დაბრუნება","შედი ანგარიშზე და გააგრძელე იქიდან, სადაც გაჩერდი."],en:["Welcome back","Sign in and continue where you left off."]},
-  "forgot-password":{ka:["პაროლის აღდგენა","შეიყვანე ანგარიშის ელფოსტა და გამოგიგზავნით აღდგენის ბმულს."],en:["Reset your password","Enter your account email and we’ll send you a recovery link."]},
-  "reset-password":{ka:["ახალი პაროლი","აირჩიე ახალი პაროლი შენი ანგარიშისთვის."],en:["Choose a new password","Set a new password for your account."]},
-  dashboard:{ka:["პერიოდი","შენი პერიოდისა და დღიურის მიმდინარე მიმოხილვა."],en:["Period","Your current period and journal overview."]},
-  log:{ka:["დღიური ჩანაწერი","მონიშნე განწყობა, ენერგია, ტკივილი, ნაკადი და სიმპტომები."],en:["Daily log","Track mood, energy, pain, flow and symptoms."]},
-  insights:{ka:["შენი პატერნები","დროთა განმავლობაში აღმოჩენილი ცვლილებები და ციკლის ანალიტიკა."],en:["Your patterns","Changes and cycle analytics discovered over time."]},
-  report:{ka:["ექიმის ანგარიში","ექიმისთვის განკუთვნილი PDF ანგარიში ჯერ მზადდება."],en:["Doctor's report","A doctor-ready PDF report is still in development."]},
-  settings:{ka:["პარამეტრები","ნახე ანგარიში და მონაცემების სინქრონიზაციის სტატუსი."],en:["Settings","View your account and data synchronization status."]},
-  ovulation:{ka:["ოვულაციის კალკულატორი","გამოთვალე სავარაუდო ოვულაციის დღე და ნაყოფიერი ფანჯარა."],en:["Ovulation calculator","Estimate your ovulation day and fertile window."]},
-  period:{ka:["პერიოდის კალკულატორი","გამოთვალე შემდეგი პერიოდის სავარაუდო თარიღი."],en:["Period calculator","Estimate the start date of your next period."]},
-  admin:{ka:["ადმინისტრაცია","მართე საიტის ფუნქციების ხილვადობა და კონტენტი."],en:["Administration","Manage feature visibility and site content."]},
-  consultation:{ka:["ექიმთან კონსულტაცია","ექიმთან ჩატი და ვიზიტის დაჯავშნა ჯერ არ არის ჩართული."],en:["Doctor consultation","Doctor chat and appointment booking are not active yet."]},
-};
+import { aboutCards, pageInfo, type PageKind } from "@/lib/site-copy-defaults";
 
 function useSiteLanguage(){const [lang,setLang]=useState<Lang>("ka");useEffect(()=>{if(localStorage.getItem("tuta-language")==="en")setLang("en")},[]);useEffect(()=>{localStorage.setItem("tuta-language",lang);document.documentElement.lang=lang},[lang]);return{lang,setLang}}
-function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a href="/" className={`inner-logo ${inverse?"inverse":""}`}><BrandMark/><strong>{lang==="ka"?"თუთა":"TUTA"}</strong></a>}
+function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a href="/" className={`inner-logo ${inverse?"inverse":""}`}><BrandMark/><strong><SiteCopyText id="nav.brand" lang={lang}/></strong></a>}
 
 function InnerHeader({lang,setLang,showActions=true}:{lang:Lang,setLang:(v:Lang)=>void,consult?:boolean,showActions?:boolean}){return <header className="inner-header"><div className="inner-container inner-nav"><InnerLogo lang={lang}/>{showActions&&<HeaderActions lang={lang} setLang={setLang}/>}</div></header>}
 
-function StandardPage({kind,lang}:{kind:PageKind,lang:Lang}){const data=pageInfo[kind][lang];const cards=lang==="ka"?[["შენი რიტმის გასაცნობად","თუთა აერთიანებს პერიოდის კალენდარს, ყოველდღიურ დღიურსა და ქალების საზოგადოებას. თუთა მეგრულად მთვარეს ნიშნავს."],["კონტროლი შენს ხელშია","ჯანმრთელობის ჩანაწერები ანგარიშში ინახება. პოსტები მათგან განცალკევებულია; პარტნიორთან გაზიარებისთვის თავად ირჩევ მონაცემებს და თანხმობას აუქმებ ნებისმიერ დროს."],["ინფორმაცია და პროფესიული დახმარება","პროგნოზები შეფასებაა და არა დიაგნოზი. ექიმები ჩნდებიან ადმინისტრატორის მიერ კვალიფიკაციის გადამოწმების შემდეგ. გადახდები ამ ეტაპზე მხოლოდ სატესტოა."]]:[["Understand your rhythm","Tuta brings together a period calendar, daily journal and a community for women. Tuta means moon in Mingrelian."],["You stay in control","Health entries are stored in your account, separate from community posts. You choose what to share with a partner and can revoke consent at any time."],["Information and professional care","Predictions are estimates, not diagnoses. Doctors appear after administrator qualification checks. Payments currently operate in test mode only."]];return <><section className="inner-hero"><div className="inner-container"><span className="inner-kicker">TUTA HEALTH</span><h1>{data[0]}</h1><p>{data[1]}</p></div></section><section className="inner-body inner-container"><div className="info-grid">{cards.map(([title,body])=><article key={title}><h2>{title}</h2><p>{body}</p></article>)}</div><p><a href="/privacy">{lang==='ka'?'კონფიდენციალურობა':'Privacy'}</a> · <a href="/terms">{lang==='ka'?'წესები და პირობები':'Terms'}</a></p></section></>}
-function PremiumPage({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA PREMIUM</span><h1>{lang==="ka"?"Premium სატესტო პაკეტი":"Premium test plan"}</h1><p>{lang==="ka"?"სატესტო გადახდა და Premium წვდომის გააქტიურების სრული შემოწმება.":"Test the payment flow and Premium access activation."}</p></div></section><PremiumCheckout lang={lang}/></>}
+function StandardPage({kind,lang}:{kind:PageKind,lang:Lang}){const cards=aboutCards[lang];return <><section className="inner-hero"><div className="inner-container"><span className="inner-kicker">TUTA HEALTH</span><h1><SiteCopyText id={`page.${kind}.0`} lang={lang}/></h1><p><SiteCopyText id={`page.${kind}.1`} lang={lang}/></p></div></section><section className="inner-body inner-container"><div className="info-grid">{cards.map(([title],index)=><article key={title}><h2><SiteCopyText id={`about.${index}.0`} lang={lang}/></h2><p><SiteCopyText id={`about.${index}.1`} lang={lang}/></p></article>)}</div><p><a href="/privacy">{lang==='ka'?'კონფიდენციალურობა':'Privacy'}</a> · <a href="/terms">{lang==='ka'?'წესები და პირობები':'Terms'}</a></p></section></>}
+function PremiumPage({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA PREMIUM</span><h1><SiteCopyText id="premium.title" lang={lang}/></h1><p><SiteCopyText id="premium.intro" lang={lang}/></p></div></section><PremiumCheckout lang={lang}/></>}
 
-function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-password",lang:Lang}){
+export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"forgot-password"|"reset-password",lang:Lang,onAuthenticated?:()=>void}){
   const login=kind==="login";
   const register=kind==="register";
   const forgot=kind==="forgot-password";
@@ -75,9 +57,12 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
   const [error,setError]=useState("");
   const [pendingEmail,setPendingEmail]=useState<PendingEmail|null>(null);
   const ka=lang==="ka";
+  const passwordLabel=useSiteCopyText(reset?"auth.newPassword":"auth.password",lang);
+  const confirmationLabel=useSiteCopyText(reset?"auth.repeatNewPassword":"auth.confirmPassword",lang);
+  const finish=()=>onAuthenticated ? onAuthenticated() : router.replace(authDestination(window.location.search));
 
   useEffect(()=>{
-    if(!login)return;
+    if(!login||onAuthenticated)return;
     let active=true;
     try{
       const supabase=getSupabaseBrowserClient();
@@ -89,7 +74,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
       }).catch(()=>{});
       return()=>{active=false;subscription.unsubscribe()};
     }catch{queueMicrotask(()=>{if(active)setError(ka?"ანგარიშის სერვისი დაყენებული არ არის.":"Account service is not configured.")});return()=>{active=false}}
-  },[login,router,ka]);
+  },[login,router,ka,onAuthenticated]);
 
   useEffect(()=>{
     if(!reset)return;
@@ -139,7 +124,7 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
         if(register&&!result.data.session){
           setPassword("");setConfirmPassword("");
           setPendingEmail({email:email.trim().toLowerCase(),resendAt:Date.now()+EMAIL_RESEND_WAIT_MS});
-        }else{router.replace(authDestination(window.location.search))}
+        }else{finish()}
       }
     }catch(cause){
       if(login&&emailNotConfirmed(cause)){
@@ -157,20 +142,20 @@ function AuthPage({kind,lang}:{kind:"login"|"register"|"forgot-password"|"reset-
   }
 
   return <section className="auth-page"><div className="auth-panel"><InnerLogo lang={lang}/>{pendingEmail?<>
-    <h1>{ka?"დაადასტურე ელფოსტა":"Confirm your email"}</h1>
+    <h1><SiteCopyText id="auth.verifyTitle" lang={lang}/></h1>
     <p>{ka?"შეიყვანე ამ მისამართზე მიღებული ექვსნიშნა კოდი:":"Enter the six-digit code sent to:"} <strong>{pendingEmail.email}</strong>. {ka?"თუ წერილი არ ჩანს, შეამოწმე სპამი.":"Check spam if you don’t see the email."}</p>
-    <EmailCodeForm pending={pendingEmail} lang={lang} onBack={()=>setPendingEmail(null)} onVerified={()=>router.replace(authDestination(window.location.search))}/>
-    </>:<><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p><form onSubmit={submit} noValidate={false}>
-    {!reset&&<label>{ka?"ელფოსტა (მომხმარებლის სახელი)":"Email (username)"}<input type="email" placeholder="name@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>}
-    {register&&<label>{ka?"სახელი":"First name"}<input type="text" autoComplete="given-name" value={firstName} onChange={e=>setFirstName(e.target.value)} required maxLength={80}/></label>}
-    {register&&<label>{ka?"გვარი":"Last name"}<input type="text" autoComplete="family-name" value={lastName} onChange={e=>setLastName(e.target.value)} required maxLength={80}/></label>}
-    {register&&<label>{ka?"დაბადების თარიღი":"Date of birth"}<input type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)} required min={`${new Date().getFullYear()-120}-01-01`} max={isoDate(new Date())}/></label>}
-    {!forgot&&<PasswordField label={reset?(ka?"ახალი პაროლი":"New password"):(ka?"პაროლი":"Password")} lang={lang} autoComplete={login?"current-password":"new-password"} value={password} onChange={setPassword}/>}
-    {(register||reset)&&<PasswordField label={ka?(reset?"გაიმეორე ახალი პაროლი":"გაიმეორე პაროლი"):(reset?"Confirm new password":"Confirm password")} lang={lang} value={confirmPassword} onChange={setConfirmPassword}/>}
+    <EmailCodeForm pending={pendingEmail} lang={lang} onBack={()=>setPendingEmail(null)} onVerified={finish}/>
+    </>:<><h1><SiteCopyText id={`page.${kind}.0`} lang={lang}/></h1><p><SiteCopyText id={`page.${kind}.1`} lang={lang}/></p><form onSubmit={submit} noValidate={false}>
+    {!reset&&<label><SiteCopyText id="auth.email" lang={lang}/><input type="email" placeholder="name@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>}
+    {register&&<label><SiteCopyText id="auth.firstName" lang={lang}/><input type="text" autoComplete="given-name" value={firstName} onChange={e=>setFirstName(e.target.value)} required maxLength={80}/></label>}
+    {register&&<label><SiteCopyText id="auth.lastName" lang={lang}/><input type="text" autoComplete="family-name" value={lastName} onChange={e=>setLastName(e.target.value)} required maxLength={80}/></label>}
+    {register&&<label><SiteCopyText id="auth.birthDate" lang={lang}/><input type="date" autoComplete="bday" value={birthDate} onChange={e=>setBirthDate(e.target.value)} required min={`${new Date().getFullYear()-120}-01-01`} max={isoDate(new Date())}/></label>}
+    {!forgot&&<PasswordField label={passwordLabel} lang={lang} autoComplete={login?"current-password":"new-password"} value={password} onChange={setPassword}/>}
+    {(register||reset)&&<PasswordField label={confirmationLabel} lang={lang} value={confirmPassword} onChange={setConfirmPassword}/>}
     {register&&<p>{ka?'ანგარიშის შექმნამდე გაეცანი':'Before creating an account, read our'} <a href="/terms" target="_blank" rel="noreferrer">{ka?'წესებსა და პირობებს':'Terms of use'}</a> {ka?'და':'and'} <a href="/privacy" target="_blank" rel="noreferrer">{ka?'კონფიდენციალურობის წესებს':'Privacy notice'}</a>.</p>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
-    <button type="submit" disabled={busy||(reset&&!recoveryReady)}>{busy?(ka?"მუშავდება…":"Please wait…"):login?(ka?"შესვლა":"Sign in"):register?(ka?"ანგარიშის შექმნა":"Create account"):forgot?(ka?"ბმულის გაგზავნა":"Send recovery link"):(ka?"პაროლის შეცვლა":"Update password")}</button>
-  </form>{login&&<a href="/forgot-password">{ka?"დაგავიწყდა პაროლი?":"Forgot password?"}</a>}<a href={login?"/register":"/login"}>{login?(ka?"არ გაქვს ანგარიში?":"Need an account?"):(ka?"შესვლაზე დაბრუნება":"Back to sign in")}</a></>}</div><div className="auth-art"><div className="auth-moon"/><p>{ka?"შენი მონაცემები შენ გეკუთვნის.":"Your data belongs to you."}</p></div></section>
+    <button type="submit" disabled={busy||(reset&&!recoveryReady)}><SiteCopyText id={busy?"auth.working":login?"nav.signIn":register?"auth.create":forgot?"auth.send":"auth.reset"} lang={lang}/></button>
+  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{!onAuthenticated&&<a href={login?"/register":"/login"}><SiteCopyText id={login?"auth.needAccount":"auth.back"} lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
 }
 
 function Calculator({kind,lang}:{kind:"period"|"ovulation",lang:Lang}){const [date,setDate]=useState("");const [length,setLength]=useState(28);const result=useMemo(()=>{if(!date||length<21||length>45)return null;try{return getCycle(date,length,5)}catch{return null}},[date,length]);const format=(v:string)=>new Intl.DateTimeFormat(lang==="ka"?"ka-GE":"en-GB",{day:"numeric",month:"long",year:"numeric"}).format(new Date(`${v}T12:00:00`));return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA TOOLS</span><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p></div></section><section className="calculator inner-container"><label>{lang==="ka"?"ბოლო პერიოდის პირველი დღე":"First day of last period"}<input type="date" value={date} onChange={e=>setDate(e.target.value)} max={isoDate(new Date())}/></label><label>{lang==="ka"?"ციკლის საშუალო ხანგრძლივობა":"Average cycle length"}<input type="number" min="21" max="45" value={length} onChange={e=>setLength(Math.round(Number(e.target.value)))}/></label>{date&&(!result||length<21||length>45)&&<p style={{gridColumn:"1/-1",color:"#9b2c3b"}}>{lang==="ka"?"შეიყვანე სწორი თარიღი და ციკლის ხანგრძლივობა (21–45 დღე).":"Enter a valid date and cycle length (21–45 days)."}</p>}<div className="calculator-result"><small>{kind==="period"?(lang==="ka"?"შემდეგი პერიოდი":"Next period"):(lang==="ka"?"სავარაუდო ოვულაცია":"Estimated ovulation")}</small><strong>{result?(kind==="period"?format(result.nextPeriod):format(result.ovulation)):"..."}</strong>{result&&<><small style={{display:"block",marginTop:18}}>{lang==="ka"?"ნაყოფიერი ფანჯარა":"Fertile window"}</small><strong>{format(result.fertileStart)} – {format(result.fertileEnd)}</strong></>}</div></section></>}

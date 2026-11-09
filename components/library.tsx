@@ -1,4 +1,6 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import {useUnsavedChanges} from '@/lib/use-unsaved-changes';
 import { articleCategories } from "@/lib/content-validation";
@@ -101,7 +103,7 @@ export default function Library({
   return (
     <section className="workspace-card" id={admin ? "admin-library" : "content"}>
       <div className="workspace-row">
-        <h1>{ka ? "ბლოგები" : "Library"}</h1>
+        <h1>{admin ? (ka ? "ბლოგები" : "Library") : <SiteCopyText id="library.title" lang={lang}/>}</h1>
         <button disabled={loading} onClick={() => void load()}>
           {ka ? "განახლება" : "Refresh"}
         </button>

@@ -1,4 +1,6 @@
 "use client";
+import { SiteCopyText } from "@/components/site-copy-provider";
+
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -483,20 +485,16 @@ export default function Marketplace({ lang }: { lang: Lang }) {
       <section className="inner-hero compact market-hero">
         <div className="inner-container">
           <span className="inner-kicker">TUTA · MARKET</span>
-          <h1>{ka ? "მარკეტი / მაღაზია" : "Market / shop"}</h1>
+          <h1><SiteCopyText id="market.title" lang={lang}/></h1>
           <p>
-            {ka
-              ? "შერჩეული პროდუქტები ყოველდღიური თავის მოვლისთვის."
-              : "Thoughtfully selected products for everyday care."}
+            <SiteCopyText id="market.intro" lang={lang}/>
           </p>
         </div>
       </section>
       <main className="marketplace inner-container">
         <p>
           <Link href="/market/orders">
-            {ka
-              ? "ჩემი შეკვეთები და გადახდის სტატუსი"
-              : "My orders & payment status"}
+            <SiteCopyText id="market.orders" lang={lang}/>
           </Link>
         </p>
         <section
@@ -579,7 +577,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
             <div className="market-checkout-heading">
               <div>
                 <span className="inner-kicker">TUTA · CART</span>
-                <h2>{ka ? "შენი კალათა" : "Your cart"}</h2>
+                <h2><SiteCopyText id="market.cart" lang={lang}/></h2>
               </div>
               <span>
                 {cart.reduce((sum, row) => sum + row.quantity, 0)}{" "}

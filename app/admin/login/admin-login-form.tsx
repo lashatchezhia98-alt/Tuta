@@ -11,14 +11,16 @@ export default function AdminLoginForm() {
     setLoading(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
-    });
-    setLoading(false);
-    if (response.ok) window.location.assign("/admin");
-    else setError(response.status === 503 ? "ადმინის მონაცემები ჯერ არ არის კონფიგურირებული." : "ელფოსტა ან პაროლი არასწორია.");
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+      });
+      if (response.ok) { window.location.replace("/admin"); return; }
+      setError(response.status === 503 ? "შესვლის სერვისი დროებით მიუწვდომელია." : response.status === 429 ? "ზედმეტად ბევრი მცდელობაა. მოგვიანებით სცადე." : "ელფოსტა ან პაროლი არასწორია, ან ანგარიში ადმინად არ არის მოწვეული.");
+    } catch { setError("კავშირი ვერ შედგა. სცადე ხელახლა."); }
+    finally { setLoading(false); }
   }
 
   return <form onSubmit={submit}>
