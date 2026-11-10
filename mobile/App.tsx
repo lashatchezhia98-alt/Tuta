@@ -27,7 +27,7 @@ import { Fredoka_600SemiBold } from "@expo-google-fonts/fredoka/600SemiBold";
 import { NotoSansGeorgian_400Regular } from "@expo-google-fonts/noto-sans-georgian/400Regular";
 import { NotoSansGeorgian_700Bold } from "@expo-google-fonts/noto-sans-georgian/700Bold";
 import { Icon, MoonFlower, Face, CycleOrbit } from "./src/Art";
-import { C, T, CTA, Chip, DateField, FieldLabel, Scale, s } from "./src/ui";
+import { C, T, CTA, Chip, DateField, FieldLabel, NumberWheel, Scale, s } from "./src/ui";
 import PasswordInput from "./src/PasswordInput";
 import EmailCodeScreen from "./src/EmailCodeScreen";
 import { EMAIL_RESEND_WAIT_MS, emailNotConfirmed } from "./src/email-verification.mjs";
@@ -1044,31 +1044,25 @@ function Setup({
           )}
         </T>
       </View>
-      <View style={[s.row, s.section, { alignItems: "flex-start" }]}>
-        <View style={{ flex: 1 }}>
-          <FieldLabel>{t("ციკლი (დღე)", "Cycle (days)")}</FieldLabel>
-          <TextInput
-            accessibilityLabel="Cycle length"
-            style={s.input}
-            keyboardType="number-pad"
-            value={length}
-            onChangeText={setLength}
-            maxLength={2}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <FieldLabel>
-            {t("გასული სისხლდენის დღეები", "Bleeding days so far")}
-          </FieldLabel>
-          <TextInput
-            accessibilityLabel="Period duration"
-            style={s.input}
-            keyboardType="number-pad"
-            value={duration}
-            onChangeText={setDuration}
-            maxLength={2}
-          />
-        </View>
+      <View style={s.section}>
+        <NumberWheel
+          label={t("ციკლის ხანგრძლივობა (დღე)", "Cycle length (days)")}
+          value={Number(length) || 28}
+          min={21}
+          max={45}
+          onChange={(value) => setLength(String(value))}
+          ka={ka}
+        />
+      </View>
+      <View style={s.section}>
+        <NumberWheel
+          label={t("პერიოდის ხანგრძლივობა (დღე)", "Period duration (days)")}
+          value={Number(duration) || 5}
+          min={1}
+          max={start ? Math.min(10, Math.max(1, distance(start, dateKey()) + 1)) : 10}
+          onChange={(value) => setDuration(String(value))}
+          ka={ka}
+        />
       </View>
       <CycleEducation data={data} birthDate={birthDate} />
       {message ? (
@@ -1933,19 +1927,14 @@ function Calendar({
               "Count only days that have already happened. You can update this later.",
             )}
           </T>
-          <View style={s.wrap}>
-            {Array.from(
-              { length: Math.min(10, distance(periodStart, dateKey()) + 1) },
-              (_, i) => (
-                <Chip
-                  key={i}
-                  label={String(i + 1)}
-                  selected={periodDuration === i + 1}
-                  onPress={() => setPeriodDuration(i + 1)}
-                />
-              ),
-            )}
-          </View>
+          <NumberWheel
+            label={t("სისხლდენის დღეების რაოდენობა", "Number of bleeding days")}
+            min={1}
+            max={Math.min(10, distance(periodStart, dateKey()) + 1)}
+            value={periodDuration}
+            onChange={setPeriodDuration}
+            ka={ka}
+          />
           <View style={{ marginTop: 14 }}>
             <CTA
               title={t("პერიოდის შენახვა", "Save period")}

@@ -1,8 +1,16 @@
-import React,{useState} from 'react';
-import {Modal,Pressable,ScrollView,StyleSheet,Text,TextProps,View} from 'react-native';
-import {dateKey,monthLabel} from './cycle.mjs';
-import {Icon} from './Art';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextProps,
+  View,
+} from "react-native";
+import { dateKey, monthLabel } from "./cycle.mjs";
+import { Icon } from "./Art";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 export const C={ink:'#1E1B2E',lav:'#E3D8F1',yellow:'#FDF0CC',silver:'#D8E0ED',bg:'#F9F8FC',muted:'#6F687D',line:'#E6E2EC',white:'#FFFFFF'};
 export function T({children,style,weight='regular',...rest}:TextProps&{weight?:'regular'|'bold'|'display'}){
  const georgian=/[\u10A0-\u10FF\u1C90-\u1CBF]/.test(React.Children.toArray(children).filter(x=>typeof x==='string').join(''));
@@ -32,8 +40,16 @@ export function DateField({value,onChange,ka,label,birthDate=false,minDate,maxDa
     <Icon name="calendar"/>
   </Pressable>
   <Modal visible={open} animationType="slide" onRequestClose={close}>
-    <SafeAreaView style={{flex:1,backgroundColor:C.bg}}>
-      <ScrollView key={picker} contentContainerStyle={[s.content,{width:'100%',maxWidth:450,alignSelf:'center'}]} keyboardShouldPersistTaps="handled">
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "bottom"]}>
+        <ScrollView
+          key={picker}
+          contentContainerStyle={[
+            s.content,
+            { width: "100%", maxWidth: 450, alignSelf: "center" },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
         <FieldLabel>{label}</FieldLabel>
         <View style={s.topBar}>
           <Pressable accessibilityRole="button" accessibilityLabel={ka?'წინა თვე':'Previous month'} style={s.round} onPress={()=>{setMonth(new Date(year,index-1,1));setPicker('days')}}>
@@ -70,13 +86,108 @@ export function DateField({value,onChange,ka,label,birthDate=false,minDate,maxDa
             })}
           </View>
         </>}
-      </ScrollView>
-      <View style={{width:'100%',maxWidth:450,alignSelf:'center',padding:14}}>
-        <CTA title={ka?'დახურვა':'Close'} light onPress={close}/>
-      </View>
-    </SafeAreaView>
+        </ScrollView>
+        <View
+          style={{ width: "100%", maxWidth: 450, alignSelf: "center", padding: 14 }}
+        >
+          <CTA title={ka ? "დახურვა" : "Close"} light onPress={close} />
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   </Modal>
  </>;
+}
+const WHEEL_ROW_HEIGHT = 44;
+export function NumberWheel({
+  value,
+  min,
+  max,
+  onChange,
+  label,
+  ka,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+  label: string;
+  ka: boolean;
+}) {
+  const values = Array.from({ length: Math.max(0, max - min + 1) }, (_, i) => min + i);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const interactionValue = useRef<number | null>(null);
+  const selected = Math.min(max, Math.max(min, Math.round(value)));
+
+  const commit = (next: number) => {
+    const safe = Math.min(max, Math.max(min, Math.round(next)));
+    interactionValue.current = safe;
+    onChange(safe);
+    return safe;
+  };
+  const selectByTap = (next: number) => {
+    const safe = commit(next);
+    scrollRef.current?.scrollTo({ y: (safe - min) * WHEEL_ROW_HEIGHT, animated: true });
+  };
+  const readOffset = (offset: number) =>
+    commit(min + Math.round(offset / WHEEL_ROW_HEIGHT));
+
+  useEffect(() => {
+    if (interactionValue.current === selected) {
+      interactionValue.current = null;
+      return;
+    }
+    scrollRef.current?.scrollTo({
+      y: (selected - min) * WHEEL_ROW_HEIGHT,
+      animated: false,
+    });
+  }, [selected, min, max]);
+
+  return (
+    <View style={wheelStyles.wrap}>
+      <Text accessibilityRole="text" style={wheelStyles.label}>
+        {label}
+      </Text>
+      <View style={wheelStyles.viewport}>
+        <View pointerEvents="none" style={wheelStyles.selection} />
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          snapToInterval={WHEEL_ROW_HEIGHT}
+          decelerationRate="fast"
+          bounces={false}
+          contentContainerStyle={wheelStyles.list}
+          onMomentumScrollEnd={(event) =>
+            readOffset(event.nativeEvent.contentOffset.y)
+          }
+          onScrollEndDrag={(event) => readOffset(event.nativeEvent.contentOffset.y)}
+        >
+          {values.map((number) => (
+            <Pressable
+              key={number}
+              accessibilityRole="button"
+              accessibilityLabel={`${label}: ${number}`}
+              accessibilityState={{ selected: number === selected }}
+              onPress={() => selectByTap(number)}
+              style={wheelStyles.item}
+            >
+              <Text
+                style={[
+                  wheelStyles.number,
+                  number === selected && wheelStyles.active,
+                ]}
+              >
+                {number}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+      <Text style={wheelStyles.hint}>
+        {ka ? "ასქროლე რიცხვის შესაცვლელად" : "Scroll to change"}
+      </Text>
+    </View>
+  );
 }
 export function Scale({label,value,onChange}:{label:string;value:number;onChange:(n:number)=>void}){return <View style={s.section}><FieldLabel>{label}</FieldLabel><View style={s.row}>{[1,2,3,4,5].map(n=><Pressable key={n} accessibilityLabel={`${label}: ${n}`} accessibilityRole="button" accessibilityState={{selected:n===value}} onPress={()=>onChange(n)} style={[s.score,n===value&&{backgroundColor:C.lav,borderColor:'#8F76B0',borderWidth:1}]}><T weight="display" style={{fontSize:26}}>{n}</T></Pressable>)}</View></View>}
 export const s=StyleSheet.create({
@@ -96,4 +207,15 @@ export const s=StyleSheet.create({
  topBar:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:6,marginBottom:16},
  cell:{width:'14.2857%',paddingHorizontal:1,paddingVertical:2},day:{minHeight:46,borderRadius:10,alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'transparent'},
  error:{color:'#92384B',lineHeight:22,marginBottom:16},
+});
+const wheelStyles=StyleSheet.create({
+ wrap: { width: "100%", minWidth: 0, padding: 14, borderRadius: 18, backgroundColor: "#F9F7FC", borderWidth: 1, borderColor: C.line, alignItems: "center" },
+ label: { alignSelf: "stretch", minHeight: 42, fontFamily: "BodyBold", fontSize: 15, lineHeight: 22, color: C.ink, textAlign: "center", textAlignVertical: "center" },
+ viewport: { height: WHEEL_ROW_HEIGHT * 5, alignSelf: "stretch", overflow: "hidden", position: "relative" },
+ list: { paddingVertical: WHEEL_ROW_HEIGHT * 2 },
+ item: { height: WHEEL_ROW_HEIGHT, alignItems: "center", justifyContent: "center" },
+ number: { fontFamily: "Body", fontSize: 20, color: C.muted },
+ active: { fontFamily: "BodyBold", fontSize: 28, color: C.ink },
+ selection: { position: "absolute", zIndex: 1, top: WHEEL_ROW_HEIGHT * 2, left: 0, right: 0, height: WHEEL_ROW_HEIGHT, borderTopWidth: 1, borderBottomWidth: 1, borderColor: "#D8CBE7", backgroundColor: "rgba(227,216,241,0.25)", borderRadius: 12 },
+ hint: { fontFamily: "Body", fontSize: 12, lineHeight: 18, color: C.muted, textAlign: "center", marginTop: 6 },
 });

@@ -1,5 +1,5 @@
 import { Modal, Pressable, ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Icon, MoonFlower } from "./Art";
 import { C, T, s } from "./ui";
 import type { Lang, Tab } from "./types";
@@ -21,67 +21,69 @@ export function AppMenu({
   const ka = lang === "ka";
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: C.bg }}
-        edges={["top", "bottom"]}
-      >
-        <View style={s.header}>
-          <T weight="bold" style={{ fontSize: 24 }}>
-            {ka ? "მენიუ" : "Menu"}
-          </T>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={ka ? "დახურვა" : "Close menu"}
-            onPress={onClose}
-            style={s.round}
-          >
-            <Icon name="close" />
-          </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={s.content}>
-          <T style={[s.muted, { marginBottom: 20 }]}>
-            {ka
-              ? "ყველა სერვისი ქვედა ნავიგაციიდანაა ხელმისაწვდომი. აქ ინფორმაცია და ენის არჩევანია."
-              : "Find services in the bottom navigation. Information and language settings are here."}
-          </T>
-          <View style={s.card}>
-            {destinations
-              .filter((p) => p.group === "info")
-              .map((page) => (
-                <Pressable
-                  key={page.id}
-                  accessibilityRole="button"
-                  onPress={() => {
-                    onClose();
-                    onNavigate(page.id as Tab);
-                  }}
-                  style={{
-                    minHeight: 60,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 14,
-                  }}
-                >
-                  <Icon name={page.icon} />
-                  <T style={{ flex: 1 }}>{ka ? page.ka : page.en}</T>
-                  <Icon name="arrow" size={18} />
-                </Pressable>
-              ))}
+      <SafeAreaProvider>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: C.bg }}
+          edges={["top", "bottom"]}
+        >
+          <View style={s.header}>
+            <T weight="bold" style={{ fontSize: 24 }}>
+              {ka ? "მენიუ" : "Menu"}
+            </T>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={ka ? "დახურვა" : "Close menu"}
+              onPress={onClose}
+              style={s.round}
+            >
+              <Icon name="close" />
+            </Pressable>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onLanguage}
-            style={[
-              s.card,
-              s.wrap,
-              { minHeight: 60, justifyContent: "space-between" },
-            ]}
-          >
-            <T weight="bold">{ka ? "ენა" : "Language"}</T>
-            <T>{ka ? "ქართული · EN" : "English · ქა"}</T>
-          </Pressable>
-        </ScrollView>
-      </SafeAreaView>
+          <ScrollView contentContainerStyle={s.content}>
+            <T style={[s.muted, { marginBottom: 20 }]}>
+              {ka
+                ? "ყველა სერვისი ქვედა ნავიგაციიდანაა ხელმისაწვდომი. აქ ინფორმაცია და ენის არჩევანია."
+                : "Find services in the bottom navigation. Information and language settings are here."}
+            </T>
+            <View style={s.card}>
+              {destinations
+                .filter((p) => p.group === "info")
+                .map((page) => (
+                  <Pressable
+                    key={page.id}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      onClose();
+                      onNavigate(page.id as Tab);
+                    }}
+                    style={{
+                      minHeight: 60,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 14,
+                    }}
+                  >
+                    <Icon name={page.icon} />
+                    <T style={{ flex: 1 }}>{ka ? page.ka : page.en}</T>
+                    <Icon name="arrow" size={18} />
+                  </Pressable>
+                ))}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onLanguage}
+              style={[
+                s.card,
+                s.wrap,
+                { minHeight: 60, justifyContent: "space-between" },
+              ]}
+            >
+              <T weight="bold">{ka ? "ენა" : "Language"}</T>
+              <T>{ka ? "ქართული · EN" : "English · ქა"}</T>
+            </Pressable>
+          </ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }

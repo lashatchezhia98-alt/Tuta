@@ -11,7 +11,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
 import type { Session } from "@supabase/supabase-js";
-import { C, T, s, CTA, Chip, DateField, FieldLabel } from "./ui";
+import { C, T, s, CTA, Chip, DateField, FieldLabel, NumberWheel } from "./ui";
 import type { Data, Lang, Tab } from "./types";
 import { api, apiRoot } from "./api";
 import { checkoutInApp, openPaymentCheckout } from "./open-payment-checkout";
@@ -903,22 +903,8 @@ export function CalculatorScreen({
         onChange={setStart}
       />
       <View style={{ gap: 12, marginVertical: 16 }}>
-        <FieldLabel>{ka ? "ციკლის ხანგრძლივობა" : "Cycle length"}</FieldLabel>
-        <TextInput
-          accessibilityLabel={ka ? "ციკლის ხანგრძლივობა" : "Cycle length"}
-          keyboardType="number-pad"
-          value={length}
-          onChangeText={setLength}
-          style={s.input}
-        />
-        <FieldLabel>{ka ? "სისხლდენის დღეები" : "Bleeding days"}</FieldLabel>
-        <TextInput
-          accessibilityLabel={ka ? "სისხლდენის დღეები" : "Bleeding days"}
-          keyboardType="number-pad"
-          value={duration}
-          onChangeText={setDuration}
-          style={s.input}
-        />
+        <NumberWheel label={ka ? "ციკლის ხანგრძლივობა (დღე)" : "Cycle length (days)"} value={Number(length) || 28} min={21} max={45} onChange={(n) => setLength(String(n))} ka={ka}/>
+        <NumberWheel label={ka ? "სისხლდენის ხანგრძლივობა (დღე)" : "Bleeding duration (days)"} value={Number(duration) || 5} min={1} max={10} onChange={(n) => setDuration(String(n))} ka={ka}/>
       </View>
       <CTA title={ka ? "გამოთვლა" : "Calculate"} onPress={calculate} />
       {result && (
