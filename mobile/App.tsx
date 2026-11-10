@@ -49,6 +49,7 @@ import {
   symptomPatterns,
 } from "./src/cycle.mjs";
 import { isSupabaseConfigured, supabase } from "./src/supabase";
+import { EMPTY_SOCIAL_LINKS, type SocialLinks, type SocialPlatform } from "../lib/site-social-links";
 import type { Session } from "@supabase/supabase-js";
 import { CommunityFeed } from "./src/CommunityFeed";
 import { AppMenu, MenuPage } from "./src/MenuPages";
@@ -2312,6 +2313,15 @@ function Profile({
     t = (a: string, b: string) => (ka ? a : b);
   const [editing, setEditing] = useState(false),
     [message, setMessage] = useState("");
+  const [socialLinks, setSocialLinks] = useState<SocialLinks>(EMPTY_SOCIAL_LINKS);
+  useEffect(() => {
+    let active = true;
+    fetch("https://tutahealth.ge/api/site-social-links")
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => { if (active && result?.links) setSocialLinks({ ...EMPTY_SOCIAL_LINKS, ...result.links }); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
   async function signOut() {
     if (!supabase) return;
     setAuthBusy(true);
@@ -2357,6 +2367,15 @@ function Profile({
         />
       </View>
       <ScreenLinks lang={data.lang} onNavigate={onNavigate} group="profile" />
+      {Object.values(socialLinks).some(Boolean) && <View style={s.card}>
+        <FieldLabel>{t("გამოგვყევი", "Follow Tuta")}</FieldLabel>
+        <T style={s.muted}>{t("თუთა სოციალურ ქსელებში", "Tuta on social media")}</T>
+        <View style={[s.row, { flexWrap: "wrap", gap: 10 }]}>
+          {(["facebook", "instagram", "youtube", "tiktok"] as SocialPlatform[]).filter((platform) => socialLinks[platform]).map((platform) => <Pressable key={platform} accessibilityRole="link" accessibilityLabel={platform} onPress={() => void Linking.openURL(socialLinks[platform])} style={[s.card, { paddingVertical: 10, paddingHorizontal: 14, minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 }]}>
+            <SocialBadge platform={platform}/><T weight="bold">{platform === "facebook" ? "Facebook" : platform === "instagram" ? "Instagram" : platform === "youtube" ? "YouTube" : "TikTok"}</T>
+          </Pressable>)}
+        </View>
+      </View>}
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: editing }}
@@ -2455,6 +2474,11 @@ function Profile({
       {Boolean(message) && <T accessibilityLiveRegion="polite">{message}</T>}
     </View>
   );
+}
+
+function SocialBadge({ platform }: { platform: SocialPlatform }) {
+  const letter = platform === "facebook" ? "f" : platform === "instagram" ? "◎" : platform === "youtube" ? "▶" : "♪";
+  return <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: C.lav, alignItems: "center", justifyContent: "center" }}><T weight="bold">{letter}</T></View>;
 }
 
 function AuthScreen({
