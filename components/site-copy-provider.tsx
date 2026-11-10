@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type Context, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type Context, type CSSProperties, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { emptyCopy, getCopyText, validateCopy, type CopyLanguage, type CopyOverrides } from "@/lib/site-copy";
+import { emptyCopy, getCopyText, type CopyLanguage, type CopyOverrides } from "@/lib/site-copy";
+import { copyFromPublishedRows, emptyTextStyles, mergePublishedContent, normalizeTextStyle, validateWebsiteCopy, type WebsiteTextStyles } from "@/lib/website-content";
 
-type CopyState = { copy: CopyOverrides; preview: CopyLanguage | null };
-const initial: CopyState = { copy: emptyCopy(), preview: null };
+type CopyState = { copy: CopyOverrides; styles: WebsiteTextStyles; preview: CopyLanguage | null; loadError: boolean };
+const initial: CopyState = { copy: emptyCopy(), styles: emptyTextStyles(), preview: null, loadError: false };
 let context: Context<CopyState> | undefined;
 function copyContext() {
   return context ??= createContext(initial);
@@ -20,7 +21,8 @@ export function SiteCopyProvider({ children }: { children: ReactNode }) {
     if (window.parent !== window && (preview === "ka" || preview === "en")) {
       const receive = (event: MessageEvent) => {
         if (event.origin !== origin || event.source !== window.parent || event.data?.type !== "tuta:copy-preview:values" || event.data.lang !== preview) return;
-        setState({ copy: validateCopy(event.data.copy, false), preview });
+        const styles = event.data.styles && typeof event.data.styles === "object" ? event.data.styles : emptyTextStyles();
+        setState({ copy: validateWebsiteCopy(event.data.copy), styles, preview, loadError: false });
       };
       const select = (event: MouseEvent) => {
         if (!(event.target instanceof Element)) return;
@@ -43,20 +45,22 @@ export function SiteCopyProvider({ children }: { children: ReactNode }) {
     if (pathname.startsWith("/admin")) return;
     const controller = new AbortController();
     const refresh = () => {
-      void fetch("/api/website-copy", { cache: "no-store", signal: controller.signal })
+      void fetch("/api/site-content", { cache: "no-store", signal: controller.signal })
         .then(async response => {
-          if (response.ok) {
-            const body = await response.json();
-            if (!controller.signal.aborted) setState({ copy: validateCopy(body.copy, false), preview: null });
-          }
-        }).catch(() => {});
+          if (!response.ok) throw new Error("content_unavailable");
+          const body = await response.json();
+          const rows = Array.isArray(body.records) ? body.records : [];
+          const structured = copyFromPublishedRows(rows);
+          const content = mergePublishedContent(validateWebsiteCopy(body.legacyCopy), structured.copy, emptyTextStyles(), structured.styles);
+          if (!controller.signal.aborted) setState({ copy: content.copy, styles: content.styles, preview: null, loadError: false });
+        }).catch(() => { if (!controller.signal.aborted) setState(current => ({ ...current, loadError: true })); });
     };
     refresh();
     window.addEventListener("focus", refresh);
     return () => { controller.abort(); window.removeEventListener("focus", refresh); };
   }, [pathname]);
   const CopyContext = copyContext();
-  return <CopyContext.Provider value={state}>{children}</CopyContext.Provider>;
+  return <CopyContext.Provider value={state}>{state.loadError && !state.preview && !pathname.startsWith("/admin") && <div className="site-content-load-error" role="status">{typeof document !== "undefined" && document.documentElement.lang.startsWith("en") ? "Some website text could not be refreshed. Showing the built-in text." : "საიტის ზოგი ტექსტი ვერ განახლდა. ნაჩვენებია ჩაშენებული ტექსტი."}</div>}{children}</CopyContext.Provider>;
 }
 
 export function useSiteCopyText(id: string, lang: CopyLanguage) {
@@ -65,7 +69,10 @@ export function useSiteCopyText(id: string, lang: CopyLanguage) {
 }
 
 export function SiteCopyText({ id, lang }: { id: string; lang: CopyLanguage }) {
-  const { copy, preview } = useContext(copyContext());
-  const value = getCopyText(copy, id, preview ?? lang);
-  return preview ? <span className="site-copy-preview-text" data-site-copy={id} lang={preview}>{value}</span> : value;
+  const { copy, styles, preview } = useContext(copyContext());
+  const activeLanguage = preview ?? lang;
+  const value = getCopyText(copy, id, activeLanguage);
+  const style = normalizeTextStyle(styles[activeLanguage]?.[id]);
+  const styleProps: CSSProperties = style ? { fontSize: `${style.fontSize}px`, color: style.color } : {};
+  return <span className={preview ? "site-copy-preview-text" : undefined} data-site-copy={preview ? id : undefined} lang={activeLanguage} style={styleProps}>{value}</span>;
 }
