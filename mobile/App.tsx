@@ -709,33 +709,27 @@ function Shell() {
             </Pressable>
             {!authMode && (
               <View style={[s.row, { marginLeft: "auto" }]}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    session
-                      ? t("ჩემი ანგარიში", "My account")
-                      : t("ავტორიზაცია", "Sign in or register")
-                  }
-                  onPress={
-                    session ? () => nav("profile") : () => setAuthMode("login")
-                  }
-                  style={[
-                    s.chip,
-                    {
-                      minWidth: 60,
-                      minHeight: 44,
-                      paddingHorizontal: 8,
-                      alignItems: "center",
-                      backgroundColor: C.yellow,
-                    },
-                  ]}
-                >
-                  <T weight="bold" numberOfLines={1} style={{ fontSize: 14, textAlign: "center" }}>
-                    {session
-                      ? t("ანგარიში", "Account")
-                      : t("ავტორიზაცია", "Sign in")}
-                  </T>
-                </Pressable>
+                {!session && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("ავტორიზაცია", "Sign in or register")}
+                    onPress={() => setAuthMode("login")}
+                    style={[
+                      s.chip,
+                      {
+                        minWidth: 60,
+                        minHeight: 44,
+                        paddingHorizontal: 8,
+                        alignItems: "center",
+                        backgroundColor: C.yellow,
+                      },
+                    ]}
+                  >
+                    <T weight="bold" numberOfLines={1} style={{ fontSize: 14, textAlign: "center" }}>
+                      {t("ავტორიზაცია", "Sign in")}
+                    </T>
+                  </Pressable>
+                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t("მენიუს გახსნა", "Open menu")}
