@@ -10,4 +10,4 @@ Native Gradle პროექტის შესაქმნელად გა�
 
 ## Preview builds
 
-Android preview APK-ები ინახება `android/releases/`-ში და Git-ში არ იტვირთება. ახალი ვერსიაა `Tuta-1.1.4-preview.apk` (versionCode 8). ეს სატესტო ხელმოწერის მქონე Android ფაილია და iPhone-ზე არ ყენდება. ფუნქციებისა და შეზღუდვების აღწერაა `mobile/README.md`-ში.
+Android preview APK-ები ინახება `android/releases/`-ში და Git-ში არ იტვირთება. ახალი ვერსიაა `Tuta-1.1.6-preview.apk` (versionCode 10). ეს სატესტო ხელმოწერის მქონე Android ფაილია და iPhone-ზე არ ყენდება. ფუნქციებისა და შეზღუდვების აღწერაა `mobile/README.md`-ში.

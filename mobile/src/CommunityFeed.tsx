@@ -805,7 +805,7 @@ export function CommunityFeed({
           )}
           <View
             style={[
-              s.row,
+              s.wrap,
               { justifyContent: "space-between", marginVertical: 12 },
             ]}
           >
@@ -816,7 +816,7 @@ export function CommunityFeed({
                 style={[s.chip, s.row]}
               >
                 <Icon name="image" size={20} />
-                <T weight="bold">
+                <T weight="bold" style={{ flexShrink: 1 }}>
                   {photo
                     ? t("ფოტოს შეცვლა", "Change photo")
                     : t("ფოტოს დამატება", "Add photo")}
@@ -886,7 +886,7 @@ export function CommunityFeed({
       </View>
       <View
         style={[
-          s.row,
+          s.wrap,
           {
             justifyContent: "space-between",
             alignItems: "flex-start",
@@ -895,7 +895,7 @@ export function CommunityFeed({
           },
         ]}
       >
-        <T weight="bold" style={{ fontSize: 20, flex: 1 }}>
+        <T weight="bold" style={{ fontSize: 20, flexGrow: 1, flexBasis: 165 }}>
           {t("საზოგადოების პოსტები", "Community posts")}
         </T>
         <Pressable
@@ -1143,7 +1143,7 @@ export function CommunityFeed({
                   );
                 })}
                 {replyTo[post.id] ? (
-                  <View style={[s.row, { marginBottom: 8 }]}>
+                  <View style={[s.wrap, { marginBottom: 8, alignItems: "center" }]}>
                     <T style={s.muted}>
                       {t("პასუხობ კომენტარს", "Replying to comment")}
                     </T>

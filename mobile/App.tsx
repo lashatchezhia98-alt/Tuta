@@ -13,6 +13,7 @@ import {
   Share,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import {
   SafeAreaProvider,
@@ -150,6 +151,9 @@ function Shell() {
   const features = useAppFeatures();
   const [trail, setTrail] = useState<Tab[]>([]);
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const headerWidth = Math.min(width, 520) - insets.left - insets.right;
+  const stackedHeader = headerWidth < 300 + 180 * Math.max(0, fontScale - 1);
   const scroll = useRef<ScrollView>(null);
   const saving = useRef(false);
   const handledAuthLink = useRef<string | null>(null);
@@ -681,14 +685,14 @@ function Shell() {
       <View style={s.frame}>
         <StatusBar style="dark" />
         <SafeAreaView
-          edges={["top"]}
+          edges={["top", "left", "right"]}
           style={{ flex: 1, backgroundColor: C.bg }}
         >
-          <View style={[s.header, { flexWrap: "wrap" }]}>
+          <View style={[s.header, stackedHeader && { flexWrap: "wrap" }]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t("საზოგადოების მთავარი", "Community home")}
-              style={s.row}
+              style={[s.row, { minHeight: 44, flexShrink: 0 }]}
               onPress={() => {
                 setAuthMode(null);
                 nav("home");
@@ -698,18 +702,18 @@ function Shell() {
                 source={require("./assets/app-icon.png")}
                 style={{ width: 36, height: 36, borderRadius: 12 }}
               />
-              <T weight="display" style={{ fontSize: 25 }}>
+              <T weight="display" numberOfLines={1} style={{ fontSize: 25 }}>
                 {ka ? "თუთა" : "TUTA"}
               </T>
             </Pressable>
             {!authMode && (
-              <View style={[s.row, { flexShrink: 1, flexWrap: "wrap" }]}>
+              <View style={[s.row, { marginLeft: "auto" }]}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={
                     session
                       ? t("ჩემი ანგარიში", "My account")
-                      : t("შესვლა", "Sign in")
+                      : t("ავტორიზაცია", "Sign in or register")
                   }
                   onPress={
                     session ? () => nav("profile") : () => setAuthMode("login")
@@ -719,40 +723,18 @@ function Shell() {
                     {
                       minWidth: 60,
                       minHeight: 44,
-                      paddingHorizontal: 10,
+                      paddingHorizontal: 8,
                       alignItems: "center",
                       backgroundColor: C.yellow,
                     },
                   ]}
                 >
-                  <T weight="bold" style={{ fontSize: 14 }}>
+                  <T weight="bold" numberOfLines={1} style={{ fontSize: 14, textAlign: "center" }}>
                     {session
                       ? t("ანგარიში", "Account")
-                      : t("შესვლა", "Sign in")}
+                      : t("ავტორიზაცია", "Sign in")}
                   </T>
                 </Pressable>
-                {!session && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={t("რეგისტრაცია", "Register")}
-                    onPress={() => setAuthMode("register")}
-                    style={[
-                      s.chip,
-                      {
-                        minHeight: 44,
-                        paddingHorizontal: 10,
-                        alignItems: "center",
-                        backgroundColor: C.white,
-                        borderWidth: 1,
-                        borderColor: C.line,
-                      },
-                    ]}
-                  >
-                    <T weight="bold" style={{ fontSize: 13 }}>
-                      {t("რეგისტრაცია", "Register")}
-                    </T>
-                  </Pressable>
-                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t("მენიუს გახსნა", "Open menu")}
@@ -764,6 +746,16 @@ function Shell() {
               </View>
             )}
           </View>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+            <ScrollView
+              ref={scroll}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
           {problem ? (
             <View style={[s.banner, { marginHorizontal: 20 }]}>
               <T accessibilityRole="alert">{problem}</T>
@@ -791,7 +783,7 @@ function Shell() {
                   "Your changes are not saved. Leave this page?",
                 )}
               </T>
-              <View style={[s.row, { marginTop: 12 }]}>
+              <View style={[s.wrap, { marginTop: 12 }]}>
                 <Chip
                   label={t("დარჩენა", "Stay")}
                   selected
@@ -809,15 +801,6 @@ function Shell() {
               </View>
             </View>
           ) : null}
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
-            <ScrollView
-              ref={scroll}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingBottom: 20 }}
-            >
               {authMode ? (
                 <AuthScreen
                   kind={authMode}
@@ -888,11 +871,10 @@ function Shell() {
                     </View>
                     <T
                       weight={primaryTab(tab) === id ? "bold" : "regular"}
-                      numberOfLines={2}
                       style={{
                         fontSize: ka ? 11 : 12,
                         textAlign: "center",
-                        flexShrink: 1,
+                        alignSelf: "stretch",
                       }}
                     >
                       {t(geo, en)}
@@ -1125,6 +1107,8 @@ function Home({
 }) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
+  const { width, fontScale } = useWindowDimensions();
+  const stackCycle = width < 365 || fontScale > 1.25;
   if (data.pregnancy?.active)
     return (
       <View style={s.content}>
@@ -1181,7 +1165,7 @@ function Home({
           },
         ]}
       >
-        <View style={s.topBar}>
+        <View style={[s.topBar, { flexWrap: "wrap" }]}>
           <T weight="bold" style={{ fontSize: 14, color: C.muted }}>
             {t("მიმდინარე ციკლი", "CURRENT CYCLE")}
           </T>
@@ -1189,8 +1173,8 @@ function Home({
             {t(`${c.length} დღიანი შეფასება`, `${c.length}-day estimate`)}
           </T>
         </View>
-        <View style={[s.row, { gap: 10, justifyContent: "space-between" }]}>
-          <View style={{ flex: 1 }}>
+        <View style={stackCycle ? { gap: 12, alignItems: "center" } : [s.row, { gap: 10 }]}>
+          <View style={stackCycle ? { alignSelf: "stretch" } : { flex: 1 }}>
             <T style={s.muted}>{t("ციკლის დღე", "Cycle day")}</T>
             <T weight="display" style={{ fontSize: 69, lineHeight: 78 }}>
               {c.day}
@@ -1211,7 +1195,9 @@ function Home({
               </T>
             </View>
           </View>
-          <CycleOrbit day={c.day} length={c.length} size={142} />
+          <View pointerEvents="none">
+            <CycleOrbit day={c.day} length={c.length} size={stackCycle ? 116 : 142} />
+          </View>
         </View>
         <T style={[s.muted, { marginTop: 17 }]}>
           {t(
@@ -1236,7 +1222,7 @@ function Home({
         style={s.card}
       >
         <View style={s.topBar}>
-          <T weight="bold" style={{ fontSize: 18 }}>
+          <T weight="bold" style={{ fontSize: 18, flex: 1 }}>
             {t("შემდეგი პერიოდი", "Next period")}
           </T>
           <Icon name="arrow" size={19} />
@@ -1261,7 +1247,7 @@ function Home({
         <T weight="bold" style={{ fontSize: 18, marginBottom: 14 }}>
           {t("შენი კვირა", "Your week")}
         </T>
-        <View style={{ flexDirection: "row", gap: 5 }}>
+        <View style={{ flexDirection: "row" }}>
           {week.map((day) => {
             const state = calendarState(
               data.periods,
@@ -1454,11 +1440,7 @@ function Daily({
         <FieldLabel>
           {t("როგორ გრძნობ თავს?", "How are you feeling today?")}
         </FieldLabel>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingBottom: 4 }}
-        >
+        <View style={s.wrap}>
           {moods.map(([id, geo, en]) => (
             <Pressable
               key={id}
@@ -1466,9 +1448,11 @@ function Daily({
               accessibilityState={{ selected: entry.mood === id }}
               onPress={() => change({ mood: id })}
               style={{
-                width: 86,
+                flexBasis: 82,
+                flexGrow: 1,
                 minHeight: 112,
                 paddingVertical: 12,
+                paddingHorizontal: 4,
                 borderRadius: 18,
                 borderWidth: entry.mood === id ? 2 : 1,
                 borderColor: entry.mood === id ? C.ink : "#E8E4ED",
@@ -1487,7 +1471,7 @@ function Daily({
               </T>
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       </View>
       <Scale
         label={t("ენერგია · 1 დაბალი, 5 მაღალი", "Energy · 1 low, 5 high")}
@@ -1741,7 +1725,7 @@ function Calendar({
       <T weight="display" style={[s.title, { marginTop: 4, marginBottom: 18 }]}>
         {t("შენი კალენდარი", "Your calendar")}
       </T>
-      <View style={s.card}>
+      <View style={[s.card, { paddingHorizontal: 8 }]}>
         <View style={s.topBar}>
           <Pressable
             accessibilityRole="button"
@@ -1754,7 +1738,7 @@ function Calendar({
             <Icon name="back" />
           </Pressable>
           <View style={{ alignItems: "center", flex: 1 }}>
-            <T weight="bold" style={{ fontSize: 21 }}>
+            <T weight="bold" style={{ fontSize: 21, textAlign: "center" }}>
               {monthLabel(month, ka)}
             </T>
             <T style={s.muted}>{month.getFullYear()}</T>
@@ -1866,7 +1850,7 @@ function Calendar({
                   borderStyle: dashed ? "dashed" : "solid",
                 }}
               />
-              <T style={{ fontSize: 12 }}>{label}</T>
+              <T style={{ fontSize: 12, flexShrink: 1 }}>{label}</T>
             </View>
           ))}
         </View>
@@ -2394,7 +2378,7 @@ function Profile({
           { minHeight: 60, justifyContent: "space-between" },
         ]}
       >
-        <T weight="bold">{t("ციკლის პარამეტრები", "Cycle settings")}</T>
+        <T weight="bold" style={{ flex: 1 }}>{t("ციკლის პარამეტრები", "Cycle settings")}</T>
         <Icon name={editing ? "close" : "arrow"} />
       </Pressable>
       {editing && (
@@ -2712,6 +2696,8 @@ function AuthScreen({
               style={{
                 flex: 1,
                 minHeight: 52,
+                paddingVertical: 10,
+                paddingHorizontal: 8,
                 borderRadius: 17,
                 alignItems: "center",
                 justifyContent: "center",
@@ -2722,7 +2708,7 @@ function AuthScreen({
             >
               <T
                 weight="bold"
-                style={{ color: kind === mode ? C.white : C.ink, fontSize: 15 }}
+                style={{ color: kind === mode ? C.white : C.ink, fontSize: 15, textAlign: "center" }}
               >
                 {label}
               </T>

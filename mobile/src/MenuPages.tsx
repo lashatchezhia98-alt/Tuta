@@ -73,7 +73,7 @@ export function AppMenu({
             onPress={onLanguage}
             style={[
               s.card,
-              s.row,
+              s.wrap,
               { minHeight: 60, justifyContent: "space-between" },
             ]}
           >

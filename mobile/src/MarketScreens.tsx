@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   View,
-  useWindowDimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Session } from "@supabase/supabase-js";
@@ -94,18 +93,19 @@ const categories = [
 ];
 type Nav = { lang: Lang; onNavigate: (tab: Tab) => void };
 function Gallery({ product }: { product: Product }) {
-  const width = Math.min(useWindowDimensions().width, 520) - 80,
-    images = product.image_urls?.length
+  const [width, setWidth] = useState(0);
+  const images = product.image_urls?.length
       ? product.image_urls
       : product.image_url
         ? [product.image_url]
         : [];
   return images.length ? (
-    <ScrollView
+    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={{ minHeight: 200, marginBottom: 16 }}>
+    {width > 0 ? <ScrollView
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={images.length > 1}
-      style={{ height: 200, marginBottom: 16 }}
+      style={{ height: 200 }}
     >
       {images.map((uri, i) => (
         <Image
@@ -121,7 +121,8 @@ function Gallery({ product }: { product: Product }) {
           resizeMode="contain"
         />
       ))}
-    </ScrollView>
+    </ScrollView> : null}
+    </View>
   ) : (
     <View
       style={{
