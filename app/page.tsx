@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 import { useSiteFeatures } from "@/lib/site-features";
 import BrandMark from '@/components/brand-mark';
 import HeaderActions from '@/components/header-actions';
+import SiteSocialLinks from "@/components/site-social-links";
 
 import { SiteCopyText } from "@/components/site-copy-provider";
 
@@ -62,6 +63,6 @@ export default function Home(){
 
     <section className="bg-[#E3D8F1] py-24"><div className="mx-auto max-w-3xl px-5 text-center"><h2 className="text-4xl font-semibold tracking-[-1.8px] sm:text-5xl"><SiteCopyText id="home.finalTitle" lang={lang}/></h2><p className="mx-auto mt-5 max-w-xl text-[14px] leading-6 text-[#676273]"><SiteCopyText id="home.finalText" lang={lang}/></p><Button asChild size="lg" className="mt-8 rounded-full bg-[#1E1B2E] px-7"><a href="/register"><SiteCopyText id="home.finalButton" lang={lang}/><ArrowRight className="ml-2 size-4"/></a></Button></div></section>
 
-    <footer className="bg-[#1E1B2E] py-12 text-white"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-5 lg:flex-row lg:items-center lg:px-8"><div><Brand lang={lang} inverse/><p className="mt-4 text-xs text-white/60"><SiteCopyText id="home.footer" lang={lang}/></p></div><div className="flex flex-wrap gap-x-7 gap-y-3 text-xs text-white/70"><a href="/community"><SiteCopyText id="home.community" lang={lang}/></a><a href="/about"><SiteCopyText id="home.about" lang={lang}/></a><a href="/blog"><SiteCopyText id="home.library" lang={lang}/></a><a href="/premium"><SiteCopyText id="home.premiumLink" lang={lang}/></a><a href="/privacy"><SiteCopyText id="home.privacyLink" lang={lang}/></a><a href="/terms"><SiteCopyText id="home.termsLink" lang={lang}/></a></div></div><Separator className="mx-auto my-8 max-w-7xl bg-white/10"/><div className="mx-auto max-w-7xl px-5 text-[10px] text-white/45 lg:px-8"><SiteCopyText id="home.rights" lang={lang}/></div></footer>
+    <footer className="bg-[#1E1B2E] py-12 text-white"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-5 lg:flex-row lg:items-center lg:px-8"><div><Brand lang={lang} inverse/><p className="mt-4 text-xs text-white/60"><SiteCopyText id="home.footer" lang={lang}/></p></div><div className="flex flex-col gap-5 lg:items-end"><div className="flex flex-wrap gap-x-7 gap-y-3 text-xs text-white/70"><a href="/community"><SiteCopyText id="home.community" lang={lang}/></a><a href="/about"><SiteCopyText id="home.about" lang={lang}/></a><a href="/blog"><SiteCopyText id="home.library" lang={lang}/></a><a href="/premium"><SiteCopyText id="home.premiumLink" lang={lang}/></a><a href="/privacy"><SiteCopyText id="home.privacyLink" lang={lang}/></a><a href="/terms"><SiteCopyText id="home.termsLink" lang={lang}/></a></div><SiteSocialLinks lang={lang}/></div></div><Separator className="mx-auto my-8 max-w-7xl bg-white/10"/><div className="mx-auto max-w-7xl px-5 text-[10px] text-white/45 lg:px-8"><SiteCopyText id="home.rights" lang={lang}/></div></footer>
   </main>
 }

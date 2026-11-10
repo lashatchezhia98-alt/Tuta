@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { authRedirectBase } from "../lib/auth-redirect";
 import {useHealthState,type HealthData} from "./use-health-state";
 import BrandMark from '@/components/brand-mark';
+import SiteSocialLinks from "@/components/site-social-links";
 import HeaderActions from '@/components/header-actions';
 import CycleOverview from "@/components/cycle-overview";
 import { forecast } from "../mobile/src/cycle.mjs";
@@ -220,7 +221,7 @@ export default function InnerPage({kind}:{kind:PageKind}){
   return <>
     <InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} showActions={kind!=="admin"}/>
     {kind==="consultation"?<CareWorkspace lang={lang}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
-    {kind!=="admin"&&<footer className="inner-footer"><div className="inner-container"><InnerLogo lang={lang} inverse/><p>{lang==="ka"?"შენი ჯანმრთელობის ცნობიერება იწყება აქ.":"Your health awareness starts here."}</p></div></footer>}
+    {kind!=="admin"&&<footer className="inner-footer"><div className="inner-container"><div className="inner-footer-brand"><InnerLogo lang={lang} inverse/><p>{lang==="ka"?"შენი ჯანმრთელობის ცნობიერება იწყება აქ.":"Your health awareness starts here."}</p></div><SiteSocialLinks lang={lang}/></div></footer>}
   </>
 }
 

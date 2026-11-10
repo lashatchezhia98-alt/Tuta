@@ -11,6 +11,7 @@ import MarketOrders from "@/components/market-orders";
 import BrandMark from "@/components/brand-mark";
 import AdminWebsiteCopy from "@/components/admin-website-copy";
 import AdminInvitations from "@/components/admin-invitations";
+import AdminSocialLinks from "@/components/admin-social-links";
 import { AdminAnalytics, AdminBilling, AdminNotifications, AdminUsers } from "@/components/admin-operations";
 import { canAccessAdminSection, type AdminAccess, type AdminSection as Section } from "@/lib/admin-sections";
 
@@ -37,6 +38,7 @@ const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "overview", href: "/admin", ka: "მიმოხილვა", en: "Overview" },
   { section: "features", href: "/admin/features", ka: "საიტის ფუნქციები", en: "Site features" },
   { section: "website-copy", href: "/admin/website-copy", ka: "ტექსტების რედაქტირება", en: "Website copy" },
+  { section: "social-links", href: "/admin/social-links", ka: "სოციალური ქსელები", en: "Social networks" },
   { section: "invitations", href: "/admin/invitations", ka: "ადმინის მოწვევები", en: "Admin invitations" },
   { section: "reports", href: "/admin/reports", ka: "საჩივრები", en: "Reports" },
   { section: "content", href: "/admin/content", ka: "ბლოგები და ბიბლიოთეკა", en: "Blog & library" },
@@ -121,6 +123,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     overview: ["მართვის მიმოხილვა", "Admin overview"],
     features: ["საიტის ფუნქციები", "Site features"],
     "website-copy": ["ვებსაიტის ტექსტები", "Website copy"],
+    "social-links": ["სოციალური ქსელების ბმულები", "Social profile links"],
     invitations: ["ადმინის მოწვევები", "Admin invitations"],
     reports: ["საზოგადოების საჩივრები", "Community reports"],
     content: ["ბლოგები და ბიბლიოთეკა", "Blog & health library"],
@@ -138,6 +141,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     overview: ["ერთი ადგილიდან გადადი პლატფორმის მართვის საჭირო ნაწილზე.", "Jump to the area you need to manage."],
     features: ["ჩართე ან გამორთე საიტის სექციები. ცვლილება Supabase-ში ინახება.", "Turn site sections on or off. Changes are saved to Supabase."],
     "website-copy": ["შეცვალე ვებსაიტის ტექსტები ქართულად და ინგლისურად. აპლიკაციების ტექსტები არ იცვლება.", "Edit Georgian and English website copy. Mobile app copy is unaffected."],
+    "social-links": ["მართე Facebook-ის, Instagram-ის, YouTube-ისა და TikTok-ის ბმულები, რომლებიც საიტის ქვედა ნაწილში გამოჩნდება.", "Manage the Facebook, Instagram, YouTube and TikTok links shown in the website footer."],
     invitations: ["შექმენი ერთჯერადი ბმული, გაუზიარე მოწვეულ პირს და საჭიროებისას გააუქმე წვდომა.", "Create and share a one-time link, or revoke access."],
     reports: ["შეამოწმე მონიშნული პოსტები. მომჩივნის ვინაობა ადმინისტრატორს არ უჩანს.", "Review flagged posts. Reporter identity is not shown to admins."],
     content: ["მართე სტატიები, კატეგორიები, ენები და გამოქვეყნების სტატუსი.", "Manage articles, categories, languages and publication status."],
@@ -177,6 +181,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     if (current === "analytics") return <AdminAnalytics lang={lang}/>;
     if (current === "website-copy") return <AdminWebsiteCopy lang={lang}/>;
     if (current === "invitations" && owner) return <AdminInvitations lang={lang}/>;
+    if (current === "social-links" && owner) return <AdminSocialLinks lang={lang}/>;
     if(current==='orders')return <MarketOrders lang={lang} admin/>;
     if (current === "features") return <>
       <div className="admin-feature-groups">{(["ძირითადი", "სერვისები"] as const).map(group => <section className="admin-feature-group" key={group}>

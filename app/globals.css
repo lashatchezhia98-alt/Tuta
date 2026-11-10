@@ -258,5 +258,22 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .ops-rank{display:grid;gap:6px;padding:0;margin:0;list-style:none}
 .ops-rank li{display:flex;justify-content:space-between;gap:12px}
 .ops-message{white-space:pre-wrap;overflow-wrap:anywhere}
+.site-social-links{display:flex;align-items:center;gap:10px;color:inherit}
+.site-social-links a{display:grid;width:40px;height:40px;place-items:center;border:1px solid currentColor;border-radius:50%;color:inherit;opacity:.82;transition:background-color .16s ease,opacity .16s ease,transform .16s ease}
+.site-social-links a:hover{background:rgba(255,255,255,.12);opacity:1;transform:translateY(-1px)}
+.site-social-links svg{width:19px;height:19px}
+.admin-social-settings{display:grid;gap:12px;min-width:0}
+.admin-social-field{display:grid;grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr);align-items:center;gap:20px;min-width:0;padding:18px 20px;border:1px solid var(--line);border-radius:16px;background:#fff}
+.admin-social-field>label{display:grid;gap:5px;min-width:0}
+.admin-social-field small{color:var(--text-muted);font-size:12px}
+.admin-social-field input{width:100%;min-width:0;min-height:46px;padding:10px 13px;border:1px solid #ded7e8;border-radius:10px;background:#fff;color:var(--ink);font-size:16px}
+.admin-social-field input:focus{outline:2px solid #bca8d6;outline-offset:1px}
+.admin-social-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.admin-social-actions button{min-height:44px;padding:9px 16px;border:0;border-radius:10px;background:var(--ink);color:white;font-weight:700;cursor:pointer}
+.admin-social-actions button:disabled{opacity:.55;cursor:wait}
+.admin-social-actions p{margin:0;color:var(--text-muted);font-size:13px}
+.admin-social-actions p.is-error{color:#a23243}
+.inner-footer-brand{display:grid;gap:12px}
+.inner-footer-brand p{margin:0}
 @media(min-width:701px){.admin-sidebar{max-height:calc(100dvh - 108px)}.admin-sidebar nav{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}
-@media(max-width:600px){.ops-tool-links{grid-template-columns:minmax(0,1fr)}.ops-stack .ops-filters label{flex-basis:100%}}
+@media(max-width:600px){.ops-tool-links{grid-template-columns:minmax(0,1fr)}.ops-stack .ops-filters label{flex-basis:100%}.admin-social-field{grid-template-columns:minmax(0,1fr);gap:10px;padding:15px}.inner-footer .inner-container{align-items:flex-start;flex-direction:column;gap:20px}}
