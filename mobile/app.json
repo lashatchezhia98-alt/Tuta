@@ -3,7 +3,7 @@
     "name": "თუთა • Tuta",
     "slug": "tuta-moon-mood",
     "scheme": "com.tutahealth.app",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.tutahealth.app",
-      "versionCode": 11,
+      "versionCode": 12,
       "icon": "./assets/app-icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon.png",

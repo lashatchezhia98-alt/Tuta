@@ -49,7 +49,7 @@ import {
   symptomPatterns,
 } from "./src/cycle.mjs";
 import { isSupabaseConfigured, supabase } from "./src/supabase";
-import { EMPTY_SOCIAL_LINKS, type SocialLinks, type SocialPlatform } from "../lib/site-social-links";
+import { EMPTY_SOCIAL_LINKS, type SocialLinks, type SocialPlatform } from "./src/site-social-links";
 import type { Session } from "@supabase/supabase-js";
 import { CommunityFeed } from "./src/CommunityFeed";
 import { AppMenu, MenuPage } from "./src/MenuPages";
