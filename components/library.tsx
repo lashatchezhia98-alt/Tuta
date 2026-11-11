@@ -1,7 +1,7 @@
 "use client";
 import { SiteCopyText } from "@/components/site-copy-provider";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {useUnsavedChanges} from '@/lib/use-unsaved-changes';
 import { articleCategories } from "@/lib/content-validation";
 type Article = {
@@ -44,8 +44,8 @@ export default function Library({
     [query, setQuery] = useState(""),
     [busy, setBusy] = useState(false),
     [draft, setDraft] = useState<Partial<Article> & typeof blank>(blank);
-  const baseline=useRef(JSON.stringify(blank));
-  const dirty=JSON.stringify(draft)!==baseline.current;
+  const [baseline, setBaseline] = useState(() => JSON.stringify(blank));
+  const dirty=JSON.stringify(draft)!==baseline;
   useUnsavedChanges(admin&&dirty,ka);
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +87,7 @@ export default function Library({
         }),
       });
       if (!r.ok) throw Error();
-      baseline.current=JSON.stringify(blank);setDraft(blank);
+      setBaseline(JSON.stringify(blank));setDraft(blank);
       await load();
       setMessage(ka ? "შენახულია" : "Saved");
     } catch {
@@ -202,7 +202,7 @@ export default function Library({
           <button type="submit" disabled={busy}>
             {ka ? "შენახვა" : "Save"}
           </button>
-          <button type="button" onClick={() => {if(dirty&&!confirm(ka?'შეუნახავი ცვლილებები გაუქმდეს?':'Discard unsaved changes?'))return;baseline.current=JSON.stringify(blank);setDraft(blank)}}>
+          <button type="button" onClick={() => {if(dirty&&!confirm(ka?'შეუნახავი ცვლილებები გაუქმდეს?':'Discard unsaved changes?'))return;setBaseline(JSON.stringify(blank));setDraft(blank)}}>
             {ka ? "ახალი სტატია" : "New article"}
           </button>
           {draft.id && (
@@ -285,7 +285,7 @@ export default function Library({
                           .toISOString()
                           .slice(0, 16)
                       : "",
-                  };baseline.current=JSON.stringify(next);setDraft(next);
+                  };setBaseline(JSON.stringify(next));setDraft(next);
                   document.getElementById(admin ? "admin-library" : "content")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
               >

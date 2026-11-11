@@ -1,10 +1,9 @@
 "use client";
 import { SiteCopyText } from "@/components/site-copy-provider";
-import { useEffect, useState, useRef, Suspense, Fragment } from "react";
+import { useState, useRef, Suspense, Fragment } from "react";
 import { useMembership } from "@/lib/use-membership";
 import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import { useSearchParams } from "next/navigation";
-import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { featureForRoute, useSiteFeatures } from "@/lib/site-features";
 import Link from "next/link";
 import { useHealthState, type HealthData } from "@/app/use-health-state";
