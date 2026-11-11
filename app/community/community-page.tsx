@@ -361,7 +361,7 @@ export default function CommunityPage() {
     setReportingPost(null);
     setNotice(
       error?.code === "23505"
-        ? t("ეს პოსტი უკვე დაარეპორტე.", "You have already reported this post.")
+        ? t("ამ პოსტზე საჩივარი უკვე გაგზავნილი გაქვს.", "You have already reported this post.")
         : error
           ? t(
               "საჩივარი ვერ გაიგზავნა. სცადე მოგვიანებით.",

@@ -59,7 +59,7 @@ test("registration, login and recovery routes render usable auth forms", async (
   assert.match(register, /შექმენი ანგარიში|Create your account/);
   assert.match(register, /name@example\.com/);
   assert.match(register, /ანგარიშის შექმნა|Create account/);
-  assert.match(register, /ელფოსტა \(მომხმარებლის სახელი\)|Email \(username\)/);
+  assert.match(register, /ელფოსტა|Email/);
   assert.match(register, /სახელი|First name/);
   assert.match(register, /გვარი|Last name/);
   assert.doesNotMatch(register, /ნიკნეიმი|Nickname/);

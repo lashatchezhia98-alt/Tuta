@@ -1,27 +1,27 @@
 export const homeCopy = {
   ka: {
-    about:"ჩვენ შესახებ", featuresNav:"შესაძლებლობები", library:"ბიბლიოთეკა", community:"მთავარი", consultation:"ექიმთან კონსულტაცია", login:"შესვლა", signup:"რეგისტრაცია",
-    badge:"შექმნილია ქალებისთვის საქართველოში", title:"უკეთ გაიგე შენი სხეული და ციკლი", subtitle:"თუთა აერთიანებს პერიოდის პროგნოზს, ყოველდღიურ ჩანაწერებსა და საზოგადოებას ერთ სივრცეში.", start:"დაიწყე უფასოდ", anonymous:"ნახე შესაძლებლობები", private:"პირადი ინფორმაცია დაცულია", privateText:"ჯანმრთელობის ჩანაწერებს მხოლოდ შენი ანგარიშით ნახავ.",
-    greeting:"მაგალითი: ნინოს კალენდარი", day:"ციკლის მე-14 დღე", phase:"ოვულაცია", next:"შემდეგი პერიოდი", nextDate:"12 სექტემბერი", fertile:"ნაყოფიერი დღეები", today:"დღეს", energy:"ენერგია", high:"მაღალი", mood:"განწყობა", calm:"მშვიდი",
-    valueTitle:"ჯანმრთელობის უკეთ გასაგებად შექმნილი ინსტრუმენტები", valueText:"არა უბრალოდ კალენდარი. თუთა გეხმარება შეამჩნიო ცვლილებები და მიიღო შენს რეალურ მონაცემებზე დაფუძნებული ხედვა.",
+    about:"ჩვენ შესახებ", featuresNav:"შესაძლებლობები", library:"ბლოგები", community:"მთავარი", consultation:"ექიმთან კონსულტაცია", login:"შესვლა", signup:"რეგისტრაცია",
+    badge:"შექმნილია ქალებისთვის საქართველოში", title:"უკეთ გაიცანი შენი სხეული და ციკლი", subtitle:"აღრიცხე პერიოდი, ჩაინიშნე როგორ გრძნობ თავს და გაუზიარე გამოცდილება სხვა ქალებს. ყველაფერი ერთ სივრცეში.", start:"შექმენი უფასო ანგარიში", anonymous:"რას გთავაზობს თუთა?", private:"შენი ჯანმრთელობის ჩანაწერები პირადია", privateText:"ჩანაწერები პოსტებში არ გამოჩნდება. თავად ირჩევ, რას გააზიარებ.",
+    greeting:"ნინოს კალენდარი · მაგალითი", day:"ციკლის მე-14 დღე", phase:"სავარაუდო ოვულაცია", next:"პერიოდის სავარაუდო დასაწყისი", nextDate:"12 სექტემბერი", fertile:"სავარაუდო ნაყოფიერი დღეები", today:"დღეს", energy:"ენერგია", high:"მაღალი", mood:"განწყობა", calm:"მშვიდი",
+    valueTitle:"შენი ყოველდღიურობა, უკეთ გასაგები", valueText:"მონიშნე პერიოდის თარიღები და შეავსე დღიური. დროთა განმავლობაში უფრო მარტივად შეამჩნევ, რა იცვლება და რა მეორდება შენს ციკლში.",
     featureCards:[
-      ["ციკლის პროგნოზი","პერიოდის, ოვულაციისა და ნაყოფიერი ფანჯრის გამოთვლა შენს მოწყობილობაზე."],
-      ["დღიური ჩანაწერები","განწყობის, ენერგიის, ტკივილის, ნაკადისა და 80-ზე მეტი სიმპტომის მონიშვნა."],
-      ["პირადი პატერნები","შენი ციკლების მიხედვით განმეორებადი სიმპტომებისა და ფაზების აღმოჩენა."],
+      ["პერიოდის კალენდარი","მონიშნე პერიოდი და ნახე შემდეგი პერიოდისა და ოვულაციის სავარაუდო თარიღები."],
+      ["დღიური","ჩაინიშნე განწყობა, ენერგია, ტკივილი, სისხლდენა და სხვა სიმპტომები."],
+      ["ციკლის ანალიზი","შეადარე ციკლები და ნახე, რომელი სიმპტომები მეორდება შენს ჩანაწერებში."],
     ],
-    doctorsBadge:"TUTA Care", doctorsTitle:"შენი სივრცე ექიმთან კონსულტაციისთვის", doctorsText:"ნახე ხელმისაწვდომი გადამოწმებული ექიმები. ჩატი და თავისუფალ დროზე ჯავშანი Premium-ს საჭიროებს; გადახდა ამ ეტაპზე სატესტოა.", chooseDoctor:"ექიმებისა და ჯავშნების ნახვა", available:"ხელმისაწვდომობა", gynecologist:"გინეკოლოგი", endocrinologist:"ენდოკრინოლოგი", years:"წლიანი გამოცდილება",
-    privacyTitle:"შენი პირადი ინფორმაცია დაცულია", privacyText:"პერიოდისა და დღიურის ჩანაწერები დაცულ ანგარიშში ინახება და აპსა და ვებსაიტს შორის სინქრონდება. ისინი საზოგადოების პოსტებში ავტომატურად არ გამოჩნდება.", privacyItems:["წვდომა შენი ანგარიშით","პოსტებს მხოლოდ შესული მომხმარებლები ხედავენ","გამოთვლები მოწყობილობაზე"],
-    finalTitle:"დაიწყე საკუთარი რიტმის გაცნობიერება", finalText:"პერიოდისა და ოვულაციის პროგნოზი უფასოა. ბარათის დამატება არ არის საჭირო.", finalButton:"შექმენი უფასო ანგარიში", footer:"შენი ჯანმრთელობის ცნობიერება იწყება აქ.", privacyLink:"კონფიდენციალურობა", termsLink:"წესები და პირობები", rights:"© 2026 თუთა. ყველა უფლება დაცულია.",
+    doctorsBadge:"ექიმთან კონსულტაცია", doctorsTitle:"იპოვე ექიმი შენი კითხვებისთვის", doctorsText:"აირჩიე გადამოწმებული ექიმი, მისწერე ან დაჯავშნე თავისუფალი დრო. მიმოწერა და ჯავშანი პრემიუმშია. გადახდა ჯერ სატესტოა; რეალური თანხა არ ჩამოგეჭრება.", chooseDoctor:"ექიმების ნახვა", available:"ხელმისაწვდომობა", gynecologist:"გინეკოლოგი", endocrinologist:"ენდოკრინოლოგი", years:"წლიანი გამოცდილება",
+    privacyTitle:"შენი ჩანაწერები, შენი არჩევანი", privacyText:"პერიოდისა და დღიურის ჩანაწერები დაცულ ანგარიშში ინახება და აპსა და ვებსაიტს შორის სინქრონდება. ისინი საზოგადოების პოსტებში ავტომატურად არ გამოჩნდება.", privacyItems:["პირადი ჩანაწერები დაცულ ანგარიშში","პოსტებს მხოლოდ შესული წევრები ხედავენ","ციკლის გამოთვლა შენს მოწყობილობაზე"],
+    finalTitle:"დაუთმე დრო საკუთარ თავს", finalText:"დაიწყე პერიოდის კალენდრითა და დღიურით. ძირითადი ფუნქციები უფასოა და ბარათის დამატება არ გჭირდება.", finalButton:"შექმენი უფასო ანგარიში", footer:"უკეთ გაიცანი საკუთარი რიტმი.", privacyLink:"კონფიდენციალურობა", termsLink:"წესები და პირობები", rights:"© 2026 თუთა. ყველა უფლება დაცულია.",
   },
   en: {
-    about:"About", featuresNav:"Features", library:"Library", community:"Home", consultation:"Consult a doctor", login:"Sign in", signup:"Sign up",
-    badge:"Made for women in Georgia", title:"Understand your body and cycle with confidence", subtitle:"TUTA brings period predictions, daily tracking and community into one space.", start:"Start for free", anonymous:"Explore features", private:"Personal information is protected", privateText:"Only your account can access your health entries.",
-    greeting:"Example: Nino's calendar", day:"Cycle day 14", phase:"Ovulation", next:"Next period", nextDate:"September 12", fertile:"Fertile days", today:"Today", energy:"Energy", high:"High", mood:"Mood", calm:"Calm",
-    valueTitle:"Tools designed to help you understand your health", valueText:"More than a calendar. TUTA helps you notice changes and see insights based on your real data.",
-    featureCards:[["Cycle predictions","Period, ovulation and fertile-window calculations happen on your device."],["Daily tracking","Log mood, energy, pain, flow and more than 80 symptoms."],["Personal patterns","Discover recurring symptoms and phases across your own cycles."]],
-    doctorsBadge:"TUTA Care", doctorsTitle:"Your space for doctor consultations", doctorsText:"Browse available verified doctors. Chat and booking open slots require Premium; payments currently remain test-only.", chooseDoctor:"View doctors & appointments", available:"Availability", gynecologist:"Gynecologist", endocrinologist:"Endocrinologist", years:"years of experience",
-    privacyTitle:"Your personal information is protected", privacyText:"Period and journal entries are stored in a protected account and synced across the app and website. They never appear automatically in community posts.", privacyItems:["Access through your account","Posts visible only to signed-in members","On-device calculations"],
-    finalTitle:"Start understanding your rhythm", finalText:"Period and ovulation predictions are free. No payment card required.", finalButton:"Create a free account", footer:"Your health awareness starts here.", privacyLink:"Privacy", termsLink:"Terms of use", rights:"© 2026 TUTA. All rights reserved.",
+    about:"About", featuresNav:"Features", library:"Articles", community:"Home", consultation:"Consult a doctor", login:"Sign in", signup:"Sign up",
+    badge:"Made for women in Georgia", title:"Get to know your body and cycle", subtitle:"Track your period, check in with yourself and share experiences with other women. All in one space.", start:"Create a free account", anonymous:"Explore Tuta", private:"Your health entries are private", privateText:"Your entries do not appear in posts. You choose what to share.",
+    greeting:"Nino's calendar · Example", day:"Cycle day 14", phase:"Estimated ovulation", next:"Estimated period start", nextDate:"September 12", fertile:"Estimated fertile days", today:"Today", energy:"Energy", high:"High", mood:"Mood", calm:"Calm",
+    valueTitle:"Make sense of your everyday changes", valueText:"Log your period dates and keep a daily journal. Over time, see what changes and what repeats across your cycles.",
+    featureCards:[["Period calendar","Log your period and see estimated dates for your next period and ovulation."],["Daily journal","Track mood, energy, pain, bleeding and other symptoms."],["Cycle insights","Compare cycles and explore recurring symptoms in your entries."]],
+    doctorsBadge:"Doctor consultations", doctorsTitle:"Find a doctor for your questions", doctorsText:"Choose a verified doctor, send a message or book an available appointment. Messaging and booking require Premium. Payments are still in test mode; no real charge is made.", chooseDoctor:"View doctors", available:"Availability", gynecologist:"Gynecologist", endocrinologist:"Endocrinologist", years:"years of experience",
+    privacyTitle:"Your entries, your choice", privacyText:"Period and journal entries are stored in a protected account and synced across the app and website. They never appear automatically in community posts.", privacyItems:["Private entries in a protected account","Posts visible only to signed-in members","Cycle calculations on your device"],
+    finalTitle:"Make time for yourself", finalText:"Start with a period calendar and daily journal. Core features are free, with no payment card required.", finalButton:"Create a free account", footer:"Get to know your own rhythm.", privacyLink:"Privacy", termsLink:"Terms of use", rights:"© 2026 TUTA. All rights reserved.",
   },
 };
 
@@ -89,11 +89,11 @@ export const policyCopy = {
       sections: [
         [
           "რას აკეთებს თუთა",
-          "თუთა გაძლევს პერიოდის სავარაუდო პროგნოზს, კალენდარს, დღიურს და მომხმარებელთა მთავარ გვერდს. პროგნოზი შეფასებაა და არა დიაგნოზი ან კონტრაცეფციის მეთოდი.",
+          "თუთაში შეგიძლია აღრიცხო პერიოდი, შეავსო დღიური, ნახო სავარაუდო თარიღები და გაუზიარო გამოცდილება სხვა წევრებს. პროგნოზი შეფასებაა და არა დიაგნოზი ან კონტრაცეფციის მეთოდი.",
         ],
         [
           "საზოგადოების წესები",
-          "პოსტი მაქსიმუმ 200 სიტყვას და ერთ ფოტოს შეიძლება შეიცავდეს. არ გამოაქვეყნო სხვისი პირადი მონაცემები, შეურაცხმყოფელი ტექსტი ან სპამი. შეგიძლია შეცვალო ან წაშალო საკუთარი პოსტი და დაარეპორტო დარღვევა.",
+          "პოსტი მაქსიმუმ 200 სიტყვას და ერთ ფოტოს შეიძლება შეიცავდეს. არ გამოაქვეყნო სხვისი პირადი მონაცემები, შეურაცხმყოფელი ტექსტი ან სპამი. საკუთარი პოსტის შეცვლა ან წაშლა შეგიძლია. დარღვევის შემთხვევაში გაგზავნე საჩივარი.",
         ],
         [
           "ანგარიში და Premium",
@@ -111,7 +111,7 @@ export const policyCopy = {
       sections: [
         [
           "What Tuta does",
-          "Tuta offers estimated period predictions, a calendar, a journal and a member Home feed. Predictions are estimates, not a diagnosis or a method of contraception.",
+          "Tuta lets you log periods, keep a daily journal, view estimated dates and share experiences with other members. Predictions are estimates, not a diagnosis or a method of contraception.",
         ],
         [
           "Community rules",
@@ -134,22 +134,22 @@ export type PageKind = "about"|"blog"|"market"|"premium"|"register"|"login"|"for
 
 export const pageInfo: Record<PageKind, {ka:[string,string],en:[string,string]}> = {
   about:{ka:["თუთას შესახებ","თუთა შეიქმნა იმისთვის, რომ ჯანმრთელობაზე ზრუნვა იყოს მარტივი, პირადი და გასაგები."],en:["About TUTA","TUTA was created to make health awareness simple, private and easy to understand."]},
-  blog:{ka:["ჯანმრთელობის ბიბლიოთეკა","ზოგადი საკითხავი მასალა პერიოდზე, ყოველდღიურ კეთილდღეობასა და ექიმთან ვიზიტისთვის მომზადებაზე."],en:["Health library","General reading on periods, everyday wellbeing and preparing for a doctor visit."]},
-  market:{ka:["მარკეტი / მაღაზია","შერჩეული პროდუქტები ყოველდღიური თავის მოვლისთვის."],en:["Market / shop","Thoughtfully selected products for everyday care."]},
-  premium:{ka:["TUTA Premium","ფასიანი ფუნქციები მზადდება და ამ ვერსიაში ჯერ არ არის ჩართული."],en:["TUTA Premium","Paid features are in development and are not active in this version."]},
-  register:{ka:["შექმენი ანგარიში","დაიწყე შენი ციკლის გაცნობიერება უსაფრთხო და პირად სივრცეში."],en:["Create your account","Start understanding your cycle in a safe and private space."]},
+  blog:{ka:["ბლოგები","წაიკითხე პერიოდის, ყოველდღიური კეთილდღეობისა და ექიმთან ვიზიტისთვის მომზადების შესახებ."],en:["Articles","Read about periods, everyday wellbeing and preparing for a doctor visit."]},
+  market:{ka:["მარკეტი","აღმოაჩინე პროდუქტები ყოველდღიური თავის მოვლისთვის."],en:["Market","Explore products for everyday self-care."]},
+  premium:{ka:["თუთა პრემიუმი","ციკლის დეტალური ანალიზი, ანგარიში ექიმისთვის და მეტი შესაძლებლობა. გადახდა ჯერ სატესტოა."],en:["Tuta Premium","Detailed cycle insights, a report to share with your doctor and more. Payments are still in test mode."]},
+  register:{ka:["შექმენი ანგარიში","შეავსე მონაცემები. შემდეგ ელფოსტაზე მიღებული 6-ნიშნა კოდით დაადასტურე ანგარიში."],en:["Create your account","Enter your details, then confirm your account with the 6-digit code sent to your email."]},
   login:{ka:["კეთილი იყოს შენი დაბრუნება","შედი ანგარიშზე და გააგრძელე იქიდან, სადაც გაჩერდი."],en:["Welcome back","Sign in and continue where you left off."]},
   "forgot-password":{ka:["პაროლის აღდგენა","შეიყვანე ანგარიშის ელფოსტა და გამოგიგზავნით აღდგენის ბმულს."],en:["Reset your password","Enter your account email and we’ll send you a recovery link."]},
   "reset-password":{ka:["ახალი პაროლი","აირჩიე ახალი პაროლი შენი ანგარიშისთვის."],en:["Choose a new password","Set a new password for your account."]},
   dashboard:{ka:["პერიოდი","შენი პერიოდისა და დღიურის მიმდინარე მიმოხილვა."],en:["Period","Your current period and journal overview."]},
-  log:{ka:["დღიური ჩანაწერი","მონიშნე განწყობა, ენერგია, ტკივილი, ნაკადი და სიმპტომები."],en:["Daily log","Track mood, energy, pain, flow and symptoms."]},
-  insights:{ka:["შენი პატერნები","დროთა განმავლობაში აღმოჩენილი ცვლილებები და ციკლის ანალიტიკა."],en:["Your patterns","Changes and cycle analytics discovered over time."]},
-  report:{ka:["ექიმის ანგარიში","ექიმისთვის განკუთვნილი PDF ანგარიში ჯერ მზადდება."],en:["Doctor's report","A doctor-ready PDF report is still in development."]},
+  log:{ka:["დღიური","ჩაინიშნე განწყობა, ენერგია, ტკივილი, სისხლდენა და სხვა სიმპტომები."],en:["Journal","Track mood, energy, pain, bleeding and other symptoms."]},
+  insights:{ka:["ციკლის ანალიზი","შეადარე ციკლების ხანგრძლივობა და ნახე განმეორებადი სიმპტომები."],en:["Cycle insights","Compare cycle lengths and explore recurring symptoms."]},
+  report:{ka:["ანგარიში ექიმისთვის","მოამზადე ბოლო 6 თვის ჩანაწერების შეჯამება. დაბეჭდე ან შეინახე PDF-ად ექიმთან გასაზიარებლად."],en:["Report for your doctor","Summarize your entries from the last 6 months. Print or save as PDF to share with your doctor."]},
   settings:{ka:["პარამეტრები","ნახე ანგარიში და მონაცემების სინქრონიზაციის სტატუსი."],en:["Settings","View your account and data synchronization status."]},
   ovulation:{ka:["ოვულაციის კალკულატორი","გამოთვალე სავარაუდო ოვულაციის დღე და ნაყოფიერი ფანჯარა."],en:["Ovulation calculator","Estimate your ovulation day and fertile window."]},
   period:{ka:["პერიოდის კალკულატორი","გამოთვალე შემდეგი პერიოდის სავარაუდო თარიღი."],en:["Period calculator","Estimate the start date of your next period."]},
   admin:{ka:["ადმინისტრაცია","მართე საიტის ფუნქციების ხილვადობა და კონტენტი."],en:["Administration","Manage feature visibility and site content."]},
-  consultation:{ka:["ექიმთან კონსულტაცია","ექიმთან ჩატი და ვიზიტის დაჯავშნა ჯერ არ არის ჩართული."],en:["Doctor consultation","Doctor chat and appointment booking are not active yet."]},
+  consultation:{ka:["ექიმთან კონსულტაცია","აირჩიე ექიმი, დაიწყე მიმოწერა ან დაჯავშნე თავისუფალი დრო. ეს ფუნქციები პრემიუმშია."],en:["Doctor consultations","Choose a doctor, start a chat or book an available appointment. These features require Premium."]},
 };
 
 export const aboutCards = { ka: [["შენი რიტმის გასაცნობად","თუთა აერთიანებს პერიოდის კალენდარს, ყოველდღიურ დღიურსა და ქალების საზოგადოებას. თუთა მეგრულად მთვარეს ნიშნავს."],["კონტროლი შენს ხელშია","ჯანმრთელობის ჩანაწერები ანგარიშში ინახება. პოსტები მათგან განცალკევებულია; პარტნიორთან გაზიარებისთვის თავად ირჩევ მონაცემებს და თანხმობას აუქმებ ნებისმიერ დროს."],["ინფორმაცია და პროფესიული დახმარება","პროგნოზები შეფასებაა და არა დიაგნოზი. ექიმები ჩნდებიან ადმინისტრატორის მიერ კვალიფიკაციის გადამოწმების შემდეგ. გადახდები ამ ეტაპზე მხოლოდ სატესტოა."]], en: [["Understand your rhythm","Tuta brings together a period calendar, daily journal and a community for women. Tuta means moon in Mingrelian."],["You stay in control","Health entries are stored in your account, separate from community posts. You choose what to share with a partner and can revoke consent at any time."],["Information and professional care","Predictions are estimates, not diagnoses. Doctors appear after administrator qualification checks. Payments currently operate in test mode only."]] };

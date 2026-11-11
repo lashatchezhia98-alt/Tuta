@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sourceModule } from './source-loader.mjs';
 
+test('website copy remains bilingual, within editor limits and preserves custom wording', () => {
+  const { copyFields, getCopyText } = sourceModule('lib/site-copy.ts');
+  assert.equal(new Set(copyFields.map(field => field.id)).size, copyFields.length);
+  for (const field of copyFields) {
+    for (const lang of ['ka', 'en']) {
+      assert.ok(field[lang].trim(), `${field.id}: ${lang}`);
+      assert.ok(field[lang].length <= field.max, `${field.id}: editor limit`);
+    }
+  }
+  assert.equal(getCopyText({ ka: { 'nav.marketShort': 'MARKET' }, en: {} }, 'nav.marketShort', 'ka'), 'MARKET');
+  assert.equal(getCopyText({ ka: {}, en: {} }, 'nav.marketShort', 'ka'), 'მარკეტი');
+});
+
 class ApiError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }

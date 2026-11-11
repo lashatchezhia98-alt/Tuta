@@ -14,7 +14,7 @@ import PartnerWorkspace from './partner-workspace';
 const existing = [
   ['/community','მთავარი','Home'], ['/app/dashboard','პერიოდი','Period'],
   ['/app/log','დღიური','Journal'], ['/app/insights','ანალიზი','Insights'],
-  ['/app/report','ექიმისთვის ანგარიში','Doctor report'], ['/blog','ბლოგები','Library'],
+  ['/app/report','ანგარიში ექიმისთვის','Report for your doctor'], ['/blog','ბლოგები','Articles'],
   ['/consultation','ექიმები, ჩატი და ჯავშნები','Doctors, chat & bookings'],
   ['/premium','პრემიუმი','Premium'], ['/app/settings','პარამეტრები','Settings'],
   ['/tools/period-calculator','პერიოდის კალკულატორი','Period calculator'],
