@@ -273,4 +273,208 @@
 .settings-workspace{padding-top:32px;padding-bottom:64px;min-width:0}.settings-workspace h1{font-size:clamp(28px,5vw,42px);margin:24px 0}.settings-workspace .workspace-nav{position:static;display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;padding:0;background:transparent;border:0}.settings-workspace .workspace-nav a{width:auto;min-height:44px;padding:10px 16px;background:#e3d8f1;border-radius:24px}.account-settings h2{overflow-wrap:anywhere}
 .order-card{border:1px solid #e3d8f1;border-radius:18px;padding:20px;margin:18px 0;background:#fff;min-width:0}.order-card h3{overflow-wrap:anywhere;font-size:16px}.order-card p{overflow-wrap:anywhere}.order-actions,.order-pagination{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:16px}.order-actions small{flex-basis:100%;font-size:14px;line-height:1.6}.order-history button,.order-history select{min-height:44px;border:1px solid #1e1b2e33;border-radius:12px;padding:9px 14px;font-size:16px}.order-history button:disabled{opacity:.5;cursor:not-allowed}.order-card label{display:flex;flex-direction:column;gap:8px;margin-top:16px}.order-card ul,.premium-benefits ul{padding-left:20px;line-height:1.8}.order-card a,.premium-benefits a{ text-decoration:underline;text-underline-offset:3px}.premium-benefits{margin-top:24px}.premium-benefits .workspace-grid{margin:0}.premium-benefits li{margin:8px 0}
 @media(max-width:700px){.inner-header{height:auto;min-height:68px;padding:12px 0}.inner-header .inner-nav{flex-wrap:wrap;gap:12px}.inner-header .header-actions{margin-left:auto;flex-wrap:wrap;gap:8px}.header-sign-in,.header-register{padding:8px 12px}.settings-workspace .workspace-nav{display:flex;overflow:visible}body .admin-sidebar nav a,body .admin-signout{min-height:44px;font-size:16px}.order-card{padding:16px}}
-.header-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}.header-sign-in{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:24px;background:#1e1b2e;color:#fff;font-size:16px}.header-burger{display:grid;place-items:center;width:44px;height:44px;border:1px solid #1e1b2e26;border-radius:50%;background:transparent;cursor:pointer}.burger-links{display:flex;flex-direction:column;gap:4px;margin-top:24px}.burger-links a{display:flex;align-items:center;min-height:44px;padding:8px 0;font-size:16px}.burger-language{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #1e1b2e26;margin-top:24px;padding-top:16px}.burger-language button{min-height:44px;padding:8px 16px;border:1px solid #1e1b2e26;border-radius:24px;cursor:pointer}
+.header-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}.header-auth-links{display:flex;align-items:center;gap:12px}.header-sign-in{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:24px;background:#1e1b2e;color:#fff;font-size:16px}.header-mobile-auth-trigger{display:none;min-height:44px;align-items:center;justify-content:center;padding:0 16px;border:1px solid #1e1b2e1f;border-radius:24px;background:#fdf0cc;color:#1e1b2e;font-size:15px;font-weight:700;white-space:nowrap;cursor:pointer}.mobile-auth-sheet{padding-bottom:calc(24px + env(safe-area-inset-bottom))}.mobile-auth-sheet-header{padding:8px 0 18px}.mobile-auth-sheet-header [data-slot="sheet-title"]{font-size:20px}.mobile-auth-options{display:grid;gap:10px}.mobile-auth-option{display:flex;min-height:48px;align-items:center;justify-content:center;padding:12px 16px;border:1px solid #1e1b2e26;border-radius:16px;background:#fff;color:#1e1b2e;font-size:16px;font-weight:650;text-decoration:none}.mobile-auth-option-primary{border-color:#1e1b2e;background:#1e1b2e;color:#fff}.header-burger{display:grid;place-items:center;width:44px;height:44px;border:1px solid #1e1b2e26;border-radius:50%;background:transparent;cursor:pointer}.burger-links{display:flex;flex-direction:column;gap:4px;margin-top:24px}.burger-links a{display:flex;align-items:center;min-height:44px;padding:8px 0;font-size:16px}.burger-language{display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid #1e1b2e26;margin-top:24px;padding-top:16px}.burger-language button{min-height:44px;padding:8px 16px;border:1px solid #1e1b2e26;border-radius:24px;cursor:pointer}
+
+/* Mobile web follows the native app's five-tab navigation and community-first home. */
+.landing-mobile { display: none; }
+.community-mobile-heading { display: none; }
+.mobile-app-tabbar { display: none; }
+
+@media (max-width: 767px) {
+  .landing-desktop { display: none !important; }
+  .landing-mobile { display: block; }
+  .header-auth-links { display: none; }
+  .header-mobile-auth-trigger { display: inline-flex; }
+
+  .mobile-app-tabbar {
+    position: fixed;
+    z-index: 100;
+    inset: auto 0 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    min-height: calc(70px + env(safe-area-inset-bottom));
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid #e6e2ec;
+    background: rgb(249 248 252 / 96%);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+  .mobile-app-tab {
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: #625b6d;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-app-tab-icon {
+    display: grid;
+    width: 38px;
+    height: 34px;
+    place-items: center;
+    border-radius: 15px;
+  }
+  .mobile-app-tab-icon svg { width: 21px; height: 21px; stroke-width: 1.8; }
+  .mobile-app-tab.is-active { color: #1e1b2e; font-weight: 700; }
+  .mobile-app-tab.is-active .mobile-app-tab-icon { background: #fdf0cc; }
+  .mobile-app-tab-label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mobile-app-tab:focus-visible { outline: 3px solid #74618f; outline-offset: -2px; border-radius: 14px; }
+  body:has(.mobile-app-tabbar) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+
+  .community-page { min-height: 100svh; padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .community-page .inner-header { height: 68px; min-height: 68px; padding: 0; }
+  .community-page .inner-container { width: calc(100% - 32px); max-width: 640px; }
+  .community-page .inner-nav { height: 68px; min-height: 68px; flex-wrap: nowrap; gap: 8px; }
+  .community-page .inner-logo { min-width: 0; flex: 0 1 auto; gap: 8px; }
+  .community-page .inner-logo .tuta-brand-mark { width: 40px; height: 40px; }
+  .community-page .inner-logo strong { overflow: hidden; font-size: 20px; text-overflow: ellipsis; white-space: nowrap; }
+  .community-page .header-actions { min-width: 0; flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+  .community-page .header-sign-in,
+  .community-page .header-register { min-height: 40px; padding: 0 10px; font-size: 13px; }
+  .community-page .header-burger { width: 42px; height: 42px; flex: 0 0 42px; }
+  .community-page > .mx-auto.grid {
+    display: grid;
+    width: 100%;
+    max-width: 640px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 22px 16px 26px;
+  }
+  .community-mobile-heading { display: block; min-width: 0; }
+  .community-mobile-kicker { margin: 0 0 8px; color: #786d89; font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+  .community-mobile-heading h1 { margin: 0; overflow-wrap: anywhere; font-size: clamp(26px, 7vw, 34px); font-weight: 750; line-height: 1.18; }
+  .community-mobile-intro { margin: 10px 0 0; color: #746d80; font-size: 15px; line-height: 1.55; }
+  .community-mobile-composer {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 92px;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    padding: 14px;
+    border: 1px solid #e6e2ec;
+    border-radius: 24px;
+    background: #fff;
+    color: #1e1b2e;
+    text-align: left;
+    text-decoration: none;
+    box-shadow: 0 8px 24px rgb(30 27 46 / 4%);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .community-mobile-avatar { display: grid; width: 48px; height: 48px; flex: 0 0 48px; place-items: center; border-radius: 50%; background: #fdf0cc; font-weight: 700; }
+  .community-mobile-composer-copy { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+  .community-mobile-composer-copy strong { overflow-wrap: anywhere; font-size: 15px; line-height: 1.35; }
+  .community-mobile-composer-copy small { color: #746d80; font-size: 12px; line-height: 1.35; }
+  .community-page aside { display: none; }
+  .community-page [aria-label="პოსტების თემები"],
+  .community-page [aria-label="Post topics"] {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    max-width: calc(100vw - 16px);
+    margin: 0 -8px;
+    overflow-x: auto;
+    padding: 2px 8px 8px;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .community-page [aria-label="პოსტების თემები"]::-webkit-scrollbar,
+  .community-page [aria-label="Post topics"]::-webkit-scrollbar { display: none; }
+  .community-page [aria-label="პოსტების თემები"] button,
+  .community-page [aria-label="Post topics"] button { min-height: 44px; flex: 0 0 auto; white-space: nowrap; }
+  .community-page article { min-width: 0; overflow-wrap: anywhere; }
+  .community-page article img { max-width: 100%; object-fit: contain; }
+  .community-page textarea,
+  .community-page input:not([type="checkbox"]):not([type="file"]),
+  .community-page select { max-width: 100%; font-size: 16px; }
+}
+
+@media (max-width: 380px) {
+  .community-page .inner-container { width: calc(100% - 24px); }
+  .community-page .inner-nav { gap: 5px; }
+  .community-page .inner-logo { gap: 5px; }
+  .community-page .inner-logo .tuta-brand-mark { width: 36px; height: 36px; }
+  .community-page .inner-logo strong { font-size: 18px; }
+  .community-page .header-actions { gap: 4px; }
+  .community-page .header-sign-in,
+  .community-page .header-register { padding: 0 8px; font-size: 12px; }
+  .community-page .header-burger { width: 40px; height: 40px; flex-basis: 40px; }
+  .community-mobile-composer { gap: 9px; padding: 12px; }
+  .community-mobile-composer-copy strong { font-size: 14px; }
+  .mobile-app-tabbar { padding-inline: 4px; }
+  .mobile-app-tab-label { font-size: 9px; }
+}
+
+@media (min-width: 768px) {
+  .landing-desktop { display: block; }
+  .landing-mobile { display: none; }
+  .mobile-app-tabbar { display: none !important; }
+}
+
+.admin-website-copy-shortcut {
+  position: fixed;
+  z-index: 110;
+  left: 16px;
+  bottom: 18px;
+  display: inline-flex;
+  min-height: 56px;
+  max-width: min(360px, calc(100vw - 32px));
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 16px;
+  border: 1px solid #e3d8f1;
+  border-radius: 17px;
+  background: #fff;
+  color: #1e1b2e;
+  text-decoration: none;
+  box-shadow: 0 8px 28px rgb(30 27 46 / 14%);
+  -webkit-tap-highlight-color: transparent;
+}
+.admin-website-copy-shortcut span {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-website-copy-shortcut svg { flex: 0 0 auto; color: #5d4c77; }
+.admin-website-copy-shortcut::before {
+  position: absolute;
+  z-index: -1;
+  inset: 5px;
+  border-radius: 12px;
+  background: #fdf0cc;
+  content: "";
+}
+.admin-website-copy-shortcut:hover { border-color: #bca9d5; box-shadow: 0 10px 30px rgb(30 27 46 / 20%); }
+.admin-website-copy-shortcut:focus-visible { outline: 3px solid #74618f; outline-offset: 3px; }
+
+@media (max-width: 767px) {
+  .admin-website-copy-shortcut {
+    left: 10px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    min-height: 48px;
+    max-width: calc(100vw - 20px);
+    gap: 8px;
+    padding: 5px 12px;
+    border-radius: 15px;
+  }
+  .admin-website-copy-shortcut span { font-size: 12px; }
+  .admin-website-copy-shortcut svg { width: 16px; height: 16px; }
+}

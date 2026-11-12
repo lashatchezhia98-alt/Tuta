@@ -528,7 +528,7 @@ export default function CommunityPage() {
 
   if (!features.community)
     return (
-      <main className="min-h-screen bg-[#F9F8FC] px-5 py-24 text-center text-[#1E1B2E]">
+      <main className="community-page min-h-screen bg-[#F9F8FC] px-5 py-24 text-center text-[#1E1B2E]">
         <p>TUTA COMMUNITY</p>
         <h1 className="text-3xl font-semibold">
           {featureStatus === "loading"
@@ -552,7 +552,7 @@ export default function CommunityPage() {
       </main>
     );
   return (
-    <main className="min-h-screen bg-[#F9F8FC] text-[#1E1B2E]">
+    <main className="community-page min-h-screen bg-[#F9F8FC] text-[#1E1B2E]">
       <header className="inner-header">
         <div className="inner-container inner-nav">
           <Link href="/" className="inner-logo">
@@ -570,6 +570,28 @@ export default function CommunityPage() {
         </div>
       </header>
       <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <section className="community-mobile-heading" aria-labelledby="community-title">
+          <p className="community-mobile-kicker">TUTA · COMMUNITY</p>
+          <h1 id="community-title">{<SiteCopyText id="feed.title" lang={lang}/>}</h1>
+          <p className="community-mobile-intro">{<SiteCopyText id="feed.intro" lang={lang}/>}</p>
+          {isMember ? (
+            <button type="button" onClick={openNew} className="community-mobile-composer">
+              <span className="community-mobile-avatar" aria-hidden="true">{nameOf(session?.user.user_metadata || {})[0]?.toUpperCase() || "T"}</span>
+              <span className="community-mobile-composer-copy">
+                <strong>{t("რას გაუზიარებ სხვებს?", "What would you like to share?")}</strong>
+                <small>{t("მაქს. 200 სიტყვა · 1 ფოტო · აირჩიე თემა", "Up to 200 words · 1 photo · choose a topic")}</small>
+              </span>
+            </button>
+          ) : (
+            <Link href="/login" className="community-mobile-composer">
+              <span className="community-mobile-avatar" aria-hidden="true">↗</span>
+              <span className="community-mobile-composer-copy">
+                <strong>{t("შედი, რომ საზოგადოება ნახო", "Sign in to join the community")}</strong>
+                <small>{t("პოსტები მხოლოდ წევრებისთვისაა", "Posts are available to members only")}</small>
+              </span>
+            </Link>
+          )}
+        </section>
         <aside className="h-fit rounded-3xl bg-[#E3D8F1] p-6">
           <p className="text-xs font-bold uppercase tracking-widest">
             TUTA COMMUNITY

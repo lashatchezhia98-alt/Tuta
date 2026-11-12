@@ -202,6 +202,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     if (current === "market") return <AdminMarket lang={lang}/>;
     if (current === "tools") return <div className="ops-tool-links">{operations.map(item => <Link key={item.section} href={item.href}><strong>{ka ? item.ka : item.en}</strong><span>{description[item.section][ka ? 0 : 1]}</span></Link>)}</div>;
     return <div className="admin-summary admin-summary-overview">
+      <Link href="/admin/website-copy" className="admin-summary-copy-link"><span>{ka ? "ვებსაიტის მართვა" : "Website management"}</span><strong>{ka ? "ტექსტების რედაქტირება" : "Edit website text"}</strong><em>{ka ? "ქართულად და ინგლისურად შეცვლა →" : "Edit Georgian and English copy →"}</em></Link>
       <Link href="/admin/features"><span>{ka ? "ჩართული ფუნქციები" : "Enabled features"}</span><strong>{enabledFeatures}<small> / {SITE_FEATURES.length}</small></strong><em>{ka ? "ფუნქციების მართვა →" : "Manage features →"}</em></Link>
       <Link href="/admin/reports"><span>{ka ? "ღია საჩივრები" : "Open reports"}</span><strong>{reportsLoading || reportMessage ? "—" : reports.length}</strong><em>{ka ? "საჩივრების ნახვა →" : "Review reports →"}</em></Link>
       <Link href="/admin/content"><span>{ka ? "ჯანმრთელობის კონტენტი" : "Health content"}</span><strong>{ka ? "სტატიები" : "Articles"}</strong><em>{ka ? "ბიბლიოთეკის მართვა →" : "Manage library →"}</em></Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   BarChart3,
@@ -23,6 +24,7 @@ import { useSiteFeatures } from "@/lib/site-features";
 import BrandMark from '@/components/brand-mark';
 import HeaderActions from '@/components/header-actions';
 import SiteSocialLinks from "@/components/site-social-links";
+import CommunityPage from "@/app/community/community-page";
 
 import { SiteCopyText } from "@/components/site-copy-provider";
 
@@ -31,7 +33,7 @@ type Lang = "ka" | "en";
 import { homeCopy as content } from "@/lib/site-copy-defaults";
 
 function Brand({lang,inverse=false}:{lang:Lang,inverse?:boolean}) {
-  return <a href="/" className={`flex items-center gap-2.5 ${inverse?"text-white":"text-[#1E1B2E]"}`} aria-label={lang === 'ka' ? 'თუთა მთავარი' : 'TUTA home'}><BrandMark/><strong className="text-[22px] font-black tracking-[-1px]"><SiteCopyText id="nav.brand" lang={lang}/></strong></a>
+  return <Link href="/" className={`flex items-center gap-2.5 ${inverse?"text-white":"text-[#1E1B2E]"}`} aria-label={lang === 'ka' ? 'თუთა მთავარი' : 'TUTA home'}><BrandMark/><strong className="text-[22px] font-black tracking-[-1px]"><SiteCopyText id="nav.brand" lang={lang}/></strong></Link>
 }
 
 function NavLinks({lang}:{lang:Lang}) {const features=useSiteFeatures();return features.market?<a href="/market"><SiteCopyText id="nav.marketShort" lang={lang}/></a>:null}
@@ -40,11 +42,13 @@ export default function Home(){
   const [lang,setLang]=useState<Lang>("ka");
   const features=useSiteFeatures();
   const consult=features.doctorConsultation;
-  useEffect(()=>{if(localStorage.getItem("tuta-language")==="en")setLang("en")},[]);
+  useEffect(()=>{if(localStorage.getItem("tuta-language")==="en")queueMicrotask(()=>setLang("en"))},[]);
   useEffect(()=>{localStorage.setItem("tuta-language",lang);document.documentElement.lang=lang},[lang]);
   const t=content[lang];
   const icons=[CalendarDays,HeartPulse,BarChart3];
-  return <main className="min-h-screen bg-[#F9F8FC] text-[#1E1B2E]">
+  return <>
+    <div className="landing-desktop">
+    <main className="min-h-screen bg-[#F9F8FC] text-[#1E1B2E]">
     <header className="sticky top-0 z-50 border-b border-[#1E1B2E]/10 bg-[#F9F8FC]/95 backdrop-blur-xl"><div className="landing-header-row mx-auto flex min-h-[72px] max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-3 lg:px-8"><Brand lang={lang}/><nav className="hidden items-center gap-6 text-[13px] font-medium xl:flex"><NavLinks lang={lang}/></nav><HeaderActions lang={lang} setLang={setLang}/></div></header>
 
     <section className="overflow-hidden border-b border-[#1E1B2E]/10 bg-[#E3D8F1]"><div className="mx-auto grid min-h-[680px] max-w-7xl items-center gap-14 px-5 py-16 lg:grid-cols-2 lg:px-8 lg:py-20"><div className="max-w-[600px]"><Badge variant="outline" className="mb-6 rounded-full border-[#1E1B2E]/15 bg-white/40 px-3 py-1.5 text-[11px] font-semibold"><Sparkles className="mr-1.5 size-3.5"/><SiteCopyText id="home.badge" lang={lang}/></Badge><h1 className="text-[42px] font-semibold leading-[1.08] tracking-[-2.2px] sm:text-[52px] lg:text-[56px]"><SiteCopyText id="home.title" lang={lang}/></h1><p className="mt-6 max-w-lg text-[16px] leading-7 text-[#514B5F]"><SiteCopyText id="home.subtitle" lang={lang}/></p><div className="mt-9 flex flex-col gap-3 sm:flex-row"><Button asChild size="lg" className="h-12 rounded-full bg-[#1E1B2E] px-6 text-white hover:bg-[#302c43]"><a href="/register"><SiteCopyText id="home.start" lang={lang}/><ArrowRight className="ml-2 size-4"/></a></Button><Button asChild variant="ghost" size="lg" className="h-12 rounded-full px-6 hover:bg-white/40"><a href="#features"><SiteCopyText id="home.anonymous" lang={lang}/><ChevronRight className="ml-1 size-4"/></a></Button></div><div className="mt-8 flex items-center gap-3 text-[12px] text-[#625B6D]"><ShieldCheck className="size-4"/><span><strong className="font-semibold text-[#1E1B2E]"><SiteCopyText id="home.private" lang={lang}/></strong> · <SiteCopyText id="home.privateText" lang={lang}/></span></div></div>
@@ -64,5 +68,8 @@ export default function Home(){
     <section className="bg-[#E3D8F1] py-24"><div className="mx-auto max-w-3xl px-5 text-center"><h2 className="text-4xl font-semibold tracking-[-1.8px] sm:text-5xl"><SiteCopyText id="home.finalTitle" lang={lang}/></h2><p className="mx-auto mt-5 max-w-xl text-[14px] leading-6 text-[#676273]"><SiteCopyText id="home.finalText" lang={lang}/></p><Button asChild size="lg" className="mt-8 rounded-full bg-[#1E1B2E] px-7"><a href="/register"><SiteCopyText id="home.finalButton" lang={lang}/><ArrowRight className="ml-2 size-4"/></a></Button></div></section>
 
     <footer className="bg-[#1E1B2E] py-12 text-white"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-5 lg:flex-row lg:items-center lg:px-8"><div><Brand lang={lang} inverse/><p className="mt-4 text-xs text-white/60"><SiteCopyText id="home.footer" lang={lang}/></p></div><div className="flex flex-col gap-5 lg:items-end"><div className="flex flex-wrap gap-x-7 gap-y-3 text-xs text-white/70"><a href="/community"><SiteCopyText id="home.community" lang={lang}/></a><a href="/about"><SiteCopyText id="home.about" lang={lang}/></a><a href="/blog"><SiteCopyText id="home.library" lang={lang}/></a><a href="/premium"><SiteCopyText id="home.premiumLink" lang={lang}/></a><a href="/privacy"><SiteCopyText id="home.privacyLink" lang={lang}/></a><a href="/terms"><SiteCopyText id="home.termsLink" lang={lang}/></a></div><SiteSocialLinks lang={lang}/></div></div><Separator className="mx-auto my-8 max-w-7xl bg-white/10"/><div className="mx-auto max-w-7xl px-5 text-[10px] text-white/45 lg:px-8"><SiteCopyText id="home.rights" lang={lang}/></div></footer>
-  </main>
+    </main>
+    </div>
+    <div className="landing-mobile"><CommunityPage /></div>
+  </>
 }
