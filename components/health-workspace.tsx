@@ -421,7 +421,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
               </button>
             )}
           </form>
-          <p role="status">{message}</p>
+          <p className="desktop-period-status" role="status">{message}</p>
           <Link href={`/app/log?date=${selected}`}>
             <SiteCopyText id="tracker.dayJournal" lang={lang}/>
           </Link>
@@ -720,7 +720,7 @@ function Journal({ data, save, lang }: Props) {
             <SiteCopyText id="journal.delete" lang={lang}/>
           </button>
         )}
-        <p role="status">{message}</p>
+          <p role="status">{message}</p>
       </fieldset>
     </form>
   );

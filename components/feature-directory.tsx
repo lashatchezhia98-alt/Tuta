@@ -6,26 +6,17 @@ import BrandMark from '@/components/brand-mark';
 import HeaderActions from '@/components/header-actions';
 import { useEffect, useState } from 'react';
 import { extraPages } from '@/lib/page-directory';
-import { featureForRoute, useSiteFeatures } from '@/lib/site-features';
+import { featureForRoute, useSiteFeatures, useSiteFeaturesStatus } from '@/lib/site-features';
+import { serviceCopyKey, serviceGroups } from '@/lib/service-directory';
+import { ChevronRight, LockKeyhole } from 'lucide-react';
 import GuidedJourney from './guided-journey';
 import PregnancyWorkspace from './pregnancy-workspace';
 import PartnerWorkspace from './partner-workspace';
 
-const existing = [
-  ['/community','მთავარი','Home'], ['/app/dashboard','პერიოდი','Period'],
-  ['/app/log','დღიური','Journal'], ['/app/insights','ანალიზი','Insights'],
-  ['/app/report','ანგარიში ექიმისთვის','Report for your doctor'], ['/blog','ბლოგები','Articles'],
-  ['/consultation','ექიმები, ჩატი და ჯავშნები','Doctors, chat & bookings'],
-  ['/market','მარკეტი','Market'], ['/market/orders','ჩემი შეკვეთები','My orders'],
-  ['/premium','პრემიუმი','Premium'], ['/app/settings','პარამეტრები','Settings'],
-  ['/tools/period-calculator','პერიოდის კალკულატორი','Period calculator'],
-  ['/tools/ovulation-calculator','ოვულაციის კალკულატორი','Ovulation calculator'],
-  ['/about','ჩვენ შესახებ','About'], ['/privacy','კონფიდენციალურობა','Privacy'],
-  ['/terms','წესები და პირობები','Terms'],
-] as const;
 export default function FeatureDirectory({slug}:{slug?:string}) {
   const [lang,setLang]=useState<'ka'|'en'>('ka');
   const features=useSiteFeatures();
+  const status=useSiteFeaturesStatus();
   useEffect(()=>{const timer=setTimeout(()=>{if(localStorage.getItem('tuta-language')==='en')setLang('en')},0);return()=>clearTimeout(timer)},[]);
   const ka=lang==='ka'; const page=extraPages.find(p=>p.slug===slug);
   if(page && page.slug!=='partners' && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features"><SiteCopyText id="directory.title" lang={lang}/></Link></main>;
@@ -35,12 +26,37 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
     {page && <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">← <SiteCopyText id="directory.servicesTitle" lang={lang}/></Link></nav>}
-    {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main>
+    {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main className="service-directory">
       <h1><SiteCopyText id="directory.servicesTitle" lang={lang}/></h1><p><SiteCopyText id="directory.intro" lang={lang}/></p>
-      <div className="feature-directory-grid">{existing.filter(([url])=>{const id=featureForRoute(url);return !id||features[id]}).map(([url,a,b])=><Link className="workspace-card directory-link" key={url} href={url}>{ka?a:b}<span aria-hidden>↗</span></Link>)}</div>
-      <div className="feature-directory-grid">{extraPages.filter(p=>['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}><SiteCopyText id={`extra.${p.slug}.title`} lang={lang}/> ↗</Link>)}</div>
-      {features.notifications && <div className="feature-directory-grid"><Link className="workspace-card directory-link" href="/app/notifications"><SiteCopyText id="extra.notifications.title" lang={lang}/><span aria-hidden>↗</span></Link></div>}
-      <h2>{ka?'მომზადების ეტაპზე':'In preparation'}</h2><div className="feature-directory-grid">{extraPages.filter(p=>['symptom-checker','account-deletion'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}><SiteCopyText id={`extra.${p.slug}.title`} lang={lang}/><span aria-hidden>↗</span></Link>)}</div>
+      {status !== "ready" && <p role="status">{status === "loading"
+        ? (ka ? "სერვისები იტვირთება…" : "Loading services…")
+        : (ka ? "სერვისების სრული სია ვერ ჩაიტვირთა." : "Could not load all services.")}</p>}
+      <div className="service-directory-groups">
+        {serviceGroups.map(group => {
+          const items = group.items.filter(([href]) => {
+            const feature = featureForRoute(href);
+            return !feature || features[feature];
+          });
+          if (!items.length) return null;
+          const heading = `service-group-${group.id}`;
+          return <section className="service-directory-group" key={group.id} aria-labelledby={heading}>
+            <h2 id={heading}><SiteCopyText id={`directory.group.${group.id}`} lang={lang}/></h2>
+            <ul className="service-directory-list">
+              {items.map(([href, , , , , access]) => {
+                const key = serviceCopyKey(href);
+                return <li key={href}><Link href={href} className="service-directory-link">
+                  <span className="service-directory-copy">
+                    <strong><SiteCopyText id={key} lang={lang}/></strong>
+                    <small><SiteCopyText id={`${key}.detail`} lang={lang}/></small>
+                    {access === "premium" && <span className="service-directory-badge"><LockKeyhole size={12} aria-hidden="true"/><SiteCopyText id="nav.premium" lang={lang}/></span>}
+                  </span>
+                  <ChevronRight size={18} aria-hidden="true"/>
+                </Link></li>;
+              })}
+            </ul>
+          </section>;
+        })}
+      </div>
     </main>}
   </div>;
 }

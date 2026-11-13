@@ -1,6 +1,7 @@
 import { aboutCards, homeCopy, pageInfo, policyCopy } from "./site-copy-defaults";
 import { memberCopyFields } from "./member-copy-defaults";
 import { extraPages } from "./page-directory";
+import { serviceCopyKey, serviceGroups } from "./service-directory";
 
 export type CopyLanguage = "ka" | "en";
 export type CopyOverrides = Record<CopyLanguage, Record<string, string>>;
@@ -153,6 +154,13 @@ const additional: Record<string, [string, string]> = {
   "calculator.empty": ["გამოთვლისთვის შეავსე ველები.","Complete the fields to estimate dates."],
 };
 for (const [key, [ka, en]] of Object.entries(additional)) add(key, ka, en);
+for (const group of serviceGroups) {
+  add(`directory.group.${group.id}`, group.ka, group.en);
+  for (const [href, ka, en, detailKa, detailEn] of group.items) {
+    add(serviceCopyKey(href), ka, en);
+    add(`${serviceCopyKey(href)}.detail`, detailKa, detailEn);
+  }
+}
 for (const [key, [ka, en]] of Object.entries(memberCopyFields)) add(key, ka, en);
 for (const page of extraPages) {
   add(`extra.${page.slug}.title`, page.ka, page.en);

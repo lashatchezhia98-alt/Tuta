@@ -10,6 +10,21 @@ import { sourceModule } from './source-loader.mjs';
 const appRoot = new URL("../.next/server/app/", import.meta.url);
 const sourceRoot = new URL("../", import.meta.url);
 
+test("services catalog has one entry per destination with bilingual labels and descriptions", () => {
+  const { serviceGroups, serviceCopyKey } = sourceModule("lib/service-directory.ts");
+  const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
+  const items = serviceGroups.flatMap(group => group.items);
+  const paths = items.map(([href]) => href);
+  assert.equal(paths.length, 22);
+  assert.equal(new Set(paths).size, paths.length);
+  for (const path of paths) for (const lang of ["ka", "en"]) {
+    assert.ok(getCopyText(emptyCopy(), serviceCopyKey(path), lang));
+    assert.ok(getCopyText(emptyCopy(), serviceCopyKey(path) + ".detail", lang));
+  }
+  assert.deepEqual(serviceGroups.find(group => group.id === "planned").items.map(([path]) => path), ["/app/symptom-checker", "/app/account-deletion"]);
+  assert.equal(items.filter(item => item[5] === "premium").length, 4);
+});
+
 test("Premium compares both tiers and mobile navigation keeps services in the burger menu", async () => {
   const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
   const Comparison = await loadComponent("components/premium-comparison.tsx", {
