@@ -850,7 +850,7 @@ function Shell() {
                     key={id}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: primaryTab(tab) === id }}
-                    accessibilityLabel={t(geo, en)}
+                    accessibilityLabel={id === "home" ? t("საზოგადოება", "Community") : t(geo, en)}
                     onPress={() =>
                       nav(
                         id === "cycle" &&
@@ -868,9 +868,9 @@ function Shell() {
                         primaryTab(tab) === id && { backgroundColor: C.yellow },
                       ]}
                     >
-                      <Icon name={id} />
+                      <Icon name={id === "home" ? "communityStars" : id} />
                     </View>
-                    <T
+                    {id !== "home" && <T
                       weight={primaryTab(tab) === id ? "bold" : "regular"}
                       style={{
                         fontSize: ka ? 11 : 12,
@@ -879,7 +879,7 @@ function Shell() {
                       }}
                     >
                       {t(geo, en)}
-                    </T>
+                    </T>}
                   </Pressable>
                 ))}
             </View>

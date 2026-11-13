@@ -116,6 +116,7 @@ export function Icon({
     arrow: "m9 5 7 7-7 7",
     back: "m15 5-7 7 7 7",
     spark: "m12 2 3 7 7 3-7 3-3 7-7-3 7-3Z",
+    communityStars: "M11 5l1.8 4.2L17 11l-4.2 1.8L11 17l-1.8-4.2L5 11l4.2-1.8L11 5ZM4 1l.9 2.1L7 4l-2.1.9L4 7l-.9-2.1L1 4l2.1-.9L4 1ZM19 1l1.1 2.9L23 5l-2.9 1.1L19 9l-1.1-2.9L15 5l2.9-1.1L19 1ZM4 14l1 2.5L7.5 17.5l-2.5 1L4 21l-1-2.5-2.5-1 2.5-1L4 14ZM19 13l1.2 3.3L23.5 17.5l-3.3 1.2L19 22l-1.2-3.3-3.3-1.2 3.3-1.2L19 13ZM11 18l.7 1.8 1.8.7-1.8.7L11 23l-.7-1.8-1.8-.7 1.8-.7L11 18Z",
     lock: "M6 10h12v11H6ZM8 10V6a4 4 0 0 1 8 0v4",
     check: "m5 12 4 4 10-10",
     moon: "M19 16A9 9 0 0 1 8 3a9 9 0 1 0 11 13",
@@ -133,11 +134,11 @@ export function Icon({
     >
       <Path
         d={extra[name] || paths[name] || paths.spark}
-        stroke={color}
+        stroke={name === "communityStars" ? "none" : color}
         strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
-        fill="none"
+        fill={name === "communityStars" ? color : "none"}
       />
     </Svg>
   );
