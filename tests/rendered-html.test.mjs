@@ -149,6 +149,23 @@ test("community page exposes topics and the post composer", async () => {
   assert.doesNotMatch(moderationApi, /reporter_id/);
 });
 
+test("community feed has no topic filters, and reported posts include their photo", async () => {
+  const [web, mobile, admin, moderationApi, editPolicy] = await Promise.all([
+    readFile(new URL("app/community/community-page.tsx", sourceRoot), "utf8"),
+    readFile(new URL("mobile/src/CommunityFeed.tsx", sourceRoot), "utf8"),
+    readFile(new URL("components/admin-feature-panel.tsx", sourceRoot), "utf8"),
+    readFile(new URL("app/api/admin/community-reports/route.ts", sourceRoot), "utf8"),
+    readFile(new URL("supabase/migrations/20261112120000_limit_community_post_edits.sql", sourceRoot), "utf8"),
+  ]);
+  assert.doesNotMatch(web, /setFilter\(|\.eq\("topic"/);
+  assert.doesNotMatch(mobile, /topicFilter|setTopicFilter|\.eq\("topic"/);
+  assert.match(web, /canEditCommunityPost\(post\.created_at, true, now\)/);
+  assert.match(mobile, /canEditCommunityPost\(post\.created_at, true, now\)/);
+  assert.match(editPolicy, /created_at > statement_timestamp\(\) - interval '30 minutes'/);
+  assert.match(moderationApi, /image_public_id/);
+  assert.match(admin, /communityPhotoUrl\(/);
+});
+
 test("the public homepage has no admin entry; the direct admin login renders its own form", async () => {
   const [home, login] = await Promise.all([
     readFile(new URL("index.html", appRoot), "utf8"),

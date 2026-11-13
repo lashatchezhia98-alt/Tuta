@@ -14,6 +14,14 @@ export function validPost(text) {
 
 export const POST_TOPICS = ['cycle', 'symptoms', 'wellbeing', 'nutrition', 'pregnancy', 'questions'];
 
+export const POST_EDIT_WINDOW_MS = 30 * 60 * 1000;
+
+export function canEditCommunityPost(createdAt, isOwner, now = Date.now()) {
+  if (!isOwner || !Number.isFinite(now)) return false;
+  const postedAt = Date.parse(createdAt);
+  return Number.isFinite(postedAt) && postedAt <= now && now - postedAt < POST_EDIT_WINDOW_MS;
+}
+
 export function validTopic(topic) {
   return POST_TOPICS.includes(topic);
 }
@@ -26,6 +34,15 @@ export function validComment(text) {
 export function memberDisplayName(metadata = {}) {
   const name = String(metadata.nickname || metadata.first_name || '').trim().slice(0, 30);
   return name.length >= 2 ? name : 'Member';
+}
+
+export function memberInitials(metadata = {}) {
+  const first = String(metadata.first_name || "").trim();
+  const last = String(metadata.last_name || "").trim();
+  const initial = (value) => /^[a-z]$/i.test(value) ? value.toUpperCase() : value;
+  if (first && last) return `${initial(first[0])}${initial(last[0])}`;
+  const name = String(metadata.nickname || first || last || "").trim();
+  return name ? initial(name[0]) : "?";
 }
 
 export function communityPhotoUrl(cloudName, publicId) {

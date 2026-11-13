@@ -37,6 +37,17 @@ export function validBirthDate(value, today = dateKey()) {
 export function validSetup(start, length, duration, today = dateKey()) {
   try { return stamp(start) <= stamp(today) && Number.isInteger(length) && length >= 21 && length <= 45 && Number.isInteger(duration) && duration >= 1 && duration <= 10; } catch { return false; }
 }
+export function periodFromSelectedDays(days, today = dateKey()) {
+  const sorted = [...new Set(days)].sort();
+  if (!sorted.length || sorted.length > 10 || sorted.at(-1) > today) return null;
+  try {
+    const start = sorted[0];
+    if (!sorted.every((day, index) => day === addDays(start, index))) return null;
+    return { start, duration: sorted.length };
+  } catch {
+    return null;
+  }
+}
 export function ordered(periods) {
   const sorted = [...periods].sort((a,b)=>a.start.localeCompare(b.start));
   sorted.forEach((p,i)=>{

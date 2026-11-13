@@ -31,7 +31,7 @@ export async function GET() {
   if (!postIds.length) return NextResponse.json({ reports: [] }, { headers: { "Cache-Control": "no-store" } });
 
   const { data: posts, error: postError } = await supabase.from("community_posts")
-    .select("id,display_name,is_anonymous,topic,body,created_at").in("id", postIds);
+    .select("id,display_name,is_anonymous,topic,body,image_public_id,created_at").in("id", postIds);
   if (postError) return NextResponse.json({ error: "პოსტების დეტალები ვერ ჩაიტვირთა." }, { status: 503 });
   const byId = new Map((posts || []).map(post => [post.id, post]));
   const result = (reports || []).flatMap(report => {

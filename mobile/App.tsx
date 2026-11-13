@@ -29,6 +29,7 @@ import { NotoSansGeorgian_700Bold } from "@expo-google-fonts/noto-sans-georgian/
 import { Icon, MoonFlower, Face, CycleOrbit } from "./src/Art";
 import { C, T, CTA, Chip, DateField, FieldLabel, NumberWheel, Scale, s } from "./src/ui";
 import PasswordInput from "./src/PasswordInput";
+import { PeriodDaysPicker } from "./src/PeriodDaysPicker";
 import EmailCodeScreen from "./src/EmailCodeScreen";
 import { EMAIL_RESEND_WAIT_MS, emailNotConfirmed } from "./src/email-verification.mjs";
 import type { PendingEmail } from "./src/use-email-verification";
@@ -38,6 +39,7 @@ import {
   stamp,
   addDays,
   validSetup,
+  periodFromSelectedDays,
   validBirthDate,
   cycleAt,
   calendarState,
@@ -57,6 +59,7 @@ import { PregnancyScreen, PartnerScreen } from "./src/HealthFeatureScreens";
 import { CycleEducation, GuidedJourney } from "./src/CycleSupport";
 import { overlapsPeriod } from "./src/cycle.mjs";
 import {
+  initialTab,
   mainTabs,
   primaryTab,
   pageAllowed,
@@ -138,9 +141,10 @@ function Shell() {
     [problem, setProblem] = useState("");
   const [legacy, setLegacy] = useState<Data | null>(null),
     [loadedUser, setLoadedUser] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("home"),
+  const [tab, setTab] = useState<Tab>(initialTab),
     [logDate, setLogDate] = useState(dateKey()),
     [calendarDate, setCalendarDate] = useState(dateKey()),
+    [calendarEditing, setCalendarEditing] = useState(false),
     [dirty, setDirty] = useState(false),
     [pending, setPending] = useState<Tab | null>(null);
   const [session, setSession] = useState<Session | null>(null),
@@ -490,7 +494,7 @@ function Shell() {
   }, []);
   const back = () => {
     const parent = primaryTab(tab);
-    const target = trail.at(-1) || ((parent === tab ? "home" : parent) as Tab);
+    const target = trail.at(-1) || ((parent === tab ? initialTab : parent) as Tab);
     if (tab === "log" && dirty) {
       setPending(target);
       return;
@@ -508,7 +512,7 @@ function Shell() {
         setAuthMode(null);
         return true;
       }
-      if (tab === "home") return false;
+      if (tab === initialTab) return false;
       back();
       return true;
     });
@@ -518,8 +522,9 @@ function Shell() {
     setLogDate(date);
     nav("log");
   };
-  const openCalendar = (date = dateKey()) => {
+  const openCalendar = (date = dateKey(), editing = false) => {
     setCalendarDate(date);
+    setCalendarEditing(editing);
     nav("calendar");
   };
   const renderPage = () => {
@@ -646,8 +651,9 @@ function Shell() {
     if (tab === "calendar")
       return (
         <Calendar
-          key={calendarDate}
+          key={`${calendarDate}-${calendarEditing}`}
           initialDate={calendarDate}
+          initiallyEditing={calendarEditing}
           data={data}
           save={save}
           openLog={openLog}
@@ -904,13 +910,11 @@ function Setup({
 }: { editing?: boolean } & Shared) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
-  const [start, setStart] = useState(
-      editing ? data.periods.at(-1)?.start || "" : "",
+  const latest = editing ? data.periods.at(-1) : undefined;
+  const [days, setDays] = useState(() =>
+      latest ? Array.from({ length: latest.duration }, (_, index) => addDays(latest.start, index)) : [],
     ),
     [length, setLength] = useState(String(data.cycleLength)),
-    [duration, setDuration] = useState(
-      String(data.periods.at(-1)?.duration || 5),
-    ),
     [name, setName] = useState(data.name),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
@@ -924,30 +928,22 @@ function Setup({
       );
       return;
     }
-    if (!validSetup(start, Number(length), Number(duration))) {
+    const period = periodFromSelectedDays(days);
+    if (!period || !validSetup(period.start, Number(length), period.duration)) {
       setMessage(
         t(
-          "შეიყვანე რეალური თარიღი (არა მომავალი), ციკლი 21–45 და პერიოდი 1–10 დღე.",
-          "Use a valid non-future date, cycle length 21–45 and period duration 1–10 days.",
+          "მონიშნე სისხლდენის 1–10 ზედიზედ დღე და აირჩიე ციკლის ხანგრძლივობა.",
+          "Select 1–10 consecutive bleeding days and choose your cycle length.",
         ),
       );
       return;
     }
-    if (Number(duration) > distance(start, dateKey()) + 1) {
-      setMessage(
-        t(
-          "სისხლდენის ხანგრძლივობაში მხოლოდ უკვე გასული დღეები ჩაწერე.",
-          "Only count bleeding days that have already happened.",
-        ),
-      );
-      return;
-    }
-    const existing = data.periods.find((p) => p.start === start);
+    const { start } = period;
     if (
       overlapsPeriod(
         data.periods,
-        { start, duration: Number(duration) },
-        existing?.start,
+        period,
+        latest?.start ?? start,
       )
     ) {
       setMessage(
@@ -960,8 +956,8 @@ function Setup({
     }
     setBusy(true);
     const periods = [
-      ...data.periods.filter((p) => p.start !== start),
-      { start, duration: Number(duration) },
+      ...data.periods.filter((p) => p.start !== (latest?.start ?? start)),
+      period,
     ].sort((a, b) => a.start.localeCompare(b.start));
     if (
       await save({
@@ -1014,30 +1010,18 @@ function Setup({
       </View>
       <View style={s.section}>
         <FieldLabel>{t("პერიოდის დაწყება", "Period start")}</FieldLabel>
-        <DateField
-          label={t("პერიოდის დაწყება", "Period start")}
-          value={start}
-          onChange={(value) => {
-            setStart(value);
-            try {
-              setDuration(
-                String(
-                  Math.min(
-                    Number(duration) || 5,
-                    Math.max(1, distance(value, dateKey()) + 1),
-                  ),
-                ),
-              );
-            } catch {}
-          }}
-          ka={ka}
-        />
-        <T style={s.muted}>
-          {t(
-            "ახალი თარიღი ისტორიას დაემატება.",
-            "A new date adds a period to history.",
-          )}
+        <T style={[s.muted, { marginBottom: 10 }]}>
+          {t("მონიშნე სისხლდენის დღეები და ერთხელ შეინახე.", "Select bleeding days and save them together.")}
         </T>
+        <PeriodDaysPicker
+          ka={ka}
+          initialDate={latest?.start ?? dateKey()}
+          days={days}
+          onToggle={(date) => {
+            setDays((current) => current.includes(date) ? current.filter((day) => day !== date) : [...current, date]);
+            setMessage("");
+          }}
+        />
       </View>
       <View style={s.section}>
         <NumberWheel
@@ -1046,16 +1030,6 @@ function Setup({
           min={21}
           max={45}
           onChange={(value) => setLength(String(value))}
-          ka={ka}
-        />
-      </View>
-      <View style={s.section}>
-        <NumberWheel
-          label={t("პერიოდის ხანგრძლივობა (დღე)", "Period duration (days)")}
-          value={Number(duration) || 5}
-          min={1}
-          max={start ? Math.min(10, Math.max(1, distance(start, dateKey()) + 1)) : 10}
-          onChange={(value) => setDuration(String(value))}
           ka={ka}
         />
       </View>
@@ -1091,7 +1065,7 @@ function Home({
   openPregnancy,
 }: {
   data: Data;
-  openCalendar: (date?: string) => void;
+  openCalendar: (date?: string, editing?: boolean) => void;
   openPregnancy: () => void;
 }) {
   const ka = data.lang === "ka";
@@ -1195,6 +1169,14 @@ function Home({
           )}
         </T>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => openCalendar(today, true)}
+        style={[s.card, s.topBar, { minHeight: 52 }]}
+      >
+        <T weight="bold" style={{ flex: 1 }}>{t("პერიოდის დღეების მონიშვნა", "Log period days")}</T>
+        <Icon name="arrow" size={19} />
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t(
@@ -1602,10 +1584,12 @@ function Calendar({
   save,
   openLog,
   initialDate,
+  initiallyEditing = false,
 }: {
   data: Data;
   openLog: (date: string) => void;
   initialDate: string;
+  initiallyEditing?: boolean;
 } & Shared) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
@@ -1618,8 +1602,15 @@ function Calendar({
         ),
     ),
     [selected, setSelected] = useState(initialDate);
-  const [editing, setEditing] = useState(false),
-    [periodDuration, setPeriodDuration] = useState(5),
+  const recordedOn = (date: string) =>
+    data.periods.find((p) => date >= p.start && date < addDays(p.start, p.duration));
+  const initialPeriod = initiallyEditing ? recordedOn(initialDate) : undefined;
+  const [editing, setEditing] = useState(initiallyEditing && !data.pregnancy?.active),
+    [periodDays, setPeriodDays] = useState<string[]>(() =>
+      initialPeriod
+        ? Array.from({ length: initialPeriod.duration }, (_, index) => addDays(initialPeriod.start, index)).filter((day) => day <= dateKey())
+        : [],
+    ),
     [periodMessage, setPeriodMessage] = useState(""),
     [confirmDelete, setConfirmDelete] = useState(false);
   const first = (month.getDay() + 6) % 7;
@@ -1636,11 +1627,8 @@ function Calendar({
   const c = cycleAt(data.periods, data.cycleLength, selected);
   const recorded =
     selected <= dateKey()
-      ? data.periods.find(
-          (p) => selected >= p.start && selected < addDays(p.start, p.duration),
-        )
+      ? recordedOn(selected)
       : undefined;
-  const periodStart = recorded?.start || selected;
   const changeDate = (key: string) => {
     setSelected(key);
     setEditing(false);
@@ -1657,14 +1645,12 @@ function Calendar({
       );
       return;
     }
-    if (
-      !validSetup(periodStart, data.cycleLength, periodDuration) ||
-      periodDuration > distance(periodStart, dateKey()) + 1
-    ) {
+    const period = periodFromSelectedDays(periodDays);
+    if (!period || !validSetup(period.start, data.cycleLength, period.duration)) {
       setPeriodMessage(
         t(
-          "აირჩიე წარსული დაწყება და მხოლოდ უკვე გასული სისხლდენის დღეები (1–10).",
-          "Choose a past start and only bleeding days that have already happened (1–10).",
+          "მონიშნე მხოლოდ გასული, ზედიზედ დღეები (1–10).",
+          "Select only past, consecutive bleeding days (1–10).",
         ),
       );
       return;
@@ -1672,8 +1658,8 @@ function Calendar({
     if (
       overlapsPeriod(
         data.periods,
-        { start: periodStart, duration: periodDuration },
-        recorded?.start,
+        period,
+        recorded?.start ?? "",
       )
     ) {
       setPeriodMessage(
@@ -1686,7 +1672,7 @@ function Calendar({
     }
     const periods = [
       ...data.periods.filter((p) => p.start !== recorded?.start),
-      { start: periodStart, duration: periodDuration },
+      period,
     ].sort((a, b) => a.start.localeCompare(b.start));
     if (await save({ ...data, periods })) {
       setEditing(false);
@@ -1714,6 +1700,8 @@ function Calendar({
       <T weight="display" style={[s.title, { marginTop: 4, marginBottom: 18 }]}>
         {t("შენი კალენდარი", "Your calendar")}
       </T>
+      {!editing && (
+      <>
       <View style={[s.card, { paddingHorizontal: 8 }]}>
         <View style={s.topBar}>
           <Pressable
@@ -1887,11 +1875,14 @@ function Calendar({
             accessibilityRole="button"
             onPress={() => {
               setEditing(!editing);
-              setPeriodDuration(
-                Math.min(
-                  recorded?.duration || 5,
-                  distance(periodStart, dateKey()) + 1,
-                ),
+              setPeriodDays(
+                recorded
+                  ? Array.from({ length: recorded.duration }, (_, index) =>
+                      addDays(recorded.start, index),
+                    ).filter((day) => day <= dateKey())
+                  : selected <= dateKey()
+                    ? [selected]
+                    : [],
               );
               setPeriodMessage("");
             }}
@@ -1909,26 +1900,27 @@ function Calendar({
           </Pressable>
         </>
       )}
+      </>
+      )}
       {editing && (
         <View style={[s.card, { backgroundColor: C.lav }]}>
           <T weight="bold">
-            {recorded
-              ? t("სისხლდენის დღეები", "Bleeding days")
-              : t(`დაწყება: ${selected}`, `Start: ${selected}`)}
+            {t("პერიოდის დღეები", "Period days")}
           </T>
           <T style={[s.muted, { marginVertical: 10 }]}>
             {t(
-              "მონიშნე მხოლოდ ის დღეები, რომლებიც უკვე გავიდა. მოგვიანებით შეგიძლია გაზარდო.",
-              "Count only days that have already happened. You can update this later.",
+              "მონიშნე გასული სისხლდენის დღეები. პერიოდის დღეები ზედიზედ უნდა იყოს.",
+              "Tap the days bleeding occurred. Period days must be consecutive.",
             )}
           </T>
-          <NumberWheel
-            label={t("სისხლდენის დღეების რაოდენობა", "Number of bleeding days")}
-            min={1}
-            max={Math.min(10, distance(periodStart, dateKey()) + 1)}
-            value={periodDuration}
-            onChange={setPeriodDuration}
+          <PeriodDaysPicker
             ka={ka}
+            initialDate={recorded?.start ?? (selected <= dateKey() ? selected : dateKey())}
+            days={periodDays}
+            onToggle={(date) => {
+              setPeriodDays((current) => current.includes(date) ? current.filter((day) => day !== date) : [...current, date]);
+              setPeriodMessage("");
+            }}
           />
           <View style={{ marginTop: 14 }}>
             <CTA
@@ -1936,6 +1928,17 @@ function Calendar({
               onPress={() => void savePeriod()}
             />
           </View>
+          <Pressable
+            accessibilityRole="button"
+            style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
+            onPress={() => {
+              setEditing(false);
+              setConfirmDelete(false);
+              setPeriodMessage("");
+            }}
+          >
+            <T>{t("მონიშვნის გაუქმება", "Cancel selection")}</T>
+          </Pressable>
           {recorded && (
             <Pressable
               accessibilityRole="button"

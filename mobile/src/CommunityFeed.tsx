@@ -15,6 +15,7 @@ import { Icon } from "./Art";
 import { C, T, CTA, s } from "./ui";
 import {
   communityPhotoUrl,
+  canEditCommunityPost,
   memberDisplayName,
   normalizePost,
   POST_TOPICS,
@@ -31,6 +32,7 @@ type Post = {
   public_author_id: string | null;
   is_anonymous: boolean;
   display_name: string;
+  author_initials?: string;
   topic: string;
   body: string;
   image_public_id: string | null;
@@ -43,6 +45,8 @@ type Comment = {
   is_anonymous: boolean;
   parent_comment_id: string | null;
   display_name: string;
+  author_initials: string;
+  is_post_author: boolean;
   body: string;
   created_at: string;
 };
@@ -103,9 +107,9 @@ export function CommunityFeed({
     [hasMore, setHasMore] = useState(false),
     [feedError, setFeedError] = useState("");
   const [ownedPostIds, setOwnedPostIds] = useState<string[]>([]);
-  const [topicFilter, setTopicFilter] = useState("all"),
-    [topic, setTopic] = useState(""),
+  const [topic, setTopic] = useState(""),
     [editingId, setEditingId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [writing, setWriting] = useState(false),
     [body, setBody] = useState(""),
     [photo, setPhoto] = useState<Photo | null>(null),
@@ -122,6 +126,10 @@ export function CommunityFeed({
       Record<string, boolean>
     >({});
   const [notice, setNotice] = useState("");
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
   const [commentPages, setCommentPages] = useState<
     Record<
       string,
@@ -182,19 +190,22 @@ export function CommunityFeed({
     else setLoading(true);
     const offset = more ? posts.length : 0;
     try {
-      let query = supabase
+      const client = supabase;
+      const postsQuery = (fields: string) => client
         .from("community_posts")
-        .select(
-          "id,public_author_id,is_anonymous,display_name,topic,body,image_public_id,created_at",
-        )
+        .select(fields)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(offset, offset + PAGE - 1);
-      if (topicFilter !== "all") query = query.eq("topic", topicFilter);
-      const [{ data, error }, owned] = await Promise.all([
-        query,
+        .range(offset, offset + PAGE - 1)
+        .overrideTypes<Post[], { merge: false }>();
+      const baseFields = "id,public_author_id,is_anonymous,display_name,topic,body,image_public_id,created_at";
+      const [result, owned] = await Promise.all([
+        postsQuery(baseFields + ",author_initials"),
         supabase.from("community_post_owners").select("post_id"),
       ]);
+      const { data, error } = result.error?.code === "42703"
+        ? await postsQuery(baseFields)
+        : result;
       if (epoch !== commentEpoch.current) return;
       if (error) throw error;
       setOwnedPostIds(
@@ -204,7 +215,7 @@ export function CommunityFeed({
               (row) => row.post_id,
             ),
       );
-      const page = (data || []) as Post[];
+      const page = data || [];
       setPosts((current) => (more ? [...current, ...page] : page));
       setHasMore(page.length === PAGE);
       setFeedError("");
@@ -224,7 +235,7 @@ export function CommunityFeed({
       }
     }
   };
-  // Reload only when the signed-in member or selected topic changes.
+  // Reload only when the signed-in member changes.
   const reloadFeed = useEffectEvent(() => void load());
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -241,7 +252,7 @@ export function CommunityFeed({
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, [lang, topicFilter, isMember, session?.user.id]);
+  }, [lang, isMember, session?.user.id]);
 
   const loadComments = async (postId: string, older = false) => {
     if (!supabase || !isMember) return;
@@ -349,6 +360,18 @@ export function CommunityFeed({
   };
 
   const startEdit = (post: Post) => {
+    if (
+      !ownedPostIds.includes(post.id) ||
+      !canEditCommunityPost(post.created_at, true, now)
+    ) {
+      setNotice(
+        t(
+          "პოსტის რედაქტირების 30-წუთიანი ვადა ამოიწურა.",
+          "The 30-minute post editing window has expired.",
+        ),
+      );
+      return;
+    }
     setEditingId(post.id);
     setBody(post.body);
     setTopic(post.topic);
@@ -452,6 +475,22 @@ export function CommunityFeed({
       return;
     }
     if (editingId) {
+      const original = posts.find((post) => post.id === editingId);
+      if (
+        !original ||
+        !ownedPostIds.includes(editingId) ||
+        !canEditCommunityPost(original.created_at, true, now)
+      ) {
+        setEditingId(null);
+        setWriting(false);
+        setComposerError(
+          t(
+            "პოსტის რედაქტირების 30-წუთიანი ვადა ამოიწურა.",
+            "The 30-minute post editing window has expired.",
+          ),
+        );
+        return;
+      }
       setPosting(true);
       setComposerError("");
       const { data, error } = await supabase
@@ -866,24 +905,6 @@ export function CommunityFeed({
           <T accessibilityLiveRegion="polite">{notice}</T>
         </View>
       ) : null}
-      <View style={[s.wrap, { marginBottom: 13 }]}>
-        {["all", ...POST_TOPICS].map((key) => (
-          <Pressable
-            key={key}
-            accessibilityRole="button"
-            accessibilityState={{ selected: topicFilter === key }}
-            onPress={() => setTopicFilter(key)}
-            style={[
-              s.chip,
-              { backgroundColor: topicFilter === key ? C.yellow : C.white },
-            ]}
-          >
-            <T weight={topicFilter === key ? "bold" : "regular"}>
-              {key === "all" ? t("ყველა", "All") : t(...topicLabels[key])}
-            </T>
-          </Pressable>
-        ))}
-      </View>
       <View
         style={[
           s.wrap,
@@ -937,7 +958,11 @@ export function CommunityFeed({
           ? t("ანონიმური", "Anonymous")
           : doctor
             ? `${t("ექიმი", "Dr.")} ${doctor.first_name} ${doctor.last_name}`
-            : post.display_name;
+            : post.author_initials && post.author_initials !== "?"
+              ? post.author_initials
+              : post.display_name !== "Member"
+                ? Array.from(post.display_name.trim())[0] || "?"
+                : "?";
         return (
           <View key={post.id} style={s.card}>
             <View style={[s.row, { marginBottom: 12 }]}>
@@ -958,7 +983,7 @@ export function CommunityFeed({
                     style={{ width: 40, height: 40, borderRadius: 20 }}
                   />
                 ) : (
-                  <T weight="bold">{name.slice(0, 1).toUpperCase()}</T>
+                  <T weight="bold">{post.is_anonymous ? "?" : post.author_initials || "?"}</T>
                 )}
               </View>
               <View style={{ flex: 1 }}>
@@ -1018,13 +1043,13 @@ export function CommunityFeed({
               </Pressable>
               {ownedPostIds.includes(post.id) ? (
                 <>
-                  <Pressable
+                  {canEditCommunityPost(post.created_at, true, now) ? <Pressable
                     accessibilityRole="button"
                     onPress={() => startEdit(post)}
                     style={s.chip}
                   >
                     <T>{t("რედაქტირება", "Edit")}</T>
-                  </Pressable>
+                  </Pressable> : null}
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => removePost(post)}
@@ -1067,7 +1092,14 @@ export function CommunityFeed({
                     ? t("ანონიმური", "Anonymous")
                     : commentDoctor
                       ? `${t("ექიმი", "Dr.")} ${commentDoctor.first_name} ${commentDoctor.last_name}`
-                      : comment.display_name;
+                      : comment.display_name === "Member"
+                        ? comment.author_initials || "?"
+                        : comment.display_name;
+                  const commentAvatar = doctorPhotoUrl(
+                    cloudName,
+                    commentDoctor,
+                    comment.is_anonymous,
+                  );
                   const parent = [
                     ...(comments[post.id] || []),
                     ...(commentPages[post.id]?.parents || []),
@@ -1083,40 +1115,64 @@ export function CommunityFeed({
                         borderLeftColor: C.lav,
                       }}
                     >
-                      {doctorPhotoUrl(
-                        cloudName,
-                        commentDoctor,
-                        comment.is_anonymous,
-                      ) && (
-                        <Image
-                          source={{
-                            uri: doctorPhotoUrl(
-                              cloudName,
-                              commentDoctor,
-                              comment.is_anonymous,
-                            )!,
-                          }}
-                          accessibilityLabel={commentName}
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            marginBottom: 6,
-                          }}
-                        />
-                      )}
                       {parent ? (
                         <T style={s.muted}>
                           {t("პასუხი კომენტარზე", "Reply to")}{" "}
                           {parent.is_anonymous
                             ? t("ანონიმური", "Anonymous")
-                            : parent.display_name}
+                            : parent.display_name === "Member"
+                              ? parent.author_initials || "?"
+                              : parent.display_name}
                         </T>
                       ) : null}
-                      <T weight="bold">
-                        {commentName}
-                        {commentDoctor && !comment.is_anonymous ? " ✓" : ""}
-                      </T>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                          marginTop: 5,
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: C.lav,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            overflow: "hidden",
+                          }}
+                        >
+                          {commentAvatar ? (
+                            <Image
+                              source={{ uri: commentAvatar }}
+                              accessibilityLabel={commentName}
+                              style={{ width: 36, height: 36 }}
+                            />
+                          ) : (
+                            <T weight="bold">
+                              {comment.is_anonymous
+                                ? "?"
+                                : comment.author_initials || "?"}
+                            </T>
+                          )}
+                        </View>
+                        <T weight="bold">
+                          {commentName}
+                          {commentDoctor && !comment.is_anonymous ? " ✓" : ""}
+                        </T>
+                      </View>
+                      {comment.is_post_author ||
+                      (!post.is_anonymous && !comment.is_anonymous &&
+                        post.public_author_id && post.public_author_id === comment.public_author_id) ? (
+                        <T
+                          accessibilityLabel={t("პოსტის ავტორი", "Post author")}
+                          style={{ color: C.ink, backgroundColor: "#FDF0CC", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12, alignSelf: "flex-start", marginTop: 4 }}
+                        >
+                          {t("პოსტის ავტორი", "Post author")}
+                        </T>
+                      ) : null}
                       <T style={s.muted}>
                         {friendlyDate(comment.created_at, lang)}
                       </T>

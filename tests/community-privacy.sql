@@ -35,6 +35,11 @@ insert into public.community_posts
 values
   (auth.uid(), 'Member', 'questions', 'tuta-private-test-named-post');
 
+insert into public.community_comments
+  (post_id, author_id, display_name, body)
+select id, auth.uid(), 'Member', 'tuta-private-test-post-author-comment'
+from public.community_posts where body = 'tuta-private-test-named-post';
+
 do $$
 begin
   begin
@@ -64,7 +69,10 @@ select
   (select count(*) = 1 from public.community_posts
     where body = 'tuta-private-test-post'
       and is_anonymous and display_name = 'Anonymous'
-      and public_author_id is null) as anonymous_post_hidden,
+      and public_author_id is null and author_initials = '?') as anonymous_post_hidden,
+  (select count(*) = 1 from public.community_posts
+    where body = 'tuta-private-test-named-post'
+      and author_initials <> '') as named_post_has_initials,
   (select count(*) = 1 from public.community_post_owners as o
     join public.community_posts as p on p.id = o.post_id
     where p.body = 'tuta-private-test-post') as owner_can_manage,
@@ -73,11 +81,17 @@ select
       on reply.parent_comment_id = parent.id and reply.post_id = parent.post_id
     where reply.body = 'tuta-private-test-reply'
       and parent.body = 'tuta-private-test-comment'
-      and reply.is_anonymous and reply.display_name = 'Anonymous'
+      and reply.is_anonymous and reply.display_name = 'Anonymous' and reply.is_post_author
       and reply.public_author_id is null) as anonymous_reply_targets_comment,
+  (select count(*) = 1 from public.community_comments
+    where body = 'tuta-private-test-comment'
+      and not is_post_author) as named_comment_does_not_unmask_anonymous_post,
   (select count(*) = 0 from public.community_comments
     where body in ('tuta-private-test-disallowed-anonymous',
       'tuta-private-test-wrong-parent')) as invalid_replies_rejected,
+  (select count(*) = 1 from public.community_comments
+    where body = 'tuta-private-test-post-author-comment'
+      and is_post_author and author_initials <> '') as post_author_badge_and_initials,
   not has_column_privilege(current_user,
     'public.community_posts', 'author_id', 'SELECT') as real_post_author_hidden,
   not has_column_privilege(current_user,

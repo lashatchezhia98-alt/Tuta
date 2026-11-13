@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   destinations,
+  initialTab,
   mainTabs,
   primaryTab,
   pageAllowed,
@@ -30,6 +31,8 @@ test("empty status strings never become raw text children of native Views", () =
 
 test("all app destinations have one logical home and only five primary tabs", () => {
   assert.equal(mainTabs.length, 5);
+  assert.equal(initialTab, "cycle");
+  assert.deepEqual(mainTabs.map(([id]) => id), ["home", "cycle", "services", "market", "profile"]);
   assert.equal(
     new Set(destinations.map((p) => p.id)).size,
     destinations.length,

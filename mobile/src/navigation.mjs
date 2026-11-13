@@ -199,6 +199,7 @@ export const mainTabs = [
   ["market", "მარკეტი", "Market"],
   ["profile", "პროფილი", "Profile"],
 ];
+export const initialTab = "cycle";
 export function primaryTab(id) {
   const group = destinations.find((page) => page.id === id)?.group;
   return group === "info" ? "profile" : group || id;

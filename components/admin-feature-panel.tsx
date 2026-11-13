@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { SITE_FEATURES, setSiteFeature, useSiteFeatures } from "@/lib/site-features";
 import Library from "@/components/library";
@@ -9,6 +10,7 @@ import DoctorEnrollment from "@/components/doctor-enrollment";
 import AdminMarket from "@/components/admin-market";
 import MarketOrders from "@/components/market-orders";
 import BrandMark from "@/components/brand-mark";
+import { communityPhotoUrl } from "@/mobile/src/community.mjs";
 import AdminWebsiteCopy from "@/components/admin-website-copy";
 import AdminInvitations from "@/components/admin-invitations";
 import AdminSocialLinks from "@/components/admin-social-links";
@@ -16,7 +18,7 @@ import { AdminAnalytics, AdminBilling, AdminNotifications, AdminUsers } from "@/
 import { canAccessAdminSection, type AdminAccess, type AdminSection as Section } from "@/lib/admin-sections";
 
 type Lang = "ka" | "en";
-type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; created_at: string } };
+type Report = { id: string; reason: string; created_at: string; post: { id: string; display_name: string; is_anonymous: boolean; topic: string; body: string; image_public_id: string | null; created_at: string } };
 
 const reasonNames: Record<string, [string, string]> = {
   spam: ["სპამი", "Spam"],
@@ -168,6 +170,10 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
           <div className="admin-report-meta"><strong>{reasonNames[report.reason]?.[ka ? 0 : 1] || report.reason}</strong><span>{new Intl.DateTimeFormat(ka ? "ka-GE" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(report.created_at))}</span></div>
           <p className="admin-report-author">{ka ? "ავტორი:" : "Author:"} {report.post.is_anonymous ? (ka ? "ანონიმური" : "Anonymous") : report.post.display_name} · {report.post.topic}</p>
           <blockquote>{report.post.body}</blockquote>
+          {report.post.image_public_id ? (() => {
+            const imageUrl = communityPhotoUrl(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "", report.post.image_public_id);
+            return imageUrl ? <Image src={imageUrl} alt={ka ? "გასაჩივრებული პოსტის ფოტო" : "Photo attached to the reported post"} width={720} height={540} unoptimized style={{ display: "block", width: "100%", maxWidth: 520, height: "auto", maxHeight: 420, objectFit: "contain", borderRadius: 14, margin: "12px 0" }} /> : null;
+          })() : null}
           <div className="admin-report-actions"><button type="button" disabled={reportBusy === report.id} onClick={() => void handleReport(report, "dismiss")}>{ka ? "საჩივრის დახურვა" : "Dismiss report"}</button><button type="button" disabled={reportBusy === report.id} onClick={() => void handleReport(report, "remove_post")} className="danger">{ka ? "პოსტის წაშლა" : "Delete post"}</button></div>
         </article>)}
       </div>}

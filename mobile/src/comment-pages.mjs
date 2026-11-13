@@ -1,8 +1,9 @@
 export const COMMENT_PAGE_SIZE = 50;
-const fields =
+const baseFields =
   "id,post_id,public_author_id,is_anonymous,parent_comment_id,display_name,body,created_at";
 /** @param {{id:string,created_at:string}|null} before */
-export async function loadCommentPage(client, postId, before = null) {
+export async function loadCommentPage(client, postId, before = null, legacy = false) {
+  const fields = legacy ? baseFields : baseFields + ",author_initials,is_post_author";
   let query = client
     .from("community_comments")
     .select(fields)
@@ -25,6 +26,7 @@ export async function loadCommentPage(client, postId, before = null) {
     );
   }
   const { data, error } = await query;
+  if (error?.code === "42703" && !legacy) return loadCommentPage(client, postId, before, true);
   if (error) throw error;
   const page = (data || []).slice(0, COMMENT_PAGE_SIZE);
   const parentIds = [

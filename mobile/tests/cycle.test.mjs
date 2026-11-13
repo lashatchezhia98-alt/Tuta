@@ -1,6 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {stamp,addDays,validSetup,validBirthDate,cycleAt,history,averages,predictions,calendarState} from '../src/cycle.mjs';
+import {stamp,addDays,validSetup,validBirthDate,cycleAt,history,averages,predictions,calendarState,periodFromSelectedDays} from '../src/cycle.mjs';
+test('combines selected bleeding days across months into one period',()=>{
+  const today='2026-11-14';
+  assert.deepEqual(periodFromSelectedDays(['2026-11-01','2026-10-31','2026-11-02'],today),{start:'2026-10-31',duration:3});
+  assert.deepEqual(periodFromSelectedDays([today],today),{start:today,duration:1});
+  assert.equal(periodFromSelectedDays(['2026-11-12',today],today),null);
+  assert.equal(periodFromSelectedDays(['2026-11-15'],today),null);
+  assert.equal(periodFromSelectedDays(['2026-11-00'],today),null);
+  assert.equal(periodFromSelectedDays(Array.from({length:11},(_,i)=>addDays(today,-i)),today),null);
+});
 test('birth date must be a real calendar date and an age between 1 and 120',()=>{
   assert.equal(validBirthDate('2000-02-29','2026-10-26'),true);
   assert.equal(validBirthDate('2001-02-29','2026-10-26'),false);

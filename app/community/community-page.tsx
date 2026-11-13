@@ -4,6 +4,7 @@ import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { loadCommentPage, mergeComments } from "@/mobile/src/comment-pages.mjs";
 import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
+import { canEditCommunityPost } from "@/mobile/src/community.mjs";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -17,6 +18,7 @@ type Post = {
   public_author_id: string | null;
   is_anonymous: boolean;
   display_name: string;
+  author_initials: string;
   topic: string;
   body: string;
   image_public_id: string | null;
@@ -29,6 +31,8 @@ type Comment = {
   is_anonymous: boolean;
   parent_comment_id: string | null;
   display_name: string;
+  author_initials: string;
+  is_post_author: boolean;
   body: string;
   created_at: string;
 };
@@ -90,7 +94,7 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [ownedPostIds, setOwnedPostIds] = useState<string[]>([]);
   const [doctors, setDoctors] = useState<Record<string, Doctor>>({});
-  const [filter, setFilter] = useState("all");
+  const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [feedError, setFeedError] = useState(false);
   const [notice, setNotice] = useState("");
@@ -122,6 +126,10 @@ export default function CommunityPage() {
     >
   >({});
   const commentRequests = useRef<Record<string, number>>({});
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const commentEpoch = useRef(0);
   useEffect(() => {
     const epoch = commentEpoch;
@@ -221,14 +229,13 @@ export default function CommunityPage() {
     if (!client || !isMember) return;
     const epoch = commentEpoch.current;
     setLoading(true);
-    let query = client
+    const query = client
       .from("community_posts")
       .select(
-        "id,public_author_id,is_anonymous,display_name,topic,body,image_public_id,created_at",
+        "id,public_author_id,is_anonymous,display_name,author_initials,topic,body,image_public_id,created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50);
-    if (filter !== "all") query = query.eq("topic", filter);
     const [{ data, error }, owned] = await Promise.all([
       query,
       client.from("community_post_owners").select("post_id"),
@@ -251,7 +258,7 @@ export default function CommunityPage() {
       await loadDoctors(list.map((post) => post.public_author_id));
     }
     setLoading(false);
-  }, [client, filter, isMember, loadDoctors]);
+  }, [client, isMember, loadDoctors]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadPosts();
@@ -383,6 +390,13 @@ export default function CommunityPage() {
     setNotice("");
   };
   const edit = (post: Post) => {
+    if (
+      !ownedPostIds.includes(post.id) ||
+      !canEditCommunityPost(post.created_at, true, now)
+    ) {
+      setNotice(t("პოსტის რედაქტირების 30-წუთიანი ვადა ამოიწურა.", "The 30-minute post editing window has expired."));
+      return;
+    }
     setEditing(post.id);
     setBody(post.body);
     setTopic(post.topic);
@@ -425,6 +439,19 @@ export default function CommunityPage() {
       !topics.some((item) => item === topic)
     )
       return;
+    if (editing) {
+      const original = posts.find((post) => post.id === editing);
+      if (
+        !original ||
+        !ownedPostIds.includes(editing) ||
+        !canEditCommunityPost(original.created_at, true, now)
+      ) {
+        setEditing(null);
+        setCompose(false);
+        setNotice(t("პოსტის რედაქტირების 30-წუთიანი ვადა ამოიწურა.", "The 30-minute post editing window has expired."));
+        return;
+      }
+    }
     setBusy(true);
     setNotice("");
     try {
@@ -519,12 +546,19 @@ export default function CommunityPage() {
       month: "short",
       year: "numeric",
     }).format(new Date(value));
-  const author = (id: string | null, display: string, anonymous: boolean) =>
+  const author = (
+    id: string | null,
+    display: string,
+    anonymous: boolean,
+    initials = "?",
+  ) =>
     anonymous
       ? t("ანონიმური", "Anonymous")
       : id && doctors[id]
         ? `${t("ექიმი", "Dr.")} ${doctors[id].first_name} ${doctors[id].last_name}`
-        : display;
+        : display === "Member"
+          ? initials
+          : display;
 
   if (!features.community)
     return (
@@ -641,22 +675,6 @@ export default function CommunityPage() {
           </section>
         ) : (
           <section className="min-w-0">
-            <div
-              className="mb-6 flex flex-wrap gap-2"
-              aria-label={t("პოსტების თემები", "Post topics")}
-            >
-              {["all", ...topics].map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={filter === key}
-                  onClick={() => setFilter(key)}
-                  className={`min-h-11 rounded-full border px-4 text-sm ${filter === key ? "border-[#1E1B2E] bg-[#FDF0CC] font-semibold" : "border-[#DCD7E5] bg-white"}`}
-                >
-                  {key === "all" ? <SiteCopyText id="feed.all" lang={lang}/> : t(...names[key])}
-                </button>
-              ))}
-            </div>
             {compose ? (
               <div className="mb-6 rounded-3xl border border-[#D8CBE8] bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-semibold">
@@ -805,11 +823,12 @@ export default function CommunityPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
+                        <div className="mb-2 flex items-center gap-2">
                         {doctorPhotoUrl(
                           cloudName,
                           doctors[post.public_author_id || ""],
                           post.is_anonymous,
-                        ) && (
+                        ) ? (
                           <img
                             src={
                               doctorPhotoUrl(
@@ -823,12 +842,17 @@ export default function CommunityPage() {
                             height={40}
                             className="doctor-avatar"
                           />
+                        ) : (
+                          <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E3D8F1] text-sm font-bold text-[#1E1B2E]">
+                            {post.is_anonymous ? "?" : post.author_initials || "?"}
+                          </span>
                         )}
                         <div className="font-semibold">
                           {author(
                             post.public_author_id,
                             post.display_name,
                             post.is_anonymous,
+                            post.author_initials,
                           )}
                           {!post.is_anonymous &&
                           post.public_author_id &&
@@ -848,6 +872,7 @@ export default function CommunityPage() {
                             </span>
                           ) : null}
                         </div>
+                        </div>
                         <div className="mt-1 text-xs text-[#6F687D]">
                           {date(post.created_at)} ·{" "}
                           {names[post.topic]
@@ -858,13 +883,13 @@ export default function CommunityPage() {
                       <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
                         {ownedPostIds.includes(post.id) ? (
                           <>
-                            <button
+                            {canEditCommunityPost(post.created_at, true, now) ? <button
                               type="button"
                               onClick={() => edit(post)}
                               className="min-h-11 px-2"
                             >
                               {<SiteCopyText id="feed.edit" lang={lang}/>}
-                            </button>
+                            </button> : null}
                             <button
                               type="button"
                               onClick={() => void remove(post)}
@@ -973,11 +998,12 @@ export default function CommunityPage() {
                             key={comment.id}
                             className={`mb-4 rounded-2xl bg-[#F9F8FC] p-4 ${comment.parent_comment_id ? "ml-5 border-l-2 border-[#D8CBE8]" : ""}`}
                           >
+                            <div className="mb-2 flex items-center gap-2">
                             {doctorPhotoUrl(
                               cloudName,
                               doctors[comment.public_author_id || ""],
                               comment.is_anonymous,
-                            ) && (
+                            ) ? (
                               <img
                                 src={
                                   doctorPhotoUrl(
@@ -991,6 +1017,10 @@ export default function CommunityPage() {
                                 height={40}
                                 className="doctor-avatar"
                               />
+                            ) : (
+                              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E3D8F1] text-sm font-bold text-[#1E1B2E]">
+                                {comment.is_anonymous ? "?" : comment.author_initials || "?"}
+                              </span>
                             )}
                             {comment.parent_comment_id ? (
                               <p className="mb-1 text-xs text-[#6F687D]">
@@ -1019,6 +1049,13 @@ export default function CommunityPage() {
                                         item.id === comment.parent_comment_id,
                                     )?.is_anonymous,
                                   ),
+                                  [
+                                    ...(comments[post.id] || []),
+                                    ...(commentPages[post.id]?.parents || []),
+                                  ].find(
+                                    (item) =>
+                                      item.id === comment.parent_comment_id,
+                                  )?.author_initials || "?",
                                 )}
                               </p>
                             ) : null}
@@ -1027,6 +1064,7 @@ export default function CommunityPage() {
                                 comment.public_author_id,
                                 comment.display_name,
                                 comment.is_anonymous,
+                                comment.author_initials,
                               )}
                               {!comment.is_anonymous &&
                               comment.public_author_id &&
@@ -1046,6 +1084,12 @@ export default function CommunityPage() {
                                 </span>
                               ) : null}
                             </div>
+                            </div>
+                            {comment.is_post_author ? (
+                              <span className="inline-flex rounded-full bg-[#FDF0CC] px-2.5 py-1 text-xs font-semibold text-[#1E1B2E]">
+                                {t("პოსტის ავტორი", "Post author")}
+                              </span>
+                            ) : null}
                             <p className="mt-1 whitespace-pre-wrap break-words">
                               {comment.body}
                             </p>
@@ -1079,6 +1123,9 @@ export default function CommunityPage() {
                                     (item) => item.id === replyTo[post.id],
                                   )?.is_anonymous,
                                 ),
+                                (comments[post.id] || []).find(
+                                  (item) => item.id === replyTo[post.id],
+                                )?.author_initials || "?",
                               )}
                             </span>
                             <button

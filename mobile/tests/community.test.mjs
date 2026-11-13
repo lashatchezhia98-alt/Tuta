@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {communityPhotoUrl, memberDisplayName, normalizePost, POST_TOPICS, postWordCount, validComment, validPost, validTopic} from '../src/community.mjs';
+import {canEditCommunityPost, communityPhotoUrl, memberDisplayName, memberInitials, normalizePost, POST_EDIT_WINDOW_MS, POST_TOPICS, postWordCount, validComment, validPost, validTopic} from '../src/community.mjs';
+
+test('only the author can edit a post during the first 30 minutes', () => {
+  const now = Date.parse('2026-11-12T12:30:00.000Z');
+  const postedAt = new Date(now - POST_EDIT_WINDOW_MS).toISOString();
+  assert.equal(canEditCommunityPost(new Date(now - POST_EDIT_WINDOW_MS + 1).toISOString(), true, now), true);
+  assert.equal(canEditCommunityPost(postedAt, true, now), false);
+  assert.equal(canEditCommunityPost(new Date(now - 1000).toISOString(), false, now), false);
+  assert.equal(canEditCommunityPost('not-a-date', true, now), false);
+  assert.equal(canEditCommunityPost(new Date(now + 1000).toISOString(), true, now), false);
+});
 
 test('Georgian and English words share the 200-word limit', () => {
   assert.equal(postWordCount('  გამარჯობა\n world  '), 2);
@@ -23,6 +33,9 @@ test('public labels show a nickname or first name, never an email', () => {
   assert.equal(memberDisplayName({nickname:'ნინო',first_name:'მარია',email:'private@example.com'}),'ნინო');
   assert.equal(memberDisplayName({first_name:'მარია',email:'private@example.com'}),'მარია');
   assert.equal(memberDisplayName({email:'private@example.com'}),'Member');
+  assert.equal(memberInitials({first_name:'მარიამ',last_name:'ბერიძე'}),'მბ');
+  assert.equal(memberInitials({nickname:'ნინო'}),'ნ');
+  assert.equal(memberInitials({}), '?');
 });
 
 test('post topics are fixed and comments have a bounded length', () => {
