@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import BrandMark from "@/components/brand-mark";
 import HeaderActions from "@/components/header-actions";
+import ChangePassword from "@/components/change-password";
 
 import { SiteCopyText } from "@/components/site-copy-provider";
 
@@ -52,6 +53,7 @@ export function PolicyPage({ kind }: { kind: Kind }) {
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7"><SiteCopyText id={`policy.${kind}.intro`} lang={lang}/></p>
         </div>
+        {kind === "privacy" && <ChangePassword lang={lang}/>}
         <div className="mt-6 grid gap-4">
           {text.sections.map(([heading], index) => (
             <section

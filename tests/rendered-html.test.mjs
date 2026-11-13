@@ -33,6 +33,23 @@ test("Premium compares both tiers and mobile navigation keeps services in the bu
   assert.ok(nav);
   assert.equal([...nav.matchAll(/class="mobile-app-tab(?: |")/g)].length, 4);
   assert.doesNotMatch(nav, /href="\/app\/features"/);
+  assert.match(nav, /href="\/app\/dashboard"[^]*href="\/community"[^]*href="\/market"[^]*href="\/app\/settings"/);
+  assert.equal([...nav.matchAll(/class="mobile-app-tab-label"/g)].length, 3);
+});
+
+test("privacy offers password changes with current-password verification and a safe sign-in return", async () => {
+  const [privacy, terms, source] = await Promise.all([
+    readFile(new URL("privacy.html", appRoot), "utf8"),
+    readFile(new URL("terms.html", appRoot), "utf8"),
+    readFile(new URL("components/change-password.tsx", sourceRoot), "utf8"),
+  ]);
+  const { authDestination } = sourceModule("lib/auth-destination.ts");
+  assert.match(privacy, /id="change-password"/);
+  assert.doesNotMatch(terms, /id="change-password"/);
+  assert.match(source, /auth\.updateUser\(\{ password, current_password: current \}\)/);
+  assert.match(source, /password !== confirmation/);
+  assert.equal(authDestination("?next=%2Fprivacy"), "/privacy");
+  assert.equal(authDestination("?next=https%3A%2F%2Fexample.com%2Fprivacy"), "/app/dashboard");
 });
 
 async function loadComponent(path, mocks = {}) {

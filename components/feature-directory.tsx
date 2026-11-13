@@ -16,6 +16,7 @@ const existing = [
   ['/app/log','დღიური','Journal'], ['/app/insights','ანალიზი','Insights'],
   ['/app/report','ანგარიში ექიმისთვის','Report for your doctor'], ['/blog','ბლოგები','Articles'],
   ['/consultation','ექიმები, ჩატი და ჯავშნები','Doctors, chat & bookings'],
+  ['/market','მარკეტი','Market'], ['/market/orders','ჩემი შეკვეთები','My orders'],
   ['/premium','პრემიუმი','Premium'], ['/app/settings','პარამეტრები','Settings'],
   ['/tools/period-calculator','პერიოდის კალკულატორი','Period calculator'],
   ['/tools/ovulation-calculator','ოვულაციის კალკულატორი','Ovulation calculator'],
@@ -33,12 +34,13 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
       <Link href="/" className="inner-logo"><BrandMark/>{ka?'თუთა':'TUTA'}</Link>
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
-    <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features"><SiteCopyText id="directory.title" lang={lang}/></Link></nav>
+    {page && <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">← <SiteCopyText id="directory.servicesTitle" lang={lang}/></Link></nav>}
     {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main>
-      <h1><SiteCopyText id="directory.title" lang={lang}/></h1><p><SiteCopyText id="directory.intro" lang={lang}/></p>
+      <h1><SiteCopyText id="directory.servicesTitle" lang={lang}/></h1><p><SiteCopyText id="directory.intro" lang={lang}/></p>
       <div className="feature-directory-grid">{existing.filter(([url])=>{const id=featureForRoute(url);return !id||features[id]}).map(([url,a,b])=><Link className="workspace-card directory-link" key={url} href={url}>{ka?a:b}<span aria-hidden>↗</span></Link>)}</div>
       <div className="feature-directory-grid">{extraPages.filter(p=>['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}><SiteCopyText id={`extra.${p.slug}.title`} lang={lang}/> ↗</Link>)}</div>
-      <h2>{ka?'მომზადების ეტაპზე':'In preparation'}</h2><div className="feature-directory-grid">{extraPages.filter(p=>!['journey','pregnancy','partners'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}><SiteCopyText id={`extra.${p.slug}.title`} lang={lang}/><span aria-hidden>↗</span></Link>)}</div>
+      {features.notifications && <div className="feature-directory-grid"><Link className="workspace-card directory-link" href="/app/notifications"><SiteCopyText id="extra.notifications.title" lang={lang}/><span aria-hidden>↗</span></Link></div>}
+      <h2>{ka?'მომზადების ეტაპზე':'In preparation'}</h2><div className="feature-directory-grid">{extraPages.filter(p=>['symptom-checker','account-deletion'].includes(p.slug)&&features[p.slug]).map(p=><Link className="workspace-card directory-link" key={p.slug} href={'/app/'+p.slug}><SiteCopyText id={`extra.${p.slug}.title`} lang={lang}/><span aria-hidden>↗</span></Link>)}</div>
     </main>}
   </div>;
 }

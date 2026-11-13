@@ -15,6 +15,7 @@ import {
   symptomPatterns,
   distance,
   overlapsPeriod,
+  periodFromSelectedDays,
 } from "../mobile/src/cycle.mjs";
 import { symptoms } from "../mobile/src/symptoms.mjs";
 import { healthReport, reminderCalendar } from "@/lib/health-report";
@@ -95,6 +96,12 @@ export default function HealthWorkspace({
             </Link>
           ))}
       </nav>
+      {["dashboard", "log", "insights"].includes(kind) && <nav className="mobile-period-nav" aria-label={ka ? "პერიოდის სექციები" : "Period sections"}>
+        {workspaceNavigation.slice(1, 4).filter(([href]) => {
+          const id = featureForRoute(href);
+          return id && features[id];
+        }).map(([href, id]) => <Link key={href} href={href} aria-current={href.endsWith("/" + kind) ? "page" : undefined}><SiteCopyText id={id} lang={lang}/></Link>)}
+      </nav>}
       <main className="workspace-main">
         <p className="inner-kicker">
           <SiteCopyText id="workspace.kicker" lang={lang}/>
@@ -160,12 +167,34 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
     [length, setLength] = useState(data.cycleLength),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [selectedDays, setSelectedDays] = useState<string[] | null>(null);
+  const [replacing, setReplacing] = useState<string | undefined>();
   const first = month + "-01",
     start = addDays(
       first,
       -((new Date(first + "T12:00:00Z").getUTCDay() + 6) % 7),
     );
   const existing = data.periods.find((p) => p.start === selected);
+  const recorded = data.periods.find(p => selected >= p.start && selected < addDays(p.start, p.duration));
+  async function saveDays() {
+    if (busy || data.pregnancy?.active || !selectedDays) return;
+    const period = periodFromSelectedDays(selectedDays, today);
+    if (!period || overlapsPeriod(data.periods, period, replacing ?? "")) {
+      setMessage(ka ? "მონიშნე ზედიზედ 1–10 დღე, რომლებიც სხვა პერიოდს არ ემთხვევა." : "Select 1–10 consecutive days that do not overlap another period.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      await save({ ...data, periods: [...data.periods.filter(p => p.start !== replacing), period].sort((a,b) => a.start.localeCompare(b.start)) });
+      setSelected(period.start);
+      setDuration(period.duration);
+      setSelectedDays(null);
+      setMessage(ka ? "პერიოდი შენახულია" : "Period saved");
+    } catch {
+      setMessage(ka ? "შენახვა ვერ მოხერხდა. სცადე ხელახლა." : "Could not save. Please retry.");
+    } finally { setBusy(false); }
+  }
   async function persist(remove = false) {
     setBusy(true);
     setMessage("");
@@ -236,10 +265,18 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
         pregnancyActive={data.pregnancy?.active}
         lang={lang}
       />
-      <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />
+      <div className="desktop-cycle-reference"><CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} /></div>
       {data.pregnancy?.active&&<button type="button" disabled={busy} onClick={()=>{if(confirm(ka?'გამორთო ორსულობის რეჟიმი? ისტორია შენარჩუნდება.':'Turn off pregnancy mode? History will be preserved.'))void save({...data,pregnancy:{...data.pregnancy!,active:false,updatedAt:new Date().toISOString()}}).catch(()=>setMessage(ka?'შენახვა ვერ მოხერხდა.':'Could not save.'))}}>{ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'}</button>}
       <div className="workspace-grid">
         <section className="workspace-card">
+          <div className="mobile-period-controls">
+            {selectedDays === null ? <button type="button" disabled={busy || data.pregnancy?.active} onClick={() => {
+              setReplacing(recorded?.start);
+              setSelectedDays(recorded ? Array.from({ length: recorded.duration }, (_, i) => addDays(recorded.start, i)).filter(day => day <= today) : []);
+              setMessage("");
+            }}>{ka ? "პერიოდის დღეების მონიშვნა" : "Mark period days"}</button>
+              : <p>{ka ? "მონიშნე სისხლდენის დღეები და შეინახე ერთდროულად." : "Select the bleeding days and save them together."}</p>}
+          </div>
           <div className="workspace-row">
             <button
               aria-label={ka ? "წინა თვე" : "Previous month"}
@@ -280,10 +317,15 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
               return (
                 <button
                   key={date}
-                  className={`day ${state} ${date === selected ? "selected" : ""}`}
+                  className={`day ${state} ${selectedDays === null && date === selected ? "selected" : ""} ${selectedDays?.includes(date) ? "marked-bleeding-day" : ""}`}
                   aria-label={`${date} ${state}`}
-                  aria-pressed={selected === date}
+                  aria-pressed={selectedDays === null ? selected === date : selectedDays.includes(date)}
+                  disabled={selectedDays !== null && (date > today || busy)}
                   onClick={() => {
+                    if (selectedDays !== null) {
+                      setSelectedDays(days => days?.includes(date) ? days.filter(day => day !== date) : [...(days ?? []), date]);
+                      return;
+                    }
                     setSelected(date);
                     setDuration(
                       data.periods.find((p) => p.start === date)?.duration || 1,
@@ -299,6 +341,13 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
           <p>
             <SiteCopyText id="tracker.legend" lang={lang}/>
           </p>
+          <div className="mobile-period-controls">
+            {selectedDays !== null && <div className="workspace-row">
+              <button type="button" disabled={busy || !selectedDays.length} onClick={() => void saveDays()}><SiteCopyText id="tracker.save" lang={lang}/></button>
+              <button type="button" disabled={busy} onClick={() => { setSelectedDays(null); setMessage(""); }}>{ka ? "გაუქმება" : "Cancel"}</button>
+            </div>}
+            <p role="status">{message}</p>
+          </div>
         </section>
         <section className="workspace-card">
           <h2>
@@ -416,6 +465,10 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
           </button>
         ))}
       </section>
+      <details className="mobile-cycle-reference workspace-card">
+        <summary>{ka ? "საცნობარო ინფორმაცია" : "Reference information"}</summary>
+        <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />
+      </details>
     </>
   );
 }

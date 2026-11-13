@@ -279,12 +279,37 @@
 .landing-mobile { display: none; }
 .community-mobile-heading { display: none; }
 .mobile-app-tabbar { display: none; }
+.mobile-period-nav, .mobile-period-controls, .mobile-cycle-reference { display: none; }
+.privacy-password-form .password-field input { width: 100%; min-height: 50px; padding-right: 56px; font-size: 16px; }
 
 @media (max-width: 767px) {
   .landing-desktop { display: none !important; }
   .landing-mobile { display: block; }
   .header-auth-links { display: none; }
   .header-mobile-auth-trigger { display: inline-flex; }
+  .workspace:has(.mobile-period-nav) > .workspace-nav, .desktop-cycle-reference { display: none; }
+  .mobile-period-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-block: 2px;
+  }
+  .mobile-period-nav a {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 44px;
+    padding-inline: 14px;
+    border: 1px solid #e3d8f1;
+    border-radius: 999px;
+    background: white;
+  }
+  .mobile-period-nav a[aria-current="page"] { background: #e3d8f1; font-weight: 700; }
+  .mobile-period-controls, .mobile-cycle-reference { display: block; }
+  .mobile-cycle-reference > summary { min-height: 44px; cursor: pointer; font-weight: 700; }
+  .mobile-cycle-reference > .workspace-card { margin: 0; border: 0; padding: 0; }
+  .period-grid .day.marked-bleeding-day { background: #e3d8f1; border-color: #725a90; font-weight: 750; }
+  .mobile-period-controls > p:empty { display: none; }
 
   .mobile-app-tabbar {
     position: fixed;

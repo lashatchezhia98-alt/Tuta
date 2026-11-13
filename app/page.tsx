@@ -24,7 +24,7 @@ import { useSiteFeatures } from "@/lib/site-features";
 import BrandMark from '@/components/brand-mark';
 import HeaderActions from '@/components/header-actions';
 import SiteSocialLinks from "@/components/site-social-links";
-import CommunityPage from "@/app/community/community-page";
+import InnerPage from "@/app/inner-page";
 
 import { SiteCopyText } from "@/components/site-copy-provider";
 
@@ -70,6 +70,6 @@ export default function Home(){
     <footer className="bg-[#1E1B2E] py-12 text-white"><div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-5 lg:flex-row lg:items-center lg:px-8"><div><Brand lang={lang} inverse/><p className="mt-4 text-xs text-white/60"><SiteCopyText id="home.footer" lang={lang}/></p></div><div className="flex flex-col gap-5 lg:items-end"><div className="flex flex-wrap gap-x-7 gap-y-3 text-xs text-white/70"><a href="/community"><SiteCopyText id="home.community" lang={lang}/></a><a href="/about"><SiteCopyText id="home.about" lang={lang}/></a><a href="/blog"><SiteCopyText id="home.library" lang={lang}/></a><a href="/premium"><SiteCopyText id="home.premiumLink" lang={lang}/></a><a href="/privacy"><SiteCopyText id="home.privacyLink" lang={lang}/></a><a href="/terms"><SiteCopyText id="home.termsLink" lang={lang}/></a></div><SiteSocialLinks lang={lang}/></div></div><Separator className="mx-auto my-8 max-w-7xl bg-white/10"/><div className="mx-auto max-w-7xl px-5 text-[10px] text-white/45 lg:px-8"><SiteCopyText id="home.rights" lang={lang}/></div></footer>
     </main>
     </div>
-    <div className="landing-mobile"><CommunityPage /></div>
+    <div className="landing-mobile"><InnerPage kind="dashboard" /></div>
   </>
 }
