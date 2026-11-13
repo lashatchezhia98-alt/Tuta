@@ -646,6 +646,7 @@ function Shell() {
           data={data}
           openCalendar={openCalendar}
           openPregnancy={() => nav("pregnancy")}
+          birthDate={session.user.user_metadata?.date_of_birth}
         />
       );
     if (tab === "calendar")
@@ -868,7 +869,7 @@ function Shell() {
                         primaryTab(tab) === id && { backgroundColor: C.yellow },
                       ]}
                     >
-                      <Icon name={id === "home" ? "communityStars" : id} />
+                      <Icon name={id === "home" ? "communityStars" : id === "cycle" ? "periodMoon" : id} />
                     </View>
                     {id !== "home" && <T
                       weight={primaryTab(tab) === id ? "bold" : "regular"}
@@ -1033,7 +1034,6 @@ function Setup({
           ka={ka}
         />
       </View>
-      <CycleEducation data={data} birthDate={birthDate} />
       {message ? (
         <T accessibilityLiveRegion="polite" style={s.error}>
           {message}
@@ -1056,6 +1056,7 @@ function Setup({
           "Saved entries sync with your account.",
         )}
       </T>
+      <CycleEducation data={data} birthDate={birthDate} />
     </View>
   );
 }
@@ -1063,10 +1064,12 @@ function Home({
   data,
   openCalendar,
   openPregnancy,
+  birthDate,
 }: {
   data: Data;
   openCalendar: (date?: string, editing?: boolean) => void;
   openPregnancy: () => void;
+  birthDate?: string;
 }) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
@@ -1281,6 +1284,7 @@ function Home({
           "Predictions are estimates and are not a method of contraception.",
         )}
       </T>
+      <CycleEducation data={data} birthDate={birthDate} />
     </View>
   );
 }

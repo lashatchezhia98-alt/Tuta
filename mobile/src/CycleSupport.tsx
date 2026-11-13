@@ -1,14 +1,24 @@
+import { useState } from 'react';
 import { Linking, Pressable, View } from 'react-native';
+import { Icon } from './Art';
 import { cycleEducation, cycleSources, trackingJourney } from './cycle-guidance.mjs';
 import { C, T, s, CTA } from './ui';
 import type { Data, Tab } from './types';
 import { useJourneyEnabled } from './useJourneyEnabled';
 
 export function CycleEducation({data,birthDate}:{data:Data;birthDate?:string}) {
+  const [expanded, setExpanded] = useState(false);
   const content = cycleEducation(data.periods, birthDate, data.lang);
-  return <View style={s.card}><T weight="bold" style={{fontSize:18}}>{content.heading}</T><T style={[s.muted,{marginTop:10}]}>{content.summary}</T>
+  return <View style={[s.card, {paddingVertical: 6}]}>
+    <Pressable accessibilityRole="button" accessibilityState={{expanded}} onPress={() => setExpanded(value => !value)} style={[s.topBar, {minHeight: 44, gap: 12}]}>
+      <T weight="bold" style={{flex: 1}}>{data.lang === 'ka' ? 'საცნობარო ინფორმაცია' : 'Reference information'}</T>
+      <View style={{transform: [{rotate: expanded ? '-90deg' : '90deg'}]}}><Icon name="arrow" size={18} /></View>
+    </Pressable>
+    {expanded ? <View style={{paddingBottom: 10}}>
+    <T weight="bold" style={{fontSize:18}}>{content.heading}</T><T style={[s.muted,{marginTop:10}]}>{content.summary}</T>
     {content.paragraphs.map(text=><T key={text} style={[s.muted,{marginTop:12}]}>{text}</T>)}
     <View style={s.wrap}>{cycleSources.map(source=><Pressable key={source.label} accessibilityRole="link" accessibilityLabel={source.label} onPress={()=>void Linking.openURL(source.url).catch(()=>{})} style={{minHeight:44,justifyContent:'center',paddingRight:16}}><T style={{textDecorationLine:'underline'}}>{source.label} ↗</T></Pressable>)}</View>
+    </View> : null}
   </View>;
 }
 
