@@ -4,6 +4,8 @@ const { withAppDelegate, withInfoPlist } = require('expo/config-plugins');
 // window and starts React Native; the app delegate only owns the factory.
 module.exports = function withIosSceneLifecycle(config) {
   config = withInfoPlist(config, (next) => {
+    next.modResults.CFBundleShortVersionString = '$(MARKETING_VERSION)';
+    next.modResults.CFBundleVersion = '$(CURRENT_PROJECT_VERSION)';
     next.modResults.UIApplicationSceneManifest = {
       UIApplicationSupportsMultipleScenes: false,
       UISceneConfigurations: {

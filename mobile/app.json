@@ -8,7 +8,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "buildNumber": "11",
+      "buildNumber": "13",
       "appleTeamId": "D88588H2DS",
       "supportsTablet": true,
       "deploymentTarget": "26.6",
