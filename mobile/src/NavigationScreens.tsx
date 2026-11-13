@@ -4,6 +4,20 @@ import { Icon } from "./Art";
 import { destinations, visibleDestinations } from "./navigation.mjs";
 import type { Lang, Tab } from "./types";
 import { useAppFeatures } from "./useJourneyEnabled";
+import { serviceGroups } from "../../lib/service-directory";
+import { featureForRoute } from "../../lib/site-feature-definitions";
+
+export const serviceTargets = {
+  "/app/dashboard": "calendar", "/app/log": "log", "/app/insights": "insights",
+  "/app/journey": "journey", "/tools/period-calculator": "period-calculator",
+  "/tools/ovulation-calculator": "ovulation-calculator", "/consultation": "care",
+  "/app/report": "report", "/app/pregnancy": "pregnancy", "/app/partners": "partners",
+  "/community": "home", "/blog": "blog", "/app/notifications": "notifications",
+  "/market": "market", "/market/orders": "orders", "/premium": "premium",
+  "/app/settings": "profile", "/privacy": "privacy", "/about": "about",
+  "/terms": "terms", "/app/symptom-checker": "symptom-checker",
+  "/app/account-deletion": "account-deletion",
+} as const satisfies Record<(typeof serviceGroups)[number]["items"][number][0], Tab>;
 type Nav = { lang: Lang; onNavigate: (tab: Tab) => void };
 export function ScreenLinks({
   lang,
@@ -15,7 +29,7 @@ export function ScreenLinks({
   return (
     <View style={s.card}>
       {visibleDestinations(group, features)
-        .filter((p) => p.id !== "profile")
+        .filter((p) => p.id !== "profile" && p.id !== "premium")
         .map((page) => (
           <Pressable
             key={page.id}
@@ -52,20 +66,45 @@ export function ScreenLinks({
 }
 export function ServicesScreen(props: Nav) {
   const ka = props.lang === "ka";
+  const { status, features, retry } = useAppFeatures();
   return (
     <View style={s.content}>
-      <T style={s.muted}>
-        {ka ? "ცოდნა და მხარდაჭერა" : "KNOWLEDGE & SUPPORT"}
-      </T>
       <T weight="display" style={s.title}>
         {ka ? "სერვისები" : "Services"}
       </T>
       <T style={[s.muted, { marginBottom: 18 }]}>
-        {ka
-          ? "ექიმები, ჯანმრთელობის მასალები და შენი პირადი ინსტრუმენტები."
-          : "Doctors, health resources and your personal tools."}
+        {ka ? "აირჩიე, რისი გაკეთება გინდა." : "Choose what you want to do."}
       </T>
-      <ScreenLinks {...props} group="services" />
+      {status === "loading" && <T>{ka ? "სერვისები იტვირთება…" : "Loading services…"}</T>}
+      {status === "error" && <View style={s.card}>
+        <T>{ka ? "სერვისების სრული სია ვერ ჩაიტვირთა." : "Could not load all services."}</T>
+        <CTA title={ka ? "ხელახლა ცდა" : "Retry"} onPress={() => void retry()}/>
+      </View>}
+      {serviceGroups.map(group => {
+        const items = group.items.filter(([href]) => {
+          const feature = featureForRoute(href);
+          return feature === null || features[feature] === true;
+        });
+        if (!items.length) return null;
+        return <View key={group.id}>
+          <T weight="bold" style={{ fontSize: 19, marginBottom: 8 }} accessibilityRole="header">{ka ? group.ka : group.en}</T>
+          <View style={[s.card, { paddingVertical: 0 }]}>
+            {items.map(([href, labelKa, labelEn, detailKa, detailEn, access], index) => (
+              <Pressable key={href} accessibilityRole="button" onPress={() => props.onNavigate(serviceTargets[href])}
+                style={{ minHeight: 62, flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderColor: C.line, borderTopWidth: index === 0 ? 0 : 1 }}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <T weight="bold">{href === "/app/notifications" ? (ka ? "შეხსენებები" : "Reminders") : (ka ? labelKa : labelEn)}</T>
+                  <T style={s.muted}>{href === "/app/notifications"
+                    ? (ka ? "დააყენე პერიოდის შეხსენება ამ მოწყობილობაზე." : "Set period reminders on this device.")
+                    : (ka ? detailKa : detailEn)}</T>
+                  {access === "premium" && <T style={{ alignSelf: "flex-start", backgroundColor: C.yellow, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, fontSize: 12 }}>{ka ? "პრემიუმი" : "Premium"}</T>}
+                </View>
+                <Icon name="arrow" size={18}/>
+              </Pressable>
+            ))}
+          </View>
+        </View>;
+      })}
     </View>
   );
 }

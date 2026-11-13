@@ -1,6 +1,10 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Metro loads this config as CommonJS. */
 const { getDefaultConfig } = require("expo/metro-config");
 const https = require("node:https");
+const path = require("node:path");
 const config = getDefaultConfig(__dirname);
+// Native and Next.js share the same services catalog and feature IDs.
+config.watchFolders = [...new Set([...(config.watchFolders ?? []), path.resolve(__dirname, "../lib")])];
 // Local browser QA uses the real member API without changing production CORS.
 // No admin routes, cookies, arbitrary hosts, or secrets are exposed by this proxy.
 config.server.enhanceMiddleware = (middleware) => (req, res, next) => {

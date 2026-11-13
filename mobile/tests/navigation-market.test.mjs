@@ -17,6 +17,21 @@ import {
 } from "../src/market-model.mjs";
 import { sourceModule } from "../../tests/source-loader.mjs";
 
+test("every shared services entry opens a real native destination", () => {
+  const { serviceGroups } = sourceModule("lib/service-directory.ts");
+  const { serviceTargets } = sourceModule("mobile/src/NavigationScreens.tsx", {
+    "react-native": {},
+    "./ui": {},
+    "./Art": {},
+    "./useJourneyEnabled": {},
+  });
+  const paths = serviceGroups.flatMap(group => group.items.map(([path]) => path));
+  assert.deepEqual(Object.keys(serviceTargets).sort(), paths.sort());
+  assert.equal(new Set(Object.values(serviceTargets)).size, paths.length);
+  for (const target of Object.values(serviceTargets))
+    assert.ok(destinations.some(page => page.id === target), target);
+});
+
 test("empty status strings never become raw text children of native Views", () => {
   for (const path of [
     "../src/ServiceScreens.tsx",
