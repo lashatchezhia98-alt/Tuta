@@ -193,8 +193,8 @@ export const destinations = [
   },
 ];
 export const mainTabs = [
-  ["home", "მთავარი", "Home"],
   ["cycle", "პერიოდი", "Period"],
+  ["home", "მთავარი", "Home"],
   ["services", "სერვისები", "Services"],
   ["market", "მარკეტი", "Market"],
   ["profile", "პროფილი", "Profile"],
