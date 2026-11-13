@@ -26,3 +26,10 @@
 .admin-invite-row small { color: #635d72; }
 .admin-invite-intro { padding: 1.5rem; max-width: 52rem; margin: auto; }
 @media (max-width: 1050px) { .copy-editor-grid { grid-template-columns: minmax(0, 1fr); } }
+.inline-copy-enabled [data-site-copy] { outline: 1px dashed #8067a3; outline-offset: 2px; cursor: pointer; }
+.inline-copy-enabled [data-site-copy]:hover { outline: 2px solid #8067a3; }
+.inline-copy-status:not(:empty) { position: fixed; z-index: 100; bottom: 5.75rem; inset-inline-start: 1rem; max-width: min(27rem, calc(100% - 2rem)); border: 1px solid #e3d8f1; border-radius: .75rem; padding: .7rem 1rem; background: #f9f8fc; color: #1e1b2e; }
+.inline-copy-dialog { position: fixed; inset: 0; margin: auto; width: min(34rem, calc(100% - 2rem)); max-height: 90dvh; overflow: auto; padding: 1.25rem; border: 1px solid #e3d8f1; border-radius: 1rem; background: #f9f8fc; color: #1e1b2e; }
+.inline-copy-dialog:not([open]) { display: none; }
+.inline-copy-dialog::backdrop { background: #1e1b2e80; }
+.inline-copy-dialog h2 { font-size: 1.25rem; font-weight: 700; }

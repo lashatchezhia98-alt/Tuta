@@ -1,13 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { PencilLine } from "lucide-react";
 import { useEffect, useState } from "react";
+import InlineWebsiteCopy from "./inline-website-copy";
 
 type Language = "ka" | "en";
 
-const hiddenRoutes = ["/admin/login", "/admin/invite", "/admin/website-copy"];
+const hiddenRoutes = ["/admin"];
 
 export default function AdminWebsiteCopyShortcut() {
   const pathname = usePathname();
@@ -69,14 +69,5 @@ export default function AdminWebsiteCopyShortcut() {
   );
   if (hidden || authorizedPath !== pathname) return null;
 
-  return (
-    <Link
-      className="admin-website-copy-shortcut"
-      href="/admin/website-copy"
-      aria-label={language === "ka" ? "ტექსტების რედაქტირება" : "Edit website text"}
-    >
-      <PencilLine aria-hidden="true" size={18} strokeWidth={2} />
-      <span>{language === "ka" ? "ტექსტების რედაქტირება" : "Edit website text"}</span>
-    </Link>
-  );
+  return <InlineWebsiteCopy key={pathname} language={language} icon={<PencilLine aria-hidden="true" size={18} strokeWidth={2} />} />;
 }

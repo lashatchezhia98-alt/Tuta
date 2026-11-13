@@ -57,7 +57,8 @@ export function SiteCopyProvider({ children }: { children: ReactNode }) {
     };
     refresh();
     window.addEventListener("focus", refresh);
-    return () => { controller.abort(); window.removeEventListener("focus", refresh); };
+    window.addEventListener("tuta:website-copy-saved", refresh);
+    return () => { controller.abort(); window.removeEventListener("focus", refresh); window.removeEventListener("tuta:website-copy-saved", refresh); };
   }, [pathname]);
   const CopyContext = copyContext();
   return <CopyContext.Provider value={state}>{state.loadError && !state.preview && !pathname.startsWith("/admin") && <div className="site-content-load-error" role="status">{typeof document !== "undefined" && document.documentElement.lang.startsWith("en") ? "Some website text could not be refreshed. Showing the built-in text." : "საიტის ზოგი ტექსტი ვერ განახლდა. ნაჩვენებია ჩაშენებული ტექსტი."}</div>}{children}</CopyContext.Provider>;
@@ -74,5 +75,5 @@ export function SiteCopyText({ id, lang }: { id: string; lang: CopyLanguage }) {
   const value = getCopyText(copy, id, activeLanguage);
   const style = normalizeTextStyle(styles[activeLanguage]?.[id]);
   const styleProps: CSSProperties = style ? { fontSize: `${style.fontSize}px`, color: style.color } : {};
-  return <span className={preview ? "site-copy-preview-text" : undefined} data-site-copy={preview ? id : undefined} lang={activeLanguage} style={styleProps}>{value}</span>;
+  return <span className={preview ? "site-copy-preview-text" : undefined} data-site-copy={id} lang={activeLanguage} style={styleProps}>{value}</span>;
 }
