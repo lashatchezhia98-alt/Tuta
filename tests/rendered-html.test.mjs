@@ -10,6 +10,18 @@ import { sourceModule } from './source-loader.mjs';
 const appRoot = new URL("../.next/server/app/", import.meta.url);
 const sourceRoot = new URL("../", import.meta.url);
 
+test("Premium compares both tiers and mobile navigation keeps services in the burger menu", async () => {
+  const html = await readFile(new URL("premium.html", appRoot), "utf8");
+  assert.match(html, /<table[^>]+aria-labelledby="premium-comparison-title"/);
+  assert.match(html, /data-site-copy="premium.compare.free">უფასო/);
+  assert.match(html, /data-site-copy="premium.compare.paid">პრემიუმი/);
+  assert.match(html, /არ შედის გეგმაში/);
+  const nav = html.match(/<nav class="mobile-app-tabbar".*?<\/nav>/)?.[0];
+  assert.ok(nav);
+  assert.equal([...nav.matchAll(/class="mobile-app-tab(?: |")/g)].length, 4);
+  assert.doesNotMatch(nav, /href="\/app\/features"/);
+});
+
 async function loadComponent(path, mocks = {}) {
   const url = new URL(path,sourceRoot);
   const source = await readFile(url,'utf8');

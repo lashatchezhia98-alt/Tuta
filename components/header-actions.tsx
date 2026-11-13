@@ -38,7 +38,7 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
       <SheetContent className="bg-[#F9F8FC] p-6 overflow-y-auto">
         <SheetHeader><SheetTitle><SiteCopyText id="nav.menu" lang={lang}/></SheetTitle></SheetHeader>
         <nav className="burger-links" aria-label={ka?'მთავარი მენიუ':'Main menu'}>
-          <Link href="/app/features"><SiteCopyText id="nav.features" lang={lang}/></Link>
+          <SheetClose asChild><Link href="/app/features"><SiteCopyText id="nav.services" lang={lang}/></Link></SheetClose>
           {features.community&&<Link href="/community"><SiteCopyText id="nav.community" lang={lang}/></Link>}
           <Link href="/about"><SiteCopyText id="nav.about" lang={lang}/></Link>
           {features.library&&<Link href="/blog"><SiteCopyText id="nav.library" lang={lang}/></Link>}

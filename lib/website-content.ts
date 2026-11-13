@@ -16,7 +16,8 @@ export type WebsiteTextInput = Omit<WebsiteTextRecord, "updated_at">;
 export type WebsiteTextStyles = Record<CopyLanguage, Record<string, WebsiteTextStyle>>;
 export const emptyTextStyles = (): WebsiteTextStyles => ({ ka: {}, en: {} });
 export const defaultTextStyle: WebsiteTextStyle = { fontSize: 16, color: "#1E1B2E" };
-const safeKey = /^[a-z0-9][a-z0-9._-]{1,119}$/;
+export const isWebsiteTextKey = (value: unknown): value is string =>
+  typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{1,119}$/.test(value);
 const safeColor = /^(#[\da-f]{3}|#[\da-f]{6})$/i;
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 function hasForbiddenControl(value: string, allowTextWhitespace: boolean) {
@@ -39,7 +40,7 @@ export function validateWebsiteCopy(input: unknown): CopyOverrides {
     const values = input[language];
     if (!isRecord(values)) continue;
     for (const [key, value] of Object.entries(values)) {
-      if (!safeKey.test(key) || typeof value !== "string" || !value.trim() || value.length > 3500 || hasForbiddenControl(value, true)) continue;
+      if (!isWebsiteTextKey(key) || typeof value !== "string" || !value.trim() || value.length > 3500 || hasForbiddenControl(value, true)) continue;
       output[language][key] = value.trim();
     }
   }
@@ -63,7 +64,7 @@ export function catalogWithLegacyPublishedValues(legacy: unknown) {
 export function validateWebsiteText(input: unknown, requireUpdatedAt = false): WebsiteTextRecord {
   if (!isRecord(input)) throw new Error("invalid_record");
   const { key, page, section, ka_text, en_text, ka_style, en_style, published, updated_at } = input;
-  if (typeof key !== "string" || !safeKey.test(key)) throw new Error("invalid_key");
+  if (!isWebsiteTextKey(key)) throw new Error("invalid_key");
   if (typeof page !== "string" || !page.startsWith("/") || page.length > 180 || /[?#]/.test(page) || hasForbiddenControl(page, false)) throw new Error("invalid_page");
   if (typeof section !== "string" || section.trim().length < 1 || section.trim().length > 100 || hasForbiddenControl(section, false)) throw new Error("invalid_section");
   if (typeof ka_text !== "string" || typeof en_text !== "string" || [ka_text, en_text].some(value => !value.trim() || value.length > 3500 || hasForbiddenControl(value, true))) throw new Error("invalid_text");
@@ -96,8 +97,13 @@ export function copyAndStylesFromRows(rows: unknown, publishedOnly = false) {
         if (publishedOnly && !item.published) continue;
         copy.ka[item.key] = item.ka_text;
         copy.en[item.key] = item.en_text;
-        styles.ka[item.key] = item.ka_style;
-        styles.en[item.key] = item.en_style;
+        for (const language of ["ka", "en"] as const) {
+          const style = styleForLanguage(item, language);
+          // The editor's reset values represent the page's original styling.
+          if (style.fontSize !== defaultTextStyle.fontSize || style.color !== defaultTextStyle.color) {
+            styles[language][item.key] = style;
+          }
+        }
       } catch { /* Invalid persisted entries are ignored in favor of the safe built-in copy. */ }
     }
   } catch { return { copy, styles }; }

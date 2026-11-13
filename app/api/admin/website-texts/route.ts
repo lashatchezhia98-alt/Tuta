@@ -1,13 +1,13 @@
 import { readAdminJson } from "@/lib/admin-request";
 import { ApiError, checked, failure, requireAdmin, result } from "@/lib/platform-server";
-import { catalogDefaults, catalogWithLegacyPublishedValues, validateWebsiteText } from "@/lib/website-content";
+import { catalogDefaults, catalogWithLegacyPublishedValues, isWebsiteTextKey, validateWebsiteText } from "@/lib/website-content";
 
 export const dynamic = "force-dynamic";
 const columns = "key,page,section,ka_text,en_text,ka_style,en_style,published,updated_at";
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
-    if (error.message === "invalid_key") return "გასაღები უნდა იყოს უნიკალური და შეიცავდეს მხოლოდ ლათინურ პატარა ასოებს, ციფრებს, წერტილს, ტირეს ან ქვედა ტირეს.";
+    if (error.message === "invalid_key") return "გასაღები უნდა იყოს უნიკალური და შეიცავდეს მხოლოდ ლათინურ ასოებს, ციფრებს, წერტილს, ტირეს ან ქვედა ტირეს.";
     if (error.message === "invalid_style") return "ტექსტის ფერი ან ზომა დასაშვებ მნიშვნელობებს არ შეესაბამება.";
     if (error.message === "invalid_text") return "ორივე ენაზე შეავსე ტექსტი (მაქსიმუმ 3500 სიმბოლო).";
   }
@@ -58,7 +58,7 @@ export async function DELETE(request: Request) {
   try {
     const db = await requireAdmin(request, false, "website-copy");
     const input = await readAdminJson(request, 1_024);
-    if (typeof input.key !== "string" || !/^[a-z0-9][a-z0-9._-]{1,119}$/.test(input.key)) throw new ApiError(400, "გასაღები არასწორია.");
+    if (!isWebsiteTextKey(input.key)) throw new ApiError(400, "გასაღები არასწორია.");
     if (catalogDefaults().some(item => item.key === input.key)) throw new ApiError(409, "სისტემური ტექსტის ჩანაწერი ვერ წაიშლება; შეცვალე ან მონახაზად გადაიყვანე.");
     const row = checked(await db.from("website_texts").delete().eq("key", input.key).select("key").maybeSingle());
     if (!row) throw new ApiError(404, "ტექსტი ვერ მოიძებნა.");

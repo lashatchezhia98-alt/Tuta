@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, House, LayoutGrid, Store, UserRound } from "lucide-react";
+import { CalendarDays, House, Store, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Language = "ka" | "en";
@@ -15,13 +15,6 @@ const tabs = [
     icon: CalendarDays,
     ka: "პერიოდი",
     en: "Period",
-  },
-  {
-    id: "services",
-    href: "/app/features",
-    icon: LayoutGrid,
-    ka: "სერვისები",
-    en: "Services",
   },
   { id: "market", href: "/market", icon: Store, ka: "მარკეტი", en: "Market" },
   {
@@ -58,7 +51,7 @@ function activeTab(pathname: string) {
     pathname.startsWith("/market/orders")
   )
     return "profile";
-  return "services";
+  return null;
 }
 
 export default function MobileAppTabBar() {

@@ -13,6 +13,7 @@ import HeaderActions from '@/components/header-actions';
 import CycleOverview from "@/components/cycle-overview";
 import { forecast } from "../mobile/src/cycle.mjs";
 import PremiumCheckout from "@/components/premium-checkout";
+import PremiumComparison from "@/components/premium-comparison";
 import HealthWorkspace from "@/components/health-workspace";
 import Library from "@/components/library";
 import CareWorkspace from "@/components/care-workspace";
@@ -37,7 +38,7 @@ function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a 
 function InnerHeader({lang,setLang,showActions=true}:{lang:Lang,setLang:(v:Lang)=>void,consult?:boolean,showActions?:boolean}){return <header className="inner-header"><div className="inner-container inner-nav"><InnerLogo lang={lang}/>{showActions&&<HeaderActions lang={lang} setLang={setLang}/>}</div></header>}
 
 function StandardPage({kind,lang}:{kind:PageKind,lang:Lang}){const cards=aboutCards[lang];return <><section className="inner-hero"><div className="inner-container"><span className="inner-kicker">TUTA HEALTH</span><h1><SiteCopyText id={`page.${kind}.0`} lang={lang}/></h1><p><SiteCopyText id={`page.${kind}.1`} lang={lang}/></p></div></section><section className="inner-body inner-container"><div className="info-grid">{cards.map(([title],index)=><article key={title}><h2><SiteCopyText id={`about.${index}.0`} lang={lang}/></h2><p><SiteCopyText id={`about.${index}.1`} lang={lang}/></p></article>)}</div><p><a href="/privacy">{lang==='ka'?'კონფიდენციალურობა':'Privacy'}</a> · <a href="/terms">{lang==='ka'?'წესები და პირობები':'Terms'}</a></p></section></>}
-function PremiumPage({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA PREMIUM</span><h1><SiteCopyText id="premium.title" lang={lang}/></h1><p><SiteCopyText id="premium.intro" lang={lang}/></p></div></section><PremiumCheckout lang={lang}/></>}
+function PremiumPage({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA PREMIUM</span><h1><SiteCopyText id="premium.title" lang={lang}/></h1><p><SiteCopyText id="premium.intro" lang={lang}/></p></div></section><PremiumComparison lang={lang}/><PremiumCheckout lang={lang}/></>}
 
 export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"forgot-password"|"reset-password",lang:Lang,onAuthenticated?:()=>void}){
   const login=kind==="login";

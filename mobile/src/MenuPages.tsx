@@ -4,6 +4,12 @@ import { Icon, MoonFlower } from "./Art";
 import { C, T, s } from "./ui";
 import type { Lang, Tab } from "./types";
 import { destinations } from "./navigation.mjs";
+
+const menuPages = [
+  { id: "services", icon: "services", ka: "სერვისები", en: "Services" },
+  ...destinations.filter((page) => page.group === "info"),
+];
+
 export function AppMenu({
   visible,
   lang,
@@ -42,12 +48,11 @@ export function AppMenu({
           <ScrollView contentContainerStyle={s.content}>
             <T style={[s.muted, { marginBottom: 20 }]}>
               {ka
-                ? "ყველა სერვისი ქვედა ნავიგაციიდანაა ხელმისაწვდომი. აქ ინფორმაცია და ენის არჩევანია."
-                : "Find services in the bottom navigation. Information and language settings are here."}
+                ? "აქ ნახავ სერვისებს, ინფორმაციას თუთაზე და ენის პარამეტრებს."
+                : "Find services, information about Tuta, and language settings here."}
             </T>
             <View style={s.card}>
-              {destinations
-                .filter((p) => p.group === "info")
+              {menuPages
                 .map((page) => (
                   <Pressable
                     key={page.id}

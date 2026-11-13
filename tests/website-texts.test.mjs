@@ -134,6 +134,16 @@ test('published content parser preserves only recognized, published legacy copy 
   assert.equal(copyFromPublishedRows([{ ...row, ka_style: { fontSize: 200, color: 'red' } }]).styles.ka['home.title'], undefined);
 });
 
+test('all built-in copy IDs can be seeded and existing mixed-case IDs keep their wording and original layout', () => {
+  const { catalogDefaults, validateWebsiteText, copyFromPublishedRows } = sourceModule('lib/website-content.ts');
+  const rows = catalogDefaults().map(row => ({ ...row, updated_at: new Date(0).toISOString() }));
+  for (const row of rows) assert.doesNotThrow(() => validateWebsiteText(row, true), row.key);
+  const output = copyFromPublishedRows(rows);
+  assert.equal(output.copy.ka['nav.marketShort'], 'მარკეტი');
+  assert.equal(output.styles.ka['home.title'], undefined);
+  assert.equal(output.copy.en['premium.compare.title'], 'Compare plans');
+});
+
 test('admin API requires its permission, seeds the catalog from published legacy copy, and creates/edits bilingual text', async () => {
   const fixture = databaseFixture();
   const { admin, authorize } = apiModules(fixture);

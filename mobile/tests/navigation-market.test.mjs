@@ -29,17 +29,18 @@ test("empty status strings never become raw text children of native Views", () =
   }
 });
 
-test("all app destinations have one logical home and only five primary tabs", () => {
-  assert.equal(mainTabs.length, 5);
+test("services are a separate menu destination, not a primary tab", () => {
+  assert.equal(mainTabs.length, 4);
   assert.equal(initialTab, "cycle");
-  assert.deepEqual(mainTabs.map(([id]) => id), ["cycle", "home", "services", "market", "profile"]);
+  assert.deepEqual(mainTabs.map(([id]) => id), ["cycle", "home", "market", "profile"]);
   assert.equal(
     new Set(destinations.map((p) => p.id)).size,
     destinations.length,
   );
   for (const p of destinations) {
     assert.ok(p.ka && p.en && p.icon);
-    assert.ok(mainTabs.some((tab) => tab[0] === primaryTab(p.id)));
+    const parent = primaryTab(p.id);
+    assert.ok(parent === "services" || mainTabs.some((tab) => tab[0] === parent));
   }
   for (const id of ["calendar", "log", "insights"])
     assert.equal(primaryTab(id), "cycle");
