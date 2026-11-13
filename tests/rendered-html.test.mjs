@@ -11,11 +11,24 @@ const appRoot = new URL("../.next/server/app/", import.meta.url);
 const sourceRoot = new URL("../", import.meta.url);
 
 test("Premium compares both tiers and mobile navigation keeps services in the burger menu", async () => {
+  const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
+  const Comparison = await loadComponent("components/premium-comparison.tsx", {
+    "@/components/site-copy-provider": {
+      SiteCopyText: ({ id, lang }) => createElement("span", { "data-site-copy": id }, getCopyText(emptyCopy(), id, lang)),
+    },
+    "./premium-comparison.module.css": { __esModule: true, default: {} },
+  });
+  for (const [lang, free, premium, unavailable] of [
+    ["ka", "უფასო", "პრემიუმი", "არ შედის გეგმაში"],
+    ["en", "Free", "Premium", "Not included"],
+  ]) {
+    const table = renderToStaticMarkup(createElement(Comparison, { lang }));
+    assert.match(table, /<table[^>]+aria-labelledby="premium-comparison-title"/);
+    assert.ok(table.includes(`data-site-copy="premium.compare.free">${free}`));
+    assert.ok(table.includes(`data-site-copy="premium.compare.paid">${premium}`));
+    assert.ok(table.includes(unavailable));
+  }
   const html = await readFile(new URL("premium.html", appRoot), "utf8");
-  assert.match(html, /<table[^>]+aria-labelledby="premium-comparison-title"/);
-  assert.match(html, /data-site-copy="premium.compare.free">უფასო/);
-  assert.match(html, /data-site-copy="premium.compare.paid">პრემიუმი/);
-  assert.match(html, /არ შედის გეგმაში/);
   const nav = html.match(/<nav class="mobile-app-tabbar".*?<\/nav>/)?.[0];
   assert.ok(nav);
   assert.equal([...nav.matchAll(/class="mobile-app-tab(?: |")/g)].length, 4);
