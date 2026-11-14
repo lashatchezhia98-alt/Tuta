@@ -5,7 +5,6 @@ import {
   AppState,
   BackHandler,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -93,6 +92,8 @@ import {
 import { useMembership } from "./src/useMembership";
 import { apiRoot } from "./src/api";
 import { parsePaymentReturn } from "./src/payment-return.mjs";
+import { authCallback, MOBILE_AUTH_CALLBACK, recoveryError, WEB_PASSWORD_RECOVERY } from "./src/password-recovery.mjs";
+import { useFormKeyboard } from "./src/use-form-keyboard";
 
 const KEY = "tuta.mobile.v1";
 const moods = [
@@ -155,6 +156,9 @@ function Shell() {
     >(null),
     [authBusy, setAuthBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const formViewport = useRef<View>(null);
+  const keyboard = useFormKeyboard(formViewport);
+  const [recoveryLinkIssue, setRecoveryLinkIssue] = useState<"expired" | "invalid" | "network" | null>(null);
   const [activityRevision, setActivityRevision] = useState(0);
   const [activityTarget, setActivityTarget] = useState<(ActivityPost & { userId: string }) | null>(null);
   const memberId = session?.user.is_anonymous ? undefined : session?.user.id;
@@ -350,34 +354,26 @@ function Shell() {
     if (!supabase) return;
     let active = true;
     const receive = async (url: string | null) => {
-      if (
-        !active ||
-        !url ||
-        !url.startsWith("com.tutahealth.app://auth-callback") ||
-        handledAuthLink.current === url
-      )
-        return;
+      if (!active || !url || handledAuthLink.current === url) return;
+      const callback = authCallback(url);
+      if (!callback) return;
       handledAuthLink.current = url;
       try {
-        const fragment = url.split("#")[1] || "";
-        const params = new URLSearchParams(fragment || url.split("?")[1] || "");
-        if (params.get("error")) throw new Error("Auth link error");
-        const access_token = params.get("access_token"),
-          refresh_token = params.get("refresh_token");
-        if (!access_token || !refresh_token)
-          throw new Error("Missing auth tokens");
-        const { error } = await supabase!.auth.setSession({
-          access_token,
-          refresh_token,
-        });
+        if ("error" in callback) {
+          setRecoveryLinkIssue(callback.error);
+          setAuthMode("forgot");
+          return;
+        }
+        const { error } = await supabase!.auth.setSession(callback);
         if (error) throw error;
-        if (active)
-          setAuthMode(params.get("type") === "recovery" ? "reset" : null);
-      } catch {
-        if (active)
-          setProblem(
-            "ელფოსტის ბმული არასწორია ან ვადა გაუვიდა. / Email link is invalid or expired.",
-          );
+        if (active) { setRecoveryLinkIssue(null); setAuthMode("reset"); }
+      } catch (error) {
+        if (active) {
+          const issue = recoveryError(error);
+          if (issue === "network") handledAuthLink.current = null;
+          setRecoveryLinkIssue(issue === "network" || issue === "expired" ? issue : "invalid");
+          setAuthMode("forgot");
+        }
       }
     };
     void Linking.getInitialURL()
@@ -791,15 +787,20 @@ function Shell() {
               </View>
             )}
           </View>
-          <KeyboardAvoidingView
+          <View
+            ref={formViewport}
+            collapsable={false}
+            onLayout={keyboard.onLayout}
             style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <ScrollView
               ref={scroll}
               keyboardShouldPersistTaps="handled"
-              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
-              contentContainerStyle={{ paddingBottom: 20 }}
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
+              automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
+              scrollsChildToFocus
+              style={{ flex: 1, marginBottom: keyboard.overlap }}
+              contentContainerStyle={{ paddingBottom: 24 + (keyboard.visible ? 16 : insets.bottom) }}
             >
           {problem ? (
             <View style={[s.banner, { marginHorizontal: 20 }]}>
@@ -852,10 +853,13 @@ function Shell() {
                   lang={data.lang}
                   busy={authBusy}
                   setBusy={setAuthBusy}
-                  back={() => setAuthMode(null)}
+                  back={() => { setRecoveryLinkIssue(null); setAuthMode(null); }}
                   forgot={() => setAuthMode("forgot")}
-                  login={() => setAuthMode("login")}
+                  login={() => { setRecoveryLinkIssue(null); setAuthMode("login"); }}
                   register={() => setAuthMode("register")}
+                  recoveryLinkIssue={recoveryLinkIssue}
+                  clearRecoveryLinkIssue={() => setRecoveryLinkIssue(null)}
+                  onRecovered={() => { setRecoveryLinkIssue(null); setAuthMode(null); }}
                 />
               ) : (
                 <View key={session?.user.id || "guest"}>
@@ -874,8 +878,8 @@ function Shell() {
                 </View>
               )}
             </ScrollView>
-          </KeyboardAvoidingView>
-          {!authMode && (
+          </View>
+          {!authMode && !keyboard.visible && (
             <View
               style={[s.nav, { paddingBottom: Math.max(insets.bottom, 8) }]}
             >
@@ -2534,6 +2538,9 @@ function AuthScreen({
   forgot,
   login,
   register,
+  recoveryLinkIssue,
+  clearRecoveryLinkIssue,
+  onRecovered,
 }: {
   kind: "login" | "register" | "forgot" | "reset";
   lang: "ka" | "en";
@@ -2543,6 +2550,9 @@ function AuthScreen({
   forgot: () => void;
   login: () => void;
   register: () => void;
+  recoveryLinkIssue: "expired" | "invalid" | "network" | null;
+  clearRecoveryLinkIssue: () => void;
+  onRecovered: () => void;
 }) {
   const ka = lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
@@ -2610,12 +2620,13 @@ function AuthScreen({
       return;
     }
     setBusy(true);
+    clearRecoveryLinkIssue();
     setMessage("");
     try {
       if (isForgot) {
         const { error } = await supabase.auth.resetPasswordForEmail(
           normalized,
-          { redirectTo: "com.tutahealth.app://auth-callback" },
+          { redirectTo: MOBILE_AUTH_CALLBACK },
         );
         if (error) throw error;
         setMessage(
@@ -2639,15 +2650,9 @@ function AuthScreen({
         }
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
-        await supabase.auth.signOut({ scope: "local" });
         setPassword("");
         setConfirm("");
-        setMessage(
-          t(
-            "პაროლი შეიცვალა. ახლა შეგიძლია შეხვიდე.",
-            "Password updated. You can now sign in.",
-          ),
-        );
+        onRecovered();
       } else if (kind === "register") {
         const {
           data: { session },
@@ -2685,6 +2690,17 @@ function AuthScreen({
       }
       const raw = error instanceof Error ? error.message : "";
       const lower = raw.toLowerCase();
+      if (isForgot || isReset) {
+        const issue = recoveryError(error);
+        setMessage(issue === "rate"
+          ? t("ახალი ბმულის მოთხოვნამდე ცოტა მოიცადე.", "Wait a moment before requesting another link.")
+          : issue === "same" ? t("აირჩიე ძველი პაროლისგან განსხვავებული პაროლი.", "Choose a password different from your old one.")
+          : issue === "weak" ? t("ახალი პაროლი საკმარისად ძლიერი არ არის.", "Choose a stronger password.")
+          : issue === "expired" ? t("ბმული აღარ მოქმედებს. მოითხოვე ახალი ბმული.", "This link no longer works. Request a new one.")
+          : issue === "network" ? t("კავშირი ვერ შედგა. სცადე ხელახლა.", "Could not connect. Try again.")
+          : t("პაროლის აღდგენა ვერ მოხერხდა. სცადე ხელახლა.", "Could not reset the password. Try again."));
+        return;
+      }
       setMessage(
         lower.includes("already registered")
           ? t(
@@ -2727,11 +2743,29 @@ function AuthScreen({
               "გამოგიგზავნით ერთჯერად ბმულს ახალი პაროლის დასაყენებლად.",
               "We’ll send a one-time link to set a new password.",
             )
-          : t(
+          : isReset ? t("შეიყვანე და გაიმეორე ახალი პაროლი.", "Enter and confirm your new password.") : t(
               "ციკლის ჩანაწერები შენს ანგარიშში შეინახება და ყველა მოწყობილობაზე გამოჩნდება.",
               "Your cycle entries are saved to your account and available on all devices.",
             )}
       </T>
+      {isForgot && recoveryLinkIssue && (
+        <T accessibilityRole="alert" style={[s.banner, { marginBottom: 16 }]}>
+          {recoveryLinkIssue === "network"
+            ? t("კავშირი ვერ შედგა. შეამოწმე ინტერნეტი და ისევ გახსენი ბმული.", "Check your connection and open the link again.")
+            : t("აღდგენის ბმული აღარ მოქმედებს. მოითხოვე ახალი ბმული.", "This reset link no longer works. Request a new one.")}
+        </T>
+      )}
+      {isForgot && (
+        <Pressable
+          accessibilityRole="link"
+          style={{ minHeight: 44, justifyContent: "center", marginBottom: 12 }}
+          onPress={() => { void Linking.openURL(WEB_PASSWORD_RECOVERY).catch(() => setMessage(
+            t("ვებგვერდი ვერ გაიხსნა. სცადე ხელახლა.", "Could not open the website. Try again."),
+          )); }}
+        >
+          <T style={{ textDecorationLine: "underline" }}>{t("პაროლის აღდგენა ვებგვერდზე", "Reset password on the website")}</T>
+        </Pressable>
+      )}
       {(kind === "login" || kind === "register") && (
         <View style={[s.row, { marginBottom: 24, gap: 10 }]}>
           {(

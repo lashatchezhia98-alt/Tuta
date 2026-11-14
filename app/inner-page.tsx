@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js";
 import { CycleSettings, getCycle, isoDate } from "../lib/cycle";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { authRedirectBase } from "../lib/auth-redirect";
+import { recoveryError } from "../mobile/src/password-recovery.mjs";
 import {useHealthState,type HealthData} from "./use-health-state";
 import BrandMark from '@/components/brand-mark';
 import SiteSocialLinks from "@/components/site-social-links";
@@ -53,7 +54,9 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
   const [birthDate,setBirthDate]=useState("");
   const [confirmPassword,setConfirmPassword]=useState("");
   const [busy,setBusy]=useState(false);
-  const [recoveryReady,setRecoveryReady]=useState(false);
+  const [recoveryUser,setRecoveryUser]=useState<string|null>(null);
+  const [recoveryLinkState,setRecoveryLinkState]=useState<"missing"|"invalid"|"network"|null>(null);
+  const recoveryReady=Boolean(recoveryUser);
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
   const [pendingEmail,setPendingEmail]=useState<PendingEmail|null>(null);
@@ -81,19 +84,24 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
     if(!reset)return;
     let active=true;
     try{
+      const hash=new URLSearchParams(window.location.hash.slice(1));
       const supabase=getSupabaseBrowserClient();
       const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
-        if(active&&(event==="PASSWORD_RECOVERY"||session)){setRecoveryReady(true);setError("")}
+        if(active&&event==="PASSWORD_RECOVERY"&&session){setRecoveryUser(session.user.id);setRecoveryLinkState(null)}
+        if(active&&event==="SIGNED_OUT")setRecoveryUser(null);
       });
-      void supabase.auth.getSession().then(({data:{session},error})=>{
+      void supabase.auth.initialize().then(async ({error})=>{
+        const {data:{session}}=await supabase.auth.getSession();
         if(!active)return;
-        if(error)setError(ka?"აღდგენის ბმული არასწორია ან ვადა გაუვიდა.":"The recovery link is invalid or has expired.");
-        else if(session){setRecoveryReady(true);setError("")}
-        else setError(ka?"ჯერ გახსენი ელფოსტაზე მიღებული აღდგენის ბმული.":"Open the recovery link from your email first.");
-      }).catch(()=>{if(active)setError(ka?"კავშირის შემოწმება ვერ მოხერხდა.":"Could not verify your recovery link.")});
+        if(error||hash.has("error_code")){setRecoveryLinkState(recoveryError(error)==="network"?"network":"invalid");return}
+        if(session&&hash.get("access_token")===session.access_token&&["recovery","invite"].includes(hash.get("type")||"")){
+          setRecoveryUser(session.user.id);setRecoveryLinkState(null);return;
+        }
+        setRecoveryLinkState(hash.has("access_token")?"invalid":"missing");
+      }).catch(()=>{if(active)setRecoveryLinkState("network")});
       return()=>{active=false;subscription.unsubscribe()};
-    }catch{queueMicrotask(()=>{if(active)setError(ka?"ანგარიშის სერვისი დაყენებული არ არის.":"Account service is not configured.")});return()=>{active=false}}
-  },[reset,ka]);
+    }catch{queueMicrotask(()=>{if(active)setRecoveryLinkState("network")});return()=>{active=false}}
+  },[reset]);
 
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
@@ -110,13 +118,14 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
         if(error)throw error;
         setNotice(ka?"თუ ამ ელფოსტით ანგარიში არსებობს, აღდგენის ბმულს მალე მიიღებ. შეამოწმე სპამიც.":"If an account exists for this email, you’ll receive a recovery link shortly. Check spam too.");
       }else if(reset){
-        if(!recoveryReady)throw new Error("Missing recovery session");
+        const {data:{session}}=await supabase.auth.getSession();
+        if(!recoveryUser||session?.user.id!==recoveryUser)throw new Error("Missing recovery session");
         const {error}=await supabase.auth.updateUser({password});
         if(error)throw error;
-        setNotice(ka?"პაროლი შეიცვალა. ახლა შეგიძლია შეხვიდე ანგარიშში.":"Password updated. You can now sign in.");
+        setNotice(ka?"პაროლი შეიცვალა. ანგარიშში შედიხარ…":"Password updated. Opening your account…");
         setPassword("");setConfirmPassword("");
-        await supabase.auth.signOut({scope:"local"});
-        setRecoveryReady(false);
+        setRecoveryUser(null);
+        finish();
       }else{
         const result=login
           ? await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password})
@@ -134,10 +143,15 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
         return;
       }
       const message=cause instanceof Error?cause.message:"";
+      const recoveryIssue=(forgot||reset)?recoveryError(cause):null;
       if(/invalid login credentials/i.test(message))setError(ka?"ელფოსტა ან პაროლი არასწორია.":"Email or password is incorrect.");
       else if(/already registered|user already exists/i.test(message))setError(ka?"ამ ელფოსტით ანგარიში უკვე არსებობს. შედი ან პაროლის აღდგენა გამოიყენე.":"An account with this email already exists. Sign in or reset your password.");
       else if(/fetch|network|failed to connect/i.test(message))setError(ka?"სერვერთან კავშირი ვერ შედგა. გადაამოწმე ინტერნეტი და Supabase პროექტის სტატუსი.":"Could not reach the server. Check your connection and Supabase project status.");
       else if(/missing recovery session/i.test(message))setError(ka?"ჯერ გახსენი ელფოსტაზე მიღებული აღდგენის ბმული.":"Open the recovery link from your email first.");
+      else if(recoveryIssue==="rate")setError(ka?"ახალი ბმულის მოთხოვნამდე ცოტა მოიცადე.":"Wait a moment before requesting another link.");
+      else if(recoveryIssue==="same")setError(ka?"აირჩიე ძველი პაროლისგან განსხვავებული პაროლი.":"Choose a password different from your old one.");
+      else if(recoveryIssue==="weak")setError(ka?"ახალი პაროლი საკმარისად ძლიერი არ არის.":"Choose a stronger password.");
+      else if(recoveryIssue==="expired")setError(ka?"ბმული აღარ მოქმედებს. მოითხოვე ახალი ბმული.":"This link no longer works. Request a new one.");
       else setError(ka?"მოქმედება ვერ შესრულდა. სცადე ხელახლა.":"That didn’t work. Please try again.");
     }finally{setBusy(false)}
   }
@@ -155,8 +169,9 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
     {(register||reset)&&<PasswordField label={confirmationLabel} lang={lang} value={confirmPassword} onChange={setConfirmPassword}/>}
     {register&&<p>{ka?'ანგარიშის შექმნამდე გაეცანი':'Before creating an account, read our'} <a href="/terms" target="_blank" rel="noreferrer">{ka?'წესებსა და პირობებს':'Terms of use'}</a> {ka?'და':'and'} <a href="/privacy" target="_blank" rel="noreferrer">{ka?'კონფიდენციალურობის წესებს':'Privacy notice'}</a>.</p>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
+    {reset&&!recoveryReady&&recoveryLinkState&&<p className="admin-login-error" role="alert">{recoveryLinkState==="network"?(ka?"კავშირის შემოწმება ვერ მოხერხდა.":"Could not verify your recovery link."):recoveryLinkState==="invalid"?(ka?"ბმული აღარ მოქმედებს. მოითხოვე ახალი ბმული.":"This link no longer works. Request a new one."):(ka?"ჯერ გახსენი ელფოსტაზე მიღებული აღდგენის ბმული.":"Open the recovery link from your email first.")}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}><SiteCopyText id={busy?"auth.working":login?"nav.signIn":register?"auth.create":forgot?"auth.send":"auth.reset"} lang={lang}/></button>
-  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{!onAuthenticated&&<a href={login?"/register":"/login"}><SiteCopyText id={login?"auth.needAccount":"auth.back"} lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
+  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{reset&&recoveryLinkState&&!recoveryReady&&<a href="/forgot-password">{ka?"მოითხოვე ახალი ბმული":"Request a new link"}</a>}{!onAuthenticated&&<a href={login?"/register":"/login"}><SiteCopyText id={login?"auth.needAccount":"auth.back"} lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
 }
 
 function Calculator({kind,lang}:{kind:"period"|"ovulation",lang:Lang}){const [date,setDate]=useState("");const [length,setLength]=useState(28);const result=useMemo(()=>{if(!date||length<21||length>45)return null;try{return getCycle(date,length,5)}catch{return null}},[date,length]);const format=(v:string)=>new Intl.DateTimeFormat(lang==="ka"?"ka-GE":"en-GB",{day:"numeric",month:"long",year:"numeric"}).format(new Date(`${v}T12:00:00`));return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA TOOLS</span><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p></div></section><section className="calculator inner-container"><label>{lang==="ka"?"ბოლო პერიოდის პირველი დღე":"First day of last period"}<input type="date" value={date} onChange={e=>setDate(e.target.value)} max={isoDate(new Date())}/></label><label>{lang==="ka"?"ციკლის საშუალო ხანგრძლივობა":"Average cycle length"}<input type="number" min="21" max="45" value={length} onChange={e=>setLength(Math.round(Number(e.target.value)))}/></label>{date&&(!result||length<21||length>45)&&<p style={{gridColumn:"1/-1",color:"#9b2c3b"}}>{lang==="ka"?"შეიყვანე სწორი თარიღი და ციკლის ხანგრძლივობა (21–45 დღე).":"Enter a valid date and cycle length (21–45 days)."}</p>}<div className="calculator-result"><small>{kind==="period"?(lang==="ka"?"შემდეგი პერიოდი":"Next period"):(lang==="ka"?"სავარაუდო ოვულაცია":"Estimated ovulation")}</small><strong>{result?(kind==="period"?format(result.nextPeriod):format(result.ovulation)):"..."}</strong>{result&&<><small style={{display:"block",marginTop:18}}>{lang==="ka"?"ნაყოფიერი ფანჯარა":"Fertile window"}</small><strong>{format(result.fertileStart)} – {format(result.fertileEnd)}</strong></>}</div></section></>}
