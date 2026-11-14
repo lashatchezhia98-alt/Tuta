@@ -12,6 +12,7 @@ import { ChevronRight, LockKeyhole } from 'lucide-react';
 import GuidedJourney from './guided-journey';
 import PregnancyWorkspace from './pregnancy-workspace';
 import PartnerWorkspace from './partner-workspace';
+import { AccountDeletion, SymptomReview } from './service-access';
 
 export default function FeatureDirectory({slug}:{slug?:string}) {
   const [lang,setLang]=useState<'ka'|'en'>('ka');
@@ -26,7 +27,7 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
     {page && <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">← <SiteCopyText id="directory.servicesTitle" lang={lang}/></Link></nav>}
-    {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main className="service-directory">
+    {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:page.slug==='symptom-checker'?<SymptomReview lang={lang}/>:page.slug==='account-deletion'?<AccountDeletion lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main className="service-directory">
       <h1><SiteCopyText id="directory.servicesTitle" lang={lang}/></h1><p><SiteCopyText id="directory.intro" lang={lang}/></p>
       {status !== "ready" && <p role="status">{status === "loading"
         ? (ka ? "სერვისები იტვირთება…" : "Loading services…")

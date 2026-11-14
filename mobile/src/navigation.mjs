@@ -112,7 +112,6 @@ export const destinations = [
     en: "Symptom review",
     icon: "care",
     feature: "symptom-checker",
-    planned: true,
   },
   {
     id: "notifications",
@@ -164,11 +163,10 @@ export const destinations = [
   {
     id: "account-deletion",
     group: "profile",
-    ka: "ანგარიშის წაშლა",
-    en: "Delete account",
+    ka: "ანგარიშის წაშლის მოთხოვნა",
+    en: "Request account deletion",
     icon: "lock",
     feature: "account-deletion",
-    planned: true,
   },
   {
     id: "about",

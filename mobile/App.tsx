@@ -55,6 +55,8 @@ import { EMPTY_SOCIAL_LINKS, type SocialLinks, type SocialPlatform } from "./src
 import type { Session } from "@supabase/supabase-js";
 import { CommunityFeed } from "./src/CommunityFeed";
 import { AppMenu, MenuPage } from "./src/MenuPages";
+import { ActivityScreen, useActivityBadge, type ActivityPost } from "./src/ActivityScreen";
+import { AccountDeletion, SymptomReview } from "./src/ServiceAccessScreens";
 import { PregnancyScreen, PartnerScreen } from "./src/HealthFeatureScreens";
 import { CycleEducation, GuidedJourney } from "./src/CycleSupport";
 import { overlapsPeriod } from "./src/cycle.mjs";
@@ -80,7 +82,6 @@ import {
   ReportScreen,
   CalculatorScreen,
   RemindersScreen,
-  PlannedScreen,
 } from "./src/ServiceScreens";
 import {
   CartProvider,
@@ -153,6 +154,10 @@ function Shell() {
     >(null),
     [authBusy, setAuthBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activityRevision, setActivityRevision] = useState(0);
+  const [activityTarget, setActivityTarget] = useState<(ActivityPost & { userId: string }) | null>(null);
+  const memberId = session?.user.is_anonymous ? undefined : session?.user.id;
+  const hasUnread = useActivityBadge(memberId, `${tab}:${activityRevision}`);
   const features = useAppFeatures();
   const [trail, setTrail] = useState<Tab[]>([]);
   const insets = useSafeAreaInsets();
@@ -540,8 +545,11 @@ function Shell() {
     if (tab === "home")
       return (
         <CommunityFeed
+          key={activityTarget?.userId === memberId ? activityTarget?.postId : "feed"}
           lang={data.lang}
           session={session}
+          target={activityTarget && activityTarget.userId === memberId ? activityTarget : null}
+          onShowFeed={() => setActivityTarget(null)}
           onSignIn={() => setAuthMode("login")}
         />
       );
@@ -551,6 +559,9 @@ function Shell() {
         <MenuPage
           page={tab as "about" | "privacy" | "terms"}
           lang={data.lang}
+          userId={memberId}
+          onSignIn={() => setAuthMode("login")}
+          onForgot={() => setAuthMode("forgot")}
         />
       );
     if (tab === "blog") return <LibraryScreen {...props} />;
@@ -563,8 +574,6 @@ function Shell() {
           ovulation={tab === "ovulation-calculator"}
         />
       );
-    if (tab === "symptom-checker" || tab === "account-deletion")
-      return <PlannedScreen {...props} page={tab} />;
     if (!session)
       return (
         <View style={s.content}>
@@ -583,6 +592,16 @@ function Shell() {
           />
         </View>
       );
+    if (tab === "activity" && memberId)
+      return <ActivityScreen lang={data.lang} userId={memberId}
+        onRead={() => setActivityRevision((value) => value + 1)}
+        onOpen={(page, post) => {
+          setActivityTarget(post ? { ...post, userId: memberId } : null);
+          nav(page);
+        }} />;
+    if (tab === "symptom-checker") return <SymptomReview lang={data.lang}
+      token={session.access_token} onPremium={() => nav("premium")} onCare={() => nav("care")} />;
+    if (tab === "account-deletion" && memberId) return <AccountDeletion lang={data.lang} userId={memberId} />;
     if (tab === "care") return <CareScreen {...props} session={session} />;
     if (tab === "orders") return <OrdersScreen {...props} session={session} />;
     if (tab === "premium")
@@ -737,6 +756,19 @@ function Shell() {
                     </T>
                   </Pressable>
                 )}
+                {memberId ? (
+                  <Pressable accessibilityRole="button"
+                    accessibilityLabel={hasUnread
+                      ? t("შეტყობინებები, ახალი შეტყობინებები გაქვს", "Notifications, unread activity")
+                      : t("შეტყობინებები", "Notifications")}
+                    onPress={() => nav("activity")} style={s.round}>
+                    <Icon name="bell" />
+                    {hasUnread ? <View pointerEvents="none" style={{
+                      position: "absolute", top: 5, right: 6, width: 9, height: 9,
+                      borderRadius: 5, backgroundColor: "#7046a3",
+                    }} /> : null}
+                  </Pressable>
+                ) : null}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t("მენიუს გახსნა", "Open menu")}

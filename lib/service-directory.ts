@@ -3,6 +3,7 @@ export const serviceGroups = [
     ["/app/dashboard", "პერიოდის კალენდარი", "Period calendar", "მონიშნე პერიოდის დღეები და ნახე სავარაუდო თარიღები.", "Log your period days and see estimated dates."],
     ["/app/log", "სიმპტომების დღიური", "Symptom journal", "ჩაინიშნე, როგორ გრძნობ თავს დღეს.", "Record how you feel today."],
     ["/app/insights", "ციკლის ისტორია და ანალიზი", "Cycle history & insights", "შეადარე შენახული ციკლები და სიმპტომები.", "Review your recorded cycles and symptoms."],
+    ["/app/symptom-checker", "სიმპტომების კითხვარი", "Symptom review", "მონიშნე სიმპტომები და მოემზადე ექიმთან საუბრისთვის.", "Select symptoms and prepare for a conversation with a clinician.", "premium"],
     ["/app/journey", "პირადი გზამკვლევი", "Guided journey", "ნახე შემდეგი ნაბიჯი შენი ჩანაწერების მიხედვით.", "Find your next step based on your entries."],
     ["/tools/period-calculator", "პერიოდის კალკულატორი", "Period calculator", "გამოთვალე შემდეგი პერიოდის სავარაუდო თარიღი.", "Estimate the date of your next period."],
     ["/tools/ovulation-calculator", "ოვულაციის კალკულატორი", "Ovulation calculator", "ნახე ოვულაციის სავარაუდო თარიღი.", "See your estimated ovulation date."],
@@ -26,12 +27,9 @@ export const serviceGroups = [
   { id: "account", ka: "ანგარიში და ინფორმაცია", en: "Account & information", items: [
     ["/app/settings", "ჩემი პროფილი", "My profile", "ნახე ანგარიშის ინფორმაცია ან გამოდი ანგარიშიდან.", "View your account details or sign out."],
     ["/privacy", "კონფიდენციალურობა და პაროლი", "Privacy & password", "გაიგე, როგორ ინახება მონაცემები და შეცვალე პაროლი.", "See how your data is handled and change your password."],
+    ["/app/account-deletion", "ანგარიშის წაშლის მოთხოვნა", "Request account deletion", "გააგზავნე წაშლის მოთხოვნა ან გააუქმე გაგზავნილი.", "Submit or withdraw a request to delete your account."],
     ["/about", "თუთას შესახებ", "About Tuta", "გაიგე, რისთვის არის თუთა.", "Learn what Tuta is for."],
     ["/terms", "წესები და პირობები", "Terms of use", "წაიკითხე პლატფორმის გამოყენების წესები.", "Read the rules for using the platform."],
-  ] },
-  { id: "planned", ka: "ჯერ მიუწვდომელია", en: "Not available yet", items: [
-    ["/app/symptom-checker", "სიმპტომების შემოწმება", "Symptom review", "ავტომატური შეფასება ჯერ არ არის ჩართული.", "Automated assessment is not enabled yet."],
-    ["/app/account-deletion", "ანგარიშის წაშლა", "Delete account", "ანგარიშის დამოუკიდებლად წაშლა ჯერ მიუწვდომელია.", "Self-service account deletion is not available yet."],
   ] },
 ] as const;
 

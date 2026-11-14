@@ -129,6 +129,7 @@ export function Icon({
     check: "m5 12 4 4 10-10",
     moon: "M19 16A9 9 0 0 1 8 3a9 9 0 1 0 11 13",
     menu: "M4 6h16M4 12h16M4 18h16",
+    bell: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4",
     image: "M3 4h18v16H3ZM6 16l4-4 3 3 3-4 4 6M8 8h.01",
     more: "M5 12h.01M12 12h.01M19 12h.01",
     close: "M5 5l14 14M19 5 5 19",

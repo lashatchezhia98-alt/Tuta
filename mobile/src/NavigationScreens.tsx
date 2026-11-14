@@ -52,11 +52,6 @@ export function ScreenLinks({
             </View>
             <View style={{ flex: 1 }}>
               <T weight="bold">{ka ? page.ka : page.en}</T>
-              {page.planned && (
-                <T style={s.muted}>
-                  {ka ? "მომზადების ეტაპზე" : "In preparation"}
-                </T>
-              )}
             </View>
             <Icon name="arrow" size={18} />
           </Pressable>
@@ -169,11 +164,15 @@ export function PageHeading({
         <Icon name="back" size={18} />
         <T style={s.muted}>{lang === "ka" ? "უკან" : "Back"}</T>
       </Pressable>
-      {item && (
+      {page === "activity" ? (
+        <T weight="bold" style={{ fontSize: 18 }}>
+          {lang === "ka" ? "შეტყობინებები" : "Notifications"}
+        </T>
+      ) : item ? (
         <T weight="bold" style={{ fontSize: 18 }}>
           {lang === "ka" ? item.ka : item.en}
         </T>
-      )}
+      ) : null}
     </View>
   );
 }

@@ -90,6 +90,7 @@ export function AdminUsers({ lang, owner, initialQuery }: { lang: Lang; owner: b
   const [grant, setGrant] = useState<Account | null>(null);
   const op = useOperation<RowSet<Account>>(`/api/admin/users?${new URLSearchParams({ q: query, plan, joined, page: String(page) })}`, lang);
   const billing = useOperation<Billing>(grant ? `/api/admin/billing?user=${grant.id}` : "", lang);
+  const deletion = useOperation<{ rows: { user_id: string; requested_at: string }[] }>("/api/admin/users/deletion-requests", lang);
   async function grantPremium(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!grant) return;
@@ -100,6 +101,17 @@ export function AdminUsers({ lang, owner, initialQuery }: { lang: Lang; owner: b
     }
   }
   return <div className="ops-stack">
+    <section className="ops-entry ops-stack">
+      <h2>{tr(lang, "ანგარიშის წაშლის მოთხოვნები", "Account deletion requests")}</h2>
+      <Feedback lang={lang} {...deletion} loading={!deletion.data} />
+      {deletion.data && (deletion.data.rows.length ? <ul>
+        {deletion.data.rows.map(row => <li key={row.user_id}>
+          <Link href={`/admin/users?q=${row.user_id}`} onClick={(event) => {
+            event.preventDefault(); setInput(row.user_id); setQuery(row.user_id); setPlan("all"); setJoined("0"); setPage(0);
+          }}>{tr(lang, "ანგარიშის ნახვა", "View account")}</Link>{" · "}{formatDate(row.requested_at, lang)}
+        </li>)}
+      </ul> : <p>{tr(lang, "მომლოდინე მოთხოვნა არ არის.", "There are no pending requests.")}</p>)}
+    </section>
     <form className="ops-filters" onSubmit={e => { e.preventDefault(); setPage(0); setQuery(input.trim()); }}>
       <label>{tr(lang, "ძიება", "Search")}<input value={input} onChange={e => setInput(e.target.value)} maxLength={120} placeholder={tr(lang, "სახელი ან ელფოსტა", "Name or email")}/></label>
       <label>{tr(lang, "გეგმა", "Plan")}<select value={plan} onChange={e => { setPlan(e.target.value); setPage(0); }}><option value="all">{tr(lang, "ყველა", "All")}</option><option value="free">{tr(lang, "უფასო", "Free")}</option><option value="premium">Premium</option></select></label>

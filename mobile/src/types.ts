@@ -1,7 +1,7 @@
 import {ordered,stamp} from './cycle.mjs';
 import {validPregnancy} from './pregnancy.mjs';
 export type Lang = 'ka' | 'en';
-export type Tab = 'home' | 'cycle' | 'calendar' | 'log' | 'insights' | 'profile' | 'about' | 'blog' | 'premium' | 'privacy' | 'terms' | 'journey' | 'pregnancy' | 'partners' | 'services' | 'care' | 'report' | 'market' | 'cart' | 'orders' | 'period-calculator' | 'ovulation-calculator' | 'notifications' | 'symptom-checker' | 'account-deletion';
+export type Tab = 'home' | 'cycle' | 'calendar' | 'log' | 'insights' | 'profile' | 'about' | 'blog' | 'premium' | 'privacy' | 'terms' | 'journey' | 'pregnancy' | 'partners' | 'services' | 'care' | 'report' | 'market' | 'cart' | 'orders' | 'period-calculator' | 'ovulation-calculator' | 'notifications' | 'activity' | 'symptom-checker' | 'account-deletion';
 export type Period = {start:string; duration:number};
 export type Log = {date:string; mood:string; energy:number; pain:number; flow:string; symptoms:string[]; notes:string};
 export type Data = {version:1; lang:Lang; name:string; cycleLength:number; periods:Period[]; logs:Log[];pregnancy?:{active:boolean;dating:'lmp'|'dueDate';date:string;updatedAt:string}};

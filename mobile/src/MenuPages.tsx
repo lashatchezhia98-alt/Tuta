@@ -4,6 +4,7 @@ import { Icon, MoonFlower } from "./Art";
 import { C, T, s } from "./ui";
 import type { Lang, Tab } from "./types";
 import { destinations } from "./navigation.mjs";
+import { ChangePassword } from "./ChangePassword";
 
 const menuPages = [
   { id: "services", icon: "services", ka: "სერვისები", en: "Services" },
@@ -95,9 +96,15 @@ export function AppMenu({
 export function MenuPage({
   page,
   lang,
+  userId,
+  onSignIn,
+  onForgot,
 }: {
   page: "about" | "privacy" | "terms";
   lang: Lang;
+  userId?: string;
+  onSignIn: () => void;
+  onForgot: () => void;
 }) {
   const ka = lang === "ka";
   const sections =
@@ -186,6 +193,7 @@ export function MenuPage({
               ? "წესები და პირობები"
               : "Terms of use"}
       </T>
+      {page === "privacy" ? <ChangePassword ka={ka} userId={userId} onSignIn={onSignIn} onForgot={onForgot} /> : null}
       {page === "about" && (
         <View
           style={[s.card, { alignItems: "center", backgroundColor: C.lav }]}

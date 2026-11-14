@@ -12,7 +12,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import type { Session } from "@supabase/supabase-js";
 import { Icon } from "./Art";
-import { C, T, CTA, s } from "./ui";
+import { C, T, CTA, Chip, s } from "./ui";
 import {
   communityPhotoUrl,
   canEditCommunityPost,
@@ -92,10 +92,14 @@ function friendlyDate(value: string, lang: Lang) {
 export function CommunityFeed({
   lang,
   session,
+  target,
+  onShowFeed,
   onSignIn,
 }: {
   lang: Lang;
   session: Session | null;
+  target: { postId: string; commentId: string | null } | null;
+  onShowFeed: () => void;
   onSignIn: () => void;
 }) {
   const ka = lang === "ka";
@@ -191,13 +195,14 @@ export function CommunityFeed({
     const offset = more ? posts.length : 0;
     try {
       const client = supabase;
-      const postsQuery = (fields: string) => client
-        .from("community_posts")
-        .select(fields)
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(offset, offset + PAGE - 1)
-        .overrideTypes<Post[], { merge: false }>();
+      const postsQuery = (fields: string) => {
+        const query = client.from("community_posts").select(fields);
+        return (target ? query.eq("id", target.postId) : query
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(offset, offset + PAGE - 1))
+          .overrideTypes<Post[], { merge: false }>();
+      };
       const baseFields = "id,public_author_id,is_anonymous,display_name,topic,body,image_public_id,created_at";
       const [result, owned] = await Promise.all([
         postsQuery(baseFields + ",author_initials"),
@@ -217,8 +222,12 @@ export function CommunityFeed({
       );
       const page = data || [];
       setPosts((current) => (more ? [...current, ...page] : page));
-      setHasMore(page.length === PAGE);
+      setHasMore(!target && page.length === PAGE);
       setFeedError("");
+      if (target && page.length) {
+        setOpenComments({ [target.postId]: true });
+        await loadComments(target.postId, false, target.commentId);
+      }
       await loadDoctors(page.map((post) => post.public_author_id));
     } catch {
       if (epoch === commentEpoch.current)
@@ -252,9 +261,9 @@ export function CommunityFeed({
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, [lang, isMember, session?.user.id]);
+  }, [lang, isMember, session?.user.id, target]);
 
-  const loadComments = async (postId: string, older = false) => {
+  async function loadComments(postId: string, older = false, focusId: string | null = null) {
     if (!supabase || !isMember) return;
     const epoch = commentEpoch.current,
       turn = (commentRequests.current[postId] || 0) + 1;
@@ -264,11 +273,14 @@ export function CommunityFeed({
       [postId]: { ...current[postId], busy: true },
     }));
     try {
-      const page = await loadCommentPage(
-        supabase,
-        postId,
-        older ? commentPages[postId]?.before : null,
-      );
+      const [page, focus] = await Promise.all([
+        loadCommentPage(supabase, postId, older ? commentPages[postId]?.before : null),
+        focusId ? supabase.from("community_comments")
+          .select("id,post_id,public_author_id,is_anonymous,parent_comment_id,display_name,body,created_at,author_initials,is_post_author")
+          .eq("post_id", postId).eq("id", focusId).maybeSingle() : null,
+      ]);
+      if (focus?.data && !page.comments.some((row: Comment) => row.id === focusId))
+        page.comments = mergeComments(page.comments, [focus.data]);
       if (
         epoch !== commentEpoch.current ||
         commentRequests.current[postId] !== turn
@@ -309,7 +321,7 @@ export function CommunityFeed({
         }));
       }
     }
-  };
+  }
 
   const toggleComments = (postId: string) => {
     if (!openComments[postId]) void loadComments(postId);
@@ -688,7 +700,15 @@ export function CommunityFeed({
         </T>
       </View>
 
-      <View style={s.card}>
+      {target ? (
+        <View style={s.card}>
+          <Chip label={t("ყველა პოსტის ნახვა", "View all posts")} selected={false} onPress={onShowFeed} />
+          {!loading && !posts.length && !feedError ? (
+            <T style={s.muted}>{t("ეს პოსტი აღარ არის ხელმისაწვდომი.", "This post is no longer available.")}</T>
+          ) : null}
+        </View>
+      ) : null}
+      {!target ? <View style={s.card}>
         <View style={[s.row, { gap: 12 }]}>
           <View
             style={{
@@ -732,7 +752,7 @@ export function CommunityFeed({
             "200 words max · 1 photo · choose a topic",
           )}
         </T>
-      </View>
+      </View> : null}
 
       {writing && (
         <View style={[s.card, { borderColor: "#B6A1CF" }]}>

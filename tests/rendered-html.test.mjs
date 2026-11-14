@@ -21,8 +21,10 @@ test("services catalog has one entry per destination with bilingual labels and d
     assert.ok(getCopyText(emptyCopy(), serviceCopyKey(path), lang));
     assert.ok(getCopyText(emptyCopy(), serviceCopyKey(path) + ".detail", lang));
   }
-  assert.deepEqual(serviceGroups.find(group => group.id === "planned").items.map(([path]) => path), ["/app/symptom-checker", "/app/account-deletion"]);
-  assert.equal(items.filter(item => item[5] === "premium").length, 4);
+  assert.ok(!serviceGroups.some(group => group.id === "planned"));
+  assert.ok(serviceGroups.find(group => group.id === "track").items.some(([path]) => path === "/app/symptom-checker"));
+  assert.ok(serviceGroups.find(group => group.id === "account").items.some(([path]) => path === "/app/account-deletion"));
+  assert.equal(items.filter(item => item[5] === "premium").length, 5);
 });
 
 test("Premium compares both tiers and mobile navigation keeps services in the burger menu", async () => {
