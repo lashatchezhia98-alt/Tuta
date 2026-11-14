@@ -56,6 +56,7 @@ import type { Session } from "@supabase/supabase-js";
 import { CommunityFeed } from "./src/CommunityFeed";
 import { AppMenu, MenuPage } from "./src/MenuPages";
 import { ActivityScreen, useActivityBadge, type ActivityPost } from "./src/ActivityScreen";
+import { watchPushTaps } from "./src/push-device";
 import { AccountDeletion, SymptomReview } from "./src/ServiceAccessScreens";
 import { PregnancyScreen, PartnerScreen } from "./src/HealthFeatureScreens";
 import { CycleEducation, GuidedJourney } from "./src/CycleSupport";
@@ -158,6 +159,16 @@ function Shell() {
   const [activityTarget, setActivityTarget] = useState<(ActivityPost & { userId: string }) | null>(null);
   const memberId = session?.user.is_anonymous ? undefined : session?.user.id;
   const hasUnread = useActivityBadge(memberId, `${tab}:${activityRevision}`);
+  const openPushInbox = useEffectEvent(() => {
+    setMenuOpen(false);
+    nav("activity");
+  });
+  useEffect(() => {
+    if (!memberId) return;
+    const controller = new AbortController();
+    void watchPushTaps(() => openPushInbox(), controller.signal).catch(() => {});
+    return () => controller.abort();
+  }, [memberId]);
   const features = useAppFeatures();
   const [trail, setTrail] = useState<Tab[]>([]);
   const insets = useSafeAreaInsets();

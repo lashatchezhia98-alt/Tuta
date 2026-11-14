@@ -8,3 +8,7 @@ otp_length = 6
 [auth.email.template.confirmation]
 subject = "თუთა · ელფოსტის დადასტურების კოდი / Email verification code"
 content_path = "./supabase/templates/confirmation.html"
+
+[functions.activity-push]
+# The cron worker uses its own dedicated, high-entropy bearer secret.
+verify_jwt = false

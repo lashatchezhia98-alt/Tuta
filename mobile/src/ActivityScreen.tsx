@@ -3,6 +3,7 @@ import { AppState, Pressable, Switch, View } from "react-native";
 import { activityGroups, activityKinds } from "./activity.mjs";
 import { supabase } from "./supabase";
 import { C, Chip, T, s } from "./ui";
+import { changePushDevice, pushAvailable, pushDeviceEnabled } from "./push-device";
 import type { Lang, Tab } from "./types";
 
 type Item = {
@@ -71,6 +72,8 @@ export function ActivityScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [writeError, setWriteError] = useState(false);
+  const [push, setPush] = useState<boolean | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
   const sequence = useRef(0);
   const lock = useRef(false);
   const refresh = useCallback(async () => {
@@ -117,6 +120,15 @@ export function ActivityScreen({
       sub.remove();
     };
   }, [refresh]);
+  useEffect(() => {
+    if (!pushAvailable || !showSettings) return;
+    let live = true;
+    void pushDeviceEnabled(userId).then(
+      (value) => { if (live) setPush(value); },
+      () => { if (live) setWriteError(true); },
+    );
+    return () => { live = false; };
+  }, [showSettings, userId]);
 
   const write = async (operation: () => Promise<void>) => {
     if (lock.current) return;
@@ -170,6 +182,20 @@ export function ActivityScreen({
       {writeError ? <T accessibilityRole="alert">{t("ცვლილება ვერ შეინახა. სცადე ხელახლა.", "Could not save the change. Try again.")}</T> : null}
       {showSettings && prefs ? (
         <View style={s.card}>
+          {pushAvailable ? <>
+            <View style={[s.row, { minHeight: 54, justifyContent: "space-between" }]}>
+              <T style={{ flex: 1 }}>{t("შეტყობინებები ამ ტელეფონზე", "Push notifications on this phone")}</T>
+              <Switch accessibilityLabel={t("შეტყობინებები ამ ტელეფონზე", "Push notifications on this phone")}
+                disabled={busy || push === null} value={push === true}
+                onValueChange={(value) => void write(async () => {
+                  setPermissionDenied(false);
+                  const result = await changePushDevice(value, lang, userId);
+                  if (result === "permission") setPermissionDenied(true);
+                  else setPush(value);
+                })} />
+            </View>
+            {permissionDenied ? <T accessibilityRole="alert">{t("თუთას შეტყობინებები ტელეფონის პარამეტრებში დაუშვი.", "Allow Tuta notifications in your phone settings.")}</T> : null}
+          </> : null}
           <T style={s.muted}>{t("აირჩიე, რა შეტყობინებები გამოჩნდეს აქ მომავალში.", "Choose which new notifications appear here.")}</T>
           {activityGroups.map(([key, ge, en]) => (
             <View key={key} style={[s.row, { minHeight: 54, justifyContent: "space-between" }]}>
