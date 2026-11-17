@@ -87,7 +87,8 @@ test("Premium compares both tiers and mobile navigation keeps services in the bu
     assert.ok(table.includes(`data-site-copy="premium.compare.free">${free}`));
     assert.ok(table.includes(`data-site-copy="premium.compare.paid">${premium}`));
     assert.ok(table.includes(unavailable));
-    assert.equal([...table.matchAll(/scope="row"/g)].length, 12);
+    assert.equal([...table.matchAll(/scope="row"/g)].length, 11);
+    assert.doesNotMatch(table, /premium\.compare\.report|ანგარიში ექიმისთვის|Report for your doctor/);
   }
   assert.equal(sharedComparison.premiumComparisonFeatures.filter(row => row.free).length, 6);
   const native = await readFile(new URL("mobile/src/ServiceScreens.tsx", sourceRoot), "utf8");
@@ -190,6 +191,7 @@ test("registration, login and recovery routes render usable auth forms", async (
   assert.equal([...reset.matchAll(/class="password-toggle"/g)].length,2);
   assert.equal([...forgot.matchAll(/class="password-toggle"/g)].length,0);
   assert.match(login, /კეთილი იყოს შენი დაბრუნება|Welcome back/);
+  assert.match(login, /class="auth-register-link" href="\/register"[^>]*>[\s\S]*?(რეგისტრაცია|Register|Sign up)[\s\S]*?<\/a>[\s\S]*?<form/);
   assert.match(login, /ელფოსტა|Email/);
   assert.match(login, /შესვლა|Sign in/);
   assert.match(login, /forgot-password/);

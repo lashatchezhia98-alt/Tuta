@@ -172,7 +172,9 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
     <h1><SiteCopyText id="auth.verifyTitle" lang={lang}/></h1>
     <p>{ka?"შეიყვანე ამ მისამართზე მიღებული ექვსნიშნა კოდი:":"Enter the six-digit code sent to:"} <strong>{pendingEmail.email}</strong>. {ka?"თუ წერილი არ ჩანს, შეამოწმე სპამი.":"Check spam if you don’t see the email."}</p>
     <EmailCodeForm pending={pendingEmail} lang={lang} onBack={()=>setPendingEmail(null)} onVerified={finish}/>
-    </>:<><h1><SiteCopyText id={`page.${kind}.0`} lang={lang}/></h1><p><SiteCopyText id={`page.${kind}.1`} lang={lang}/></p><form onSubmit={submit} noValidate={false}>
+    </>:<><h1><SiteCopyText id={`page.${kind}.0`} lang={lang}/></h1><p><SiteCopyText id={`page.${kind}.1`} lang={lang}/></p>
+    {login&&!onAuthenticated&&<a className="auth-register-link" href="/register"><SiteCopyText id="nav.register" lang={lang}/></a>}
+    <form onSubmit={submit} noValidate={false}>
     {!reset&&<label><SiteCopyText id="auth.email" lang={lang}/><input type="email" placeholder="name@example.com" autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>}
     {register&&<label><SiteCopyText id="auth.firstName" lang={lang}/><input type="text" autoComplete="given-name" value={firstName} onChange={e=>setFirstName(e.target.value)} required maxLength={80}/></label>}
     {register&&<label><SiteCopyText id="auth.lastName" lang={lang}/><input type="text" autoComplete="family-name" value={lastName} onChange={e=>setLastName(e.target.value)} required maxLength={80}/></label>}
@@ -183,7 +185,7 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
     {reset&&!recoveryReady&&recoveryLinkState&&<p className="admin-login-error" role="alert">{recoveryLinkState==="network"?(ka?"კავშირის შემოწმება ვერ მოხერხდა. სცადე ხელახლა.":"Could not verify your recovery link. Try again."):recoveryLinkState==="expired"?(ka?"აღდგენის ბმულს ვადა გაუვიდა.":"Your recovery link has expired."):recoveryLinkState==="invalid"?(ka?"აღდგენის ბმული აღარ მოქმედებს.":"This recovery link no longer works."):(ka?"ჯერ გახსენი ელფოსტაზე მიღებული აღდგენის ბმული.":"Open the recovery link from your email first.")}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}><SiteCopyText id={busy?"auth.working":login?"nav.signIn":register?"auth.create":forgot?"auth.send":"auth.reset"} lang={lang}/></button>
-  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{reset&&!recoveryReady&&<a href="/forgot-password">{ka?"მოითხოვე ახალი ბმული":"Request a new link"}</a>}{!onAuthenticated&&<a href={login?"/register":"/login"}><SiteCopyText id={login?"auth.needAccount":"auth.back"} lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
+  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{reset&&!recoveryReady&&<a href="/forgot-password">{ka?"მოითხოვე ახალი ბმული":"Request a new link"}</a>}{!login&&!onAuthenticated&&<a href="/login"><SiteCopyText id="auth.back" lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
 }
 
 
