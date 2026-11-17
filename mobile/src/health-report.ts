@@ -1,7 +1,8 @@
 import type { Data as HealthData } from "./types";
 import { history, dateKey, phaseForDay, distance } from "./cycle.mjs";
+import { isSexualActivity } from "./sexual-activity.ts";
 
-export function healthReport(data: HealthData, today = dateKey()) {
+export function healthReport(data: HealthData, today = dateKey(), includeSexualActivity = false) {
   const end = new Date(today + "T00:00:00Z");
   const monthStart = new Date(
     Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 6, 1),
@@ -51,6 +52,11 @@ export function healthReport(data: HealthData, today = dateKey()) {
       phase,
       days: cycles.length ? days / cycles.length : 0,
     })),
+    ...(includeSexualActivity ? {
+      sexualActivity: logs.flatMap(({ date, sexualActivity }) =>
+        isSexualActivity(sexualActivity) ? [{ date, sexualActivity }] : [],
+      ).sort((a, b) => a.date.localeCompare(b.date)),
+    } : {}),
   };
 }
 

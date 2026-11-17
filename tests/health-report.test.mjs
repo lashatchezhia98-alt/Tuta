@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { healthReport, reminderCalendar } from "../lib/health-report.ts";
 import { articleInput, uuid } from "../lib/content-validation.ts";
+import { validHealthData } from "../lib/health-data.ts";
+import { validData } from "../mobile/src/types.ts";
 const base = {
   version: 1,
   lang: "ka",
@@ -13,6 +15,25 @@ const base = {
 test("six calendar months clamp the day correctly across leap years", () => {
   assert.equal(healthReport(base, "2024-08-31").from, "2024-02-29");
   assert.equal(healthReport(base, "2025-08-31").from, "2025-02-28");
+});
+test("private activity survives account JSON, validates on both clients, and is opt-in for reports", () => {
+  const log = { date: "2026-08-01", mood: "calm", energy: 3, pain: 1, flow: "none", notes: "", symptoms: [] };
+  const privateData = {
+    ...base,
+    logs: [log, { ...log, date: "2026-08-02", sexualActivity: "unspecified" },
+      { ...log, date: "2026-12-01", sexualActivity: "protected" }],
+  };
+  const persisted = JSON.parse(JSON.stringify(privateData));
+  for (const validate of [validHealthData, validData]) {
+    assert.ok(validate(persisted));
+    assert.ok(!validate({ ...base, logs: [{ ...log, sexualActivity: "invalid" }] }));
+    assert.ok(!validate({ ...base, logs: [{ ...log, sexualActivity: null }] }));
+  }
+  assert.deepEqual(healthReport(persisted, "2026-11-01"), healthReport({
+    ...base, logs: privateData.logs.map(({ sexualActivity: _, ...entry }) => entry),
+  }, "2026-11-01"));
+  assert.deepEqual(healthReport(persisted, "2026-11-01", true).sexualActivity,
+    [{ date: "2026-08-02", sexualActivity: "unspecified" }]);
 });
 test("report excludes unfinished cycles and future entries, counts symptoms per day", () => {
   const data = {

@@ -21,6 +21,7 @@ import { useFeatureEnabled } from "./useJourneyEnabled";
 import { forecast, predictions } from "./cycle.mjs";
 import { calculateCycleEstimate, calculatorMessages, formatCalculatorDate } from "./cycle-calculator.mjs";
 import { healthReport, reminderCalendar } from "./health-report";
+import { sexualActivityOptions } from "./sexual-activity";
 import { symptoms } from "./symptoms.mjs";
 type Nav = { lang: Lang; onNavigate: (tab: Tab) => void };
 export function ResourceStatus({
@@ -731,6 +732,7 @@ export function ReportScreen({
     membership = useMembership(session.access_token, apiRoot),
     summary = healthReport(data),
     [busy, setBusy] = useState(false),
+    [includeActivity, setIncludeActivity] = useState(false),
     [message, setMessage] = useState("");
   const alive = useRef(true);
   useEffect(() => {
@@ -758,7 +760,13 @@ export function ReportScreen({
         )
         .join("");
       const html = `<!doctype html><html lang="${data.lang}"><meta charset="utf-8"><style>body{font:15px sans-serif;color:#1e1b2e;padding:20px}h1{font-size:28px}table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px;border-bottom:1px solid #e3d8f1}.bar{background:#e3d8f1;height:12px}section{break-inside:avoid;margin:24px 0}</style><body><h1>TutaHealth · ${ka ? "ექიმისთვის ანგარიში" : "Doctor report"}</h1><p>${summary.from} / ${summary.today}</p><p>${ka ? "პირადი ინფორმაცია. ჩაწერილი მონაცემების შეჯამება, არა დიაგნოზი." : "Private information. Recorded data summary, not a diagnosis."}</p><section><h2>${ka ? "დასრულებული ციკლები" : "Completed cycles"}</h2><table><tr><th>${ka ? "დაწყება" : "Start"}</th><th>${ka ? "დღეები" : "Days"}</th><th>${ka ? "სისხლდენა" : "Bleeding"}</th><th>${ka ? "გადახრა" : "Deviation"}</th></tr>${rows}</table></section><section><h2>${ka ? "სიმპტომების სიხშირე (დღე)" : "Symptom frequency (days)"}</h2>${summary.symptoms.map((p) => `<p>${escape(label(p.name))}: ${p.count}</p><div class="bar" style="width:${Math.min(100, (p.count / Math.max(1, summary.logs)) * 100)}%"></div>`).join("")}</section><section><h2>${ka ? "სავარაუდო ფაზის საშუალო ხანგრძლივობა" : "Estimated average phase duration"}</h2>${summary.phases.map((p) => `<p>${escape(phaseNames[p.phase]?.[ka ? 0 : 1] || p.phase)}: ${p.days.toFixed(1)}</p>`).join("")}<p>${ka ? "ფაზები კლინიკურად დადასტურებული არ არის." : "Phases are not clinically confirmed."}</p></section></body></html>`;
-      const file = await Print.printToFileAsync({ html });
+      const activity = includeActivity ? healthReport(data, summary.today, true).sexualActivity : undefined;
+      const activitySection = activity?.length
+        ? `<section><h2>${ka ? "სქესობრივი აქტივობა" : "Sexual activity"}</h2>${activity.map(({ date, sexualActivity }) =>
+            `<p>${escape(date)}: ${escape(sexualActivityOptions.find(([id]) => id === sexualActivity)![ka ? 1 : 2])}</p>`,
+          ).join("")}</section>`
+        : "";
+      const file = await Print.printToFileAsync({ html: html.replace("</body>", `${activitySection}</body>`) });
       uri = file.uri;
       const current = await api("/api/payments/flitt/status", {
         userId: session.user.id,
@@ -812,6 +820,11 @@ export function ReportScreen({
               </T>
             </View>
           ))}
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: includeActivity, disabled: busy }}
+            disabled={busy} onPress={() => setIncludeActivity(value => !value)}
+            style={{ minHeight: 48, justifyContent: "center" }}>
+            <T>{includeActivity ? "☑ " : "☐ "}{ka ? "PDF-ში სქესობრივი აქტივობის დამატება" : "Include sexual activity in the PDF"}</T>
+          </Pressable>
           <CTA
             disabled={busy}
             title={ka ? "PDF-ის შექმნა / გაზიარება" : "Create / share PDF"}

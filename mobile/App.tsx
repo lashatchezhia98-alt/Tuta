@@ -33,6 +33,7 @@ import EmailCodeScreen from "./src/EmailCodeScreen";
 import { EMAIL_RESEND_WAIT_MS, emailNotConfirmed } from "./src/email-verification.mjs";
 import type { PendingEmail } from "./src/use-email-verification";
 import { Data, Log, Tab, emptyData, validData } from "./src/types";
+import { sexualActivityOptions } from "./src/sexual-activity";
 import {
   dateKey,
   stamp,
@@ -1413,6 +1414,7 @@ function Daily({
         ...new Set([...entry.symptoms, ...(symptom ? [symptom] : [])]),
       ],
     };
+    if (final.sexualActivity === undefined) delete final.sexualActivity;
     if (
       await save({
         ...data,
@@ -1522,6 +1524,20 @@ function Daily({
               onPress={() => change({ flow: id })}
             />
           ))}
+        </View>
+      </View>
+      <View style={s.section}>
+        <FieldLabel>{t("სქესობრივი აქტივობა (არასავალდებულო)", "Sexual activity (optional)")}</FieldLabel>
+        <T style={s.muted}>{t("პირადი ჩანაწერია და პროგნოზს არ ცვლის.", "Private and does not change predictions.")}</T>
+        <View style={[s.wrap, { marginTop: 12 }]}>
+          {sexualActivityOptions.map(([id, a, b]) => (
+            <Chip key={id} label={t(a, b)} selected={entry.sexualActivity === id}
+              onPress={() => change({ sexualActivity: entry.sexualActivity === id ? undefined : id })} />
+          ))}
+          {entry.sexualActivity ? (
+            <Chip label={t("მონიშვნის მოხსნა", "Clear selection")} selected={false}
+              onPress={() => change({ sexualActivity: undefined })} />
+          ) : null}
         </View>
       </View>
       <View style={s.section}>

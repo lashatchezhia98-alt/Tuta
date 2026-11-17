@@ -1,5 +1,7 @@
 import { ordered, stamp } from "../mobile/src/cycle.mjs";
 import { validPregnancy } from '../mobile/src/pregnancy.mjs';
+import { validOptionalSexualActivity } from '../mobile/src/sexual-activity.ts';
+import type { Log } from '../mobile/src/types';
 
 export type HealthData = {
   version: 1;
@@ -8,7 +10,7 @@ export type HealthData = {
   cycleLength: number;
   pregnancy?: {active:boolean;dating:'lmp'|'dueDate';date:string;updatedAt:string};
   periods: { start: string; duration: number }[];
-  logs: { date: string; mood: string; energy: number; pain: number; flow: string; symptoms: string[]; notes: string }[];
+  logs: Log[];
 };
 
 // Validate stored/imported records before any forecast or save. Never repair or
@@ -25,6 +27,7 @@ export function validHealthData(value: unknown): value is HealthData {
     return d.logs.every(log => {
       stamp(log.date);
       return typeof log.mood === "string" && typeof log.flow === "string" && typeof log.notes === "string"
+        && validOptionalSexualActivity(log.sexualActivity)
         && Array.isArray(log.symptoms) && log.symptoms.every(symptom => typeof symptom === "string")
         && [log.energy, log.pain].every(n => Number.isInteger(n) && n >= 1 && n <= 5);
     });
