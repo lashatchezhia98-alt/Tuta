@@ -18,25 +18,41 @@ export async function POST(request:Request){try{
     return result({enrollment:checked(row)},201);
   }
   let id:string;try{id=uuid(body.id)}catch{throw new ApiError(400,'ჩანაწერის ნომერი არასწორია.');}
+  if(body.action==='remove'){
+    if(body.confirmed!==true)throw new ApiError(400,'წაშლამდე დაადასტურე მოქმედება.');
+    const removed=await db.rpc('remove_doctor_enrollment',{enrollment_id:id});
+    if(removed.error?.code==='22023')throw new ApiError(404,'ექიმის ჩანაწერი ვერ მოიძებნა.');
+    if(removed.error?.code==='23503')throw new ApiError(409,'ექიმს აქვს მიმოწერის ან ვიზიტის ისტორია. ჩანაწერების შესანარჩუნებლად გათიშე პროფილი „ექიმები და ვიზიტების“ გვერდიდან.');
+    if(removed.error?.code==='55000')throw new ApiError(409,'ამ ანგარიშზე ერთზე მეტი დადასტურებული ჩანაწერია. წაშლამდე საჭიროა მათი გადამოწმება.');
+    checked(removed);
+    return result({ok:true});
+  }
   const record=checked(await db.from('doctor_enrollments').select('*').eq('id',id).maybeSingle());
   if(!record)throw new ApiError(404,'ექიმის ჩანაწერი ვერ მოიძებნა.');
   if(body.action==='invite'){
     if(record.status==='verified')throw new ApiError(400,'ექიმი უკვე დადასტურებულია.');
+    if(!record.consent_confirmed)throw new ApiError(400,'მოწვევისთვის საჭიროა ექიმის თანხმობა.');
     // Find a pre-existing account without returning any user directory to the browser.
     let accountId:string|undefined;
+    let resendPendingInvitation=false;
     let complete=false;
     for(let page=1;page<=20;page++){
       const {data,error}=await db.auth.admin.listUsers({page,perPage:1000});
       if(error)throw new ApiError(503,'ანგარიშის გადამოწმება ვერ მოხერხდა.');
       const found=data.users.find(u=>u.email?.toLowerCase()===record.email);
-      if(found){accountId=found.id;complete=true;break;}
+      if(found){
+        accountId=found.id;
+        resendPendingInvitation=Boolean(record.status==='invited'&&record.user_id===found.id&&found.invited_at&&!found.email_confirmed_at);
+        complete=true;
+        break;
+      }
       if(data.users.length<1000){complete=true;break;}
     }
     if(!complete)throw new ApiError(503,'მომხმარებლის ძებნის ლიმიტი მიღწეულია. საჭიროა მხარდაჭერა.');
     let invited=false;
-    if(!accountId){
+    if(!accountId||resendPendingInvitation){
       const {data,error}=await db.auth.admin.inviteUserByEmail(record.email,{data:{first_name:record.first_name,last_name:record.last_name},redirectTo:new URL('/reset-password',request.url).toString()});
-      if(error||!data.user)throw new ApiError(502,'მოწვევის წერილი ვერ გაიგზავნა. გადაამოწმე SMTP ან სცადე მოგვიანებით.');
+      if(error||!data.user||(accountId&&data.user.id!==accountId))throw new ApiError(502,'მოწვევის წერილი ვერ გაიგზავნა. გადაამოწმე ელფოსტის სერვისი ან სცადე მოგვიანებით.');
       accountId=data.user.id;
       invited=true;
     }

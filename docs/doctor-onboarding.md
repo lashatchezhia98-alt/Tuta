@@ -1,20 +1,9 @@
-# ექიმის დამატება
+# Doctor onboarding and launch checks
 
-მართვის გვერდი: `/admin/doctors`. საჭიროებს ადმინის ავტორიზაციას.
+1. In Admin → Doctor registration, enter the doctor's real professional details only after obtaining consent. Save the registration, then send the one-time registration link. A confirmed Tuta account on the same email is linked instead of receiving a registration email. An outstanding doctor invitation can be resent.
+2. The doctor opens the email on the web and sets a password. The invitation opens the existing `/reset-password` callback, then the doctor workspace at `/consultation/doctor`. Subsequent sign-ins use the same email and password. On iOS and Android, open Services → Doctors, chat & appointments.
+3. Verify the doctor's identity and qualifications in Admin. Approve the doctor only after email confirmation. In Admin → Doctors and visits, enable the profile and add available times. Approval alone leaves the public profile inactive.
+4. The doctor workspace shows only the doctor's own patient chats and bookings. Doctors can reply and cancel an owned booking. The admin manages profile edits, availability and rescheduling. A doctor role is not an admin role and does not grant access to private patient journals.
+5. In Admin → Doctor registration, use **Remove doctor record** to remove a registration and, when verified, its professional profile and badge. It does not delete the underlying Tuta login. Bookings or conversation records block removal; for those profiles, turn off the profile in **Doctors and visits** instead. The 48-hour message deletion schedule is unchanged; it does not delete the conversation record.
 
-1. შეავსე ექიმის სახელი, გვარი, ელფოსტა, სპეციალობა, აღწერა და პროფესიული სერტიფიკატის ნომერი ან გადამოწმების წყარო.
-2. მონიშნე თანხმობა მხოლოდ მაშინ, როცა ექიმისგან ნამდვილად გაქვს ანგარიშის შექმნისა და პროფესიული პროფილის გამოქვეყნების ნებართვა.
-3. შეინახე მონაცემები. ამ ნაბიჯზე არც წერილი იგზავნება და არც ექიმის ნიშანი ენიჭება.
-4. დააჭირე „მოწვევა / ანგარიშის დაკავშირება“. არსებული ანგარიში დაუკავშირდება ჩანაწერს; ახალი ანგარიშის შემთხვევაში მოწვევა გაიგზავნება Supabase-ის გამართული SMTP-ით. ექიმი თავად ადგენს პაროლს; ადმინისტრატორი მის პაროლს არ ინახავს.
-5. დამოუკიდებლად გადაამოწმე ექიმის ვინაობა და მოქმედი კვალიფიკაცია. შესაბამისი ველი მონიშნე და მიანიჭე ექიმის სტატუსი. სერვერი დამატებით ამოწმებს ელფოსტის დადასტურებასა და მის შესაბამისობას ჩანაწერთან.
-6. `/admin/care` გვერდზე ჩართე საჯარო პროფილი და დაამატე ვიზიტებისთვის თავისუფალი დროები.
-
-ექიმის სტატუსის მინიჭება ავტომატურად არ აქვეყნებს პროფილს. ვერიფიკაციის სამი ჩანაწერი ერთ ტრანზაქციაში ინახება. სერტიფიკატის ნომერი და რეგისტრაციის სხვა შიდა მონაცემები საჯარო კატალოგში არ გადადის. ჩვეულებრივი მომხმარებელი ვერ ამატებს ექიმს და საკუთარ თავს ვერ მიანიჭებს ექიმის ნიშანს.
-
-## შემოწმება
-
-- `npm run test:unit`: ვალიდაცია, წვდომები, თანხმობა, მოწვევისა და დამტკიცების განცალკევება.
-- `tests/doctor-approval.sql`: დადებითი დამტკიცების პროცესი და განმეორების უარყოფა მთლიანად უკუქცევად ტრანზაქციაში.
-- `RUN_TUTA_INTEGRATION=1 node tests/platform-integration.mjs`: გაშვებულ ადგილობრივ სერვერსა და არსებულ Supabase პროექტზე რეალური შენახვისა და ავტორიზაციის ტესტი. ქმნის მხოლოდ დროებით სატესტო ანგარიშებს, წერილებს არ აგზავნის და ბოლოს თავის სატესტო მონაცემებს შლის.
-
-რეალური ექიმის კვალიფიკაციის შემოწმება ავტომატიზებული არ არის. დამატებული ფორმა ამოწმებს მონაცემების ფორმატს, მაგრამ სამედიცინო ლიცენზიის ნამდვილობას ვერ ადასტურებს.
+Before the first real invite, use a controlled test inbox and a staging instance. Check that Supabase allows the exact website `/reset-password` redirect and that the Invite user template includes the confirmation link. Confirm mail arrives, the link works once, resending works for an unconfirmed invitation, and a regular account cannot access the doctor workspace. After approving and enabling the test profile, use a second controlled account to test a booking, a message and a doctor reply. Do not use real patient records in this test.

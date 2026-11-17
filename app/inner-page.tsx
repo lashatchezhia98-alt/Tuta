@@ -56,6 +56,7 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
   const [confirmPassword,setConfirmPassword]=useState("");
   const [busy,setBusy]=useState(false);
   const [recoveryUser,setRecoveryUser]=useState<string|null>(null);
+  const [doctorInvitation,setDoctorInvitation]=useState(false);
   const [recoveryLinkState,setRecoveryLinkState]=useState<"missing"|"expired"|"invalid"|"network"|null>(null);
   const recoveryReady=Boolean(recoveryUser);
   const [notice,setNotice]=useState("");
@@ -107,6 +108,7 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
           return;
         }
         if(session&&hash.get("access_token")===session.access_token&&["recovery","invite"].includes(hash.get("type")||"")){
+          setDoctorInvitation(hash.get("type")==="invite");
           setRecoveryUser(session.user.id);setRecoveryLinkState(null);return;
         }
         setRecoveryLinkState(hash.has("access_token")||query.has("code")?"invalid":"missing");
@@ -137,7 +139,7 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
         setNotice(ka?"პაროლი შეიცვალა. ანგარიშში შედიხარ…":"Password updated. Opening your account…");
         setPassword("");setConfirmPassword("");
         setRecoveryUser(null);
-        finish();
+        if(doctorInvitation&&!onAuthenticated)router.replace("/consultation/doctor");else finish();
       }else{
         const result=login
           ? await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password})
@@ -236,7 +238,7 @@ function AccountSettingsCard({lang}:{lang:Lang}){
 
 function DailyLog({lang,data,save}:{lang:Lang,data:HealthData,save:(next:HealthData)=>Promise<void>}){const ka=lang==="ka";const today=isoDate(new Date());const existing=data.logs.find(log=>log.date===today);const [mood,setMood]=useState(existing?.mood||"calm"),[energy,setEnergy]=useState(existing?.energy||3),[pain,setPain]=useState(existing?.pain||1),[flow,setFlow]=useState(existing?.flow||"light"),[notes,setNotes]=useState(existing?.notes||""),[notice,setNotice]=useState(""),[busy,setBusy]=useState(false);useEffect(()=>{setMood(existing?.mood||"calm");setEnergy(existing?.energy||3);setPain(existing?.pain||1);setFlow(existing?.flow||"light");setNotes(existing?.notes||"")},[existing?.mood,existing?.energy,existing?.pain,existing?.flow,existing?.notes]);const [activityDraft,setActivityDraft]=useState<SexualActivity|""|null>(null);const activity=activityDraft??existing?.sexualActivity??"";const submit=async()=>{if(!Number.isInteger(energy)||!Number.isInteger(pain)||energy<1||energy>5||pain<1||pain>5){setNotice(ka?"შეიყვანე ქულა 1-დან 5-მდე.":"Choose a score from 1 to 5.");return}setBusy(true);try{const next=[...data.logs.filter(log=>log.date!==today),{date:today,mood,energy,pain,flow,symptoms:existing?.symptoms||[],notes,...(activity?{sexualActivity:activity}:{})}].sort((a,b)=>a.date.localeCompare(b.date));await save({...data,logs:next});setActivityDraft(null);setNotice(ka?"ბაზაში შენახულია ✓":"Saved to your account ✓")}catch{setNotice(ka?"შენახვა ვერ მოხერხდა. შეამოწმე კავშირი და სცადე თავიდან.":"Could not save. Check your connection and retry.")}finally{setBusy(false)}};const moods=[["happy",ka?"ბედნიერი":"Happy"],["calm",ka?"მშვიდი":"Calm"],["low",ka?"სევდიანი":"Low"],["tense",ka?"დაძაბული":"Tense"],["tired",ka?"დაღლილი":"Tired"]];const flows=[["spotting",ka?"ლაქები":"Spotting"],["light",ka?"მსუბუქი":"Light"],["medium",ka?"საშუალო":"Medium"],["heavy",ka?"ძლიერი":"Heavy"]];return <div className="calculator"><label>{ka?"განწყობა":"Mood"}<select value={mood} onChange={e=>setMood(e.target.value)}>{moods.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>{ka?"ენერგია (1–5)":"Energy (1–5)"}<input type="number" min="1" max="5" value={energy} onChange={e=>setEnergy(Number(e.target.value))}/></label><label>{ka?"ტკივილი (1–5)":"Pain (1–5)"}<input type="number" min="1" max="5" value={pain} onChange={e=>setPain(Number(e.target.value))}/></label><label>{ka?"ნაკადი":"Flow"}<select value={flow} onChange={e=>setFlow(e.target.value)}>{flows.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>{ka?"სქესობრივი აქტივობა (არასავალდებულო)":"Sexual activity (optional)"}<select value={activity} onChange={e=>{const value=e.target.value;setActivityDraft(isSexualActivity(value)?value:"")}}><option value="">{ka?"ჩანაწერის გარეშე":"No entry"}</option>{sexualActivityOptions.map(([id,a,b])=><option key={id} value={id}>{ka?a:b}</option>)}</select><small>{ka?"პირადი ჩანაწერია და პროგნოზს არ ცვლის.":"Private and does not change predictions."}</small></label><label>{ka?"შენიშვნა":"Notes"}<textarea value={notes} onChange={e=>setNotes(e.target.value)} maxLength={2000}/></label><button type="button" disabled={busy} onClick={()=>void submit()} style={{gridColumn:"1/-1",height:50,border:0,borderRadius:9,background:"var(--ink)",color:"white"}}>{busy?(ka?"ინახება…":"Saving…"):(ka?"დღის შენახვა":"Save today")}</button>{notice&&<p role="status">{notice}</p>}</div>}
 
-export default function InnerPage({kind}:{kind:PageKind}){
+export default function InnerPage({kind,doctorWorkspace=false}:{kind:PageKind;doctorWorkspace?:boolean}){
   const {lang,setLang}=useSiteLanguage();
   const features=useSiteFeatures();
   const featureStatus=useSiteFeaturesStatus();
@@ -249,7 +251,7 @@ export default function InnerPage({kind}:{kind:PageKind}){
   if(["dashboard","log","insights","report","reminders"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} periodStyle/><HealthWorkspace kind={kind} lang={lang}/></>;
   return <>
     <InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} showActions={kind!=="admin"}/>
-    {kind==="consultation"?<CareWorkspace lang={lang}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
+    {kind==="consultation"?<CareWorkspace lang={lang} doctorWorkspace={doctorWorkspace}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}
     {kind!=="admin"&&<footer className="inner-footer"><div className="inner-container"><div className="inner-footer-brand"><InnerLogo lang={lang} inverse/><p>{lang==="ka"?"შენი ჯანმრთელობის ცნობიერება იწყება აქ.":"Your health awareness starts here."}</p></div><SiteSocialLinks lang={lang}/></div></footer>}
   </>
 }

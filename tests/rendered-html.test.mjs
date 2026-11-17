@@ -115,6 +115,24 @@ test("Tuta brand points to the start on web and in the native header", async () 
   assert.match(mobile, /"Tuta home"\)[^]*?else nav\(initialTab\)/);
 });
 
+test("doctor onboarding has a return route and scopes both workspaces to their own patient work", async () => {
+  const [html, workspace, mobile, auth] = await Promise.all([
+    readFile(new URL("consultation/doctor.html", appRoot), "utf8"),
+    readFile(new URL("components/care-workspace.tsx", sourceRoot), "utf8"),
+    readFile(new URL("mobile/src/ServiceScreens.tsx", sourceRoot), "utf8"),
+    readFile(new URL("app/inner-page.tsx", sourceRoot), "utf8"),
+  ]);
+  const { authDestination } = sourceModule("lib/auth-destination.ts");
+  assert.match(html, /ექიმის კაბინეტი/);
+  assert.equal(authDestination("?next=%2Fconsultation%2Fdoctor"), "/consultation/doctor");
+  assert.match(auth, /doctorInvitation&&!onAuthenticated\)router\.replace\("\/consultation\/doctor"\)/);
+  assert.match(workspace, /data && \(!doctorWorkspace \|\| data\.isDoctor\)/);
+  assert.match(workspace, /t\.doctor_id === data\.userId/);
+  assert.match(workspace, /b\.consultation_slots\?\.doctor_id === data\.userId/);
+  assert.match(mobile, /t\.doctor_id === session\.user\.id/);
+  assert.match(mobile, /b\.consultation_slots\?\.doctor_id === session\.user\.id/);
+});
+
 test("privacy offers password changes with current-password verification and a safe sign-in return", async () => {
   const [privacy, terms, source] = await Promise.all([
     readFile(new URL("privacy.html", appRoot), "utf8"),

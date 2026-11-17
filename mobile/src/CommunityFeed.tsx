@@ -15,6 +15,7 @@ import { Icon } from "./Art";
 import { C, T, CTA, Chip, s } from "./ui";
 import {
   canEditCommunityPost,
+  communityAuthorInitials,
   communityPhotoUrl,
   memberDisplayName,
   normalizePost,
@@ -1051,15 +1052,12 @@ export function CommunityFeed({
           ? doctors[post.public_author_id]
           : undefined;
         const avatar = doctorPhotoUrl(cloudName, doctor, post.is_anonymous);
-        const name = post.is_anonymous
+        const authorName = (entry: Post | Comment) => entry.is_anonymous
           ? t("ანონიმური", "Anonymous")
-          : doctor
-            ? `${t("ექიმი", "Dr.")} ${doctor.first_name} ${doctor.last_name}`
-            : post.author_initials && post.author_initials !== "?"
-              ? post.author_initials
-              : post.display_name !== "Member"
-                ? Array.from(post.display_name.trim())[0] || "?"
-                : "?";
+          : entry.public_author_id && doctors[entry.public_author_id]
+            ? `${t("ექიმი", "Dr.")} ${doctors[entry.public_author_id].first_name} ${doctors[entry.public_author_id].last_name}`
+            : communityAuthorInitials(entry.author_initials, entry.display_name);
+        const name = authorName(post);
         return (
           <View key={post.id} style={s.card}>
             <View style={[s.row, { marginBottom: 12 }]}>
@@ -1084,7 +1082,7 @@ export function CommunityFeed({
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <T weight="bold">
+                <T weight="bold" accessibilityLabel={doctor && !post.is_anonymous ? `${name}, ${t("დადასტურებული ექიმი", "Verified doctor")}` : name}>
                   {name}
                   {doctor && !post.is_anonymous ? " ✓" : ""}
                 </T>
@@ -1191,13 +1189,7 @@ export function CommunityFeed({
                   const commentDoctor = comment.public_author_id
                     ? doctors[comment.public_author_id]
                     : undefined;
-                  const commentName = comment.is_anonymous
-                    ? t("ანონიმური", "Anonymous")
-                    : commentDoctor
-                      ? `${t("ექიმი", "Dr.")} ${commentDoctor.first_name} ${commentDoctor.last_name}`
-                      : comment.display_name === "Member"
-                        ? comment.author_initials || "?"
-                        : comment.display_name;
+                  const commentName = authorName(comment);
                   const commentAvatar = doctorPhotoUrl(
                     cloudName,
                     commentDoctor,
@@ -1221,11 +1213,7 @@ export function CommunityFeed({
                       {parent ? (
                         <T style={s.muted}>
                           {t("პასუხი კომენტარზე", "Reply to")}{" "}
-                          {parent.is_anonymous
-                            ? t("ანონიმური", "Anonymous")
-                            : parent.display_name === "Member"
-                              ? parent.author_initials || "?"
-                              : parent.display_name}
+                          {authorName(parent)}
                         </T>
                       ) : null}
                       <View
@@ -1261,7 +1249,7 @@ export function CommunityFeed({
                             </T>
                           )}
                         </View>
-                        <T weight="bold">
+                        <T weight="bold" style={{ flexShrink: 1 }} accessibilityLabel={commentDoctor && !comment.is_anonymous ? `${commentName}, ${t("დადასტურებული ექიმი", "Verified doctor")}` : commentName}>
                           {commentName}
                           {commentDoctor && !comment.is_anonymous ? " ✓" : ""}
                         </T>

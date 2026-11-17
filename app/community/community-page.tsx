@@ -4,7 +4,7 @@ import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { loadCommentPage, mergeComments } from "@/mobile/src/comment-pages.mjs";
 import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
-import { canEditCommunityPost } from "@/mobile/src/community.mjs";
+import { canEditCommunityPost, communityAuthorInitials } from "@/mobile/src/community.mjs";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import Image from "next/image";
@@ -620,9 +620,7 @@ export default function CommunityPage() {
       ? t("ანონიმური", "Anonymous")
       : id && doctors[id]
         ? `${t("ექიმი", "Dr.")} ${doctors[id].first_name} ${doctors[id].last_name}`
-        : display === "Member"
-          ? initials
-          : display;
+        : communityAuthorInitials(initials, display);
 
   if (!features.community)
     return (
@@ -994,6 +992,7 @@ export default function CommunityPage() {
                           post.public_author_id &&
                           doctors[post.public_author_id] ? (
                             <span
+                              role="img"
                               aria-label={t(
                                 "დადასტურებული ექიმი",
                                 "Verified doctor",
@@ -1207,6 +1206,7 @@ export default function CommunityPage() {
                               comment.public_author_id &&
                               doctors[comment.public_author_id] ? (
                                 <span
+                                  role="img"
                                   aria-label={t(
                                     "დადასტურებული ექიმი",
                                     "Verified doctor",

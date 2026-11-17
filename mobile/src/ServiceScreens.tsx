@@ -370,7 +370,7 @@ export function CareScreen({
   const ka = lang === "ka",
     resource = useResource<Care>("/api/care", session.user.id, 30000),
     feature = useFeatureEnabled("doctorConsultation");
-  const [section, setSection] = useState("doctors"),
+  const [selectedSection, setSection] = useState(""),
     [doctor, setDoctor] = useState(""),
     [thread, setThread] = useState(""),
     [text, setText] = useState(""),
@@ -432,23 +432,29 @@ export function CareScreen({
   }
   const allowed =
     feature.status === "enabled" && Boolean(resource.data?.premium);
+  const isDoctor = Boolean(resource.data?.isDoctor);
+  const section = isDoctor && (!selectedSection || selectedSection === "doctors")
+    ? "messages" : selectedSection || "doctors";
+  const threads = resource.data?.threads.filter(t => !isDoctor || t.doctor_id === session.user.id) ?? [];
+  const bookings = resource.data?.bookings.filter(b => !isDoctor || b.consultation_slots?.doctor_id === session.user.id) ?? [];
   return (
     <View style={s.content}>
       <T weight="display" style={s.title}>
-        {ka ? "ექიმები და კონსულტაცია" : "Doctors & care"}
+        {isDoctor ? (ka ? "ექიმის კაბინეტი" : "Doctor workspace") : (ka ? "ექიმები და კონსულტაცია" : "Doctors & care")}
       </T>
       <T style={s.muted}>
-        {ka
+        {isDoctor ? (ka ? "უპასუხე პაციენტებს და ნახე შენი ვიზიტები." : "Reply to patients and view your visits.") : ka
           ? "ეს არ არის გადაუდებელი დახმარების სერვისი. ექიმი შენს დღიურს ავტომატურად ვერ ხედავს."
           : "Not an emergency service. Doctors cannot automatically view your journal."}
       </T>
       <ResourceStatus {...resource} lang={lang} />
+      {isDoctor && <CTA light title={ka ? "საზოგადოებაში გადასვლა" : "Go to community"} onPress={() => onNavigate("home")} />}
       <View style={[s.wrap, { marginBottom: 18 }]}>
         {[
           ["doctors", "ექიმები", "Doctors"],
           ["messages", "ჩატი", "Chat"],
           ["bookings", "ჩემი ვიზიტები", "My visits"],
-        ].map(([id, a, b]) => (
+        ].filter(([id]) => !isDoctor || id !== "doctors").map(([id, a, b]) => (
           <Chip
             key={id}
             label={ka ? a : b}
@@ -583,7 +589,7 @@ export function CareScreen({
       )}
       {section === "bookings" && (
         <>
-          {resource.data?.bookings.map((b) => (
+          {bookings.map((b) => (
             <View key={b.id} style={s.card}>
               <T weight="bold">{name(b.consultation_slots.doctor_id)}</T>
               <T>{date(b.consultation_slots.starts_at)}</T>
@@ -622,7 +628,7 @@ export function CareScreen({
               )}
             </View>
           ))}
-          {resource.data && !resource.data.bookings.length && (
+          {resource.data && !bookings.length && (
             <T>{ka ? "ჯავშნები ჯერ არ გაქვს." : "No appointments yet."}</T>
           )}
         </>
@@ -630,7 +636,7 @@ export function CareScreen({
       {section === "messages" && (
         <>
           <View style={s.wrap}>
-            {resource.data?.threads.map((t) => (
+            {threads.map((t) => (
               <Chip
                 key={t.id}
                 selected={thread === t.id}
@@ -646,14 +652,14 @@ export function CareScreen({
               />
             ))}
           </View>
-          {!resource.data?.threads.length && (
+          {!threads.length && (
             <T>
-              {ka
+              {isDoctor ? (ka ? "პაციენტების მიმოწერა ჯერ არ გაქვს." : "You have no patient conversations yet.") : ka
                 ? "მიმოწერა ჯერ არ გაქვს. აირჩიე ექიმი."
                 : "No conversations yet. Choose a doctor."}
             </T>
           )}
-          {Boolean(thread) && (
+          {threads.some(t => t.id === thread) && (
             <>
               <ResourceStatus {...messages} lang={lang} />
               <T style={s.muted}>

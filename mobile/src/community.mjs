@@ -45,6 +45,13 @@ export function memberInitials(metadata = {}) {
   return name ? initial(name[0]) : "?";
 }
 
+export function communityAuthorInitials(initials, legacyName) {
+  const value = typeof initials === "string" ? initials.trim() : "";
+  if (/^\p{L}{1,2}$/u.test(value)) return value;
+  if (typeof legacyName !== "string" || /^(member|anonymous)$/i.test(legacyName.trim())) return "?";
+  return legacyName.trim().match(/^\p{L}/u)?.[0] ?? "?";
+}
+
 export function communityPhotoUrl(cloudName, publicId) {
   if (!/^[a-zA-Z0-9_-]+$/.test(cloudName || '')) return null;
   if (!/^tuta-community\/(?:[0-9a-f-]{36}|anon)\/[a-zA-Z0-9_-]+$/.test(publicId || '')) return null;

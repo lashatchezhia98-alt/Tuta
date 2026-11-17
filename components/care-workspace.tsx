@@ -59,7 +59,7 @@ async function careRequest(path = "", body?: unknown) {
   if (!r.ok) throw Error(data.error);
   return data;
 }
-export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
+export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang: "ka" | "en"; doctorWorkspace?: boolean }) {
   const ka = lang === "ka";
   const enabled = useSiteFeatures().doctorConsultation;
   const [data, setData] = useState<State | null>(null),
@@ -180,10 +180,13 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(value));
+  const professionalView = doctorWorkspace || Boolean(data?.isDoctor);
+  const bookings = data?.bookings.filter(b => !professionalView || b.consultation_slots?.doctor_id === data.userId) ?? [];
+  const threads = data?.threads.filter(t => !professionalView || t.doctor_id === data.userId) ?? [];
   return (
     <div className="inner-container">
       <section className="workspace-card">
-        <h1><SiteCopyText id="care.title" lang={lang}/></h1>
+        <h1>{professionalView ? (ka ? "ექიმის კაბინეტი" : "Doctor workspace") : <SiteCopyText id="care.title" lang={lang}/>}</h1>
         {!enabled && (
           <p role="status">
             {ka
@@ -192,8 +195,9 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
           </p>
         )}
         <p>
-          <SiteCopyText id="care.intro" lang={lang}/>
+          {professionalView ? (ka ? "ნახე შენი ვიზიტები და უპასუხე პაციენტებს." : "View your visits and reply to patients.") : <SiteCopyText id="care.intro" lang={lang}/>}
         </p>
+        {data?.isDoctor && <p><Link href="/community">{ka ? "საზოგადოებაში გადასვლა" : "Go to community"}</Link></p>}
         <p>
           <SiteCopyText id="care.note" lang={lang}/>
         </p>
@@ -205,11 +209,14 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
           {ka ? "განახლება" : "Refresh"}
         </button>
         {!data && !loading && (
-          <Link href="/login">
-            {ka ? "შესვლა / რეგისტრაცია" : "Sign in / register"}
+          <Link href={doctorWorkspace ? "/login?next=%2Fconsultation%2Fdoctor" : "/login"}>
+            {doctorWorkspace ? (ka ? "ექიმის ანგარიშით შესვლა" : "Sign in to your doctor account") : (ka ? "შესვლა / რეგისტრაცია" : "Sign in / register")}
           </Link>
         )}
-        {data && !data.premium && !data.isDoctor && (
+        {doctorWorkspace && data && !data.isDoctor && <p role="status">
+          {ka ? "ექიმის პროფილი ამ ანგარიშზე ჯერ არ არის აქტიური. გადაამოწმე ელფოსტა და დაუკავშირდი თუთას ადმინისტრაციას." : "An active doctor profile is not available for this account. Check your email address and contact Tuta administration."}
+        </p>}
+        {data && !professionalView && !data.premium && (
           <p>
             🔒{" "}
             {ka
@@ -219,9 +226,9 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
           </p>
         )}
       </section>
-      {data && (
+      {data && (!doctorWorkspace || data.isDoctor) && (
         <>
-          <div className="workspace-grid">
+          {!professionalView && <><div className="workspace-grid">
             {data.doctors
               .filter((d) => d.user_id !== data.userId)
               .map((d) => (
@@ -289,13 +296,13 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                 ? "ხელმისაწვდომი ექიმი ჯერ არ არის დამატებული."
                 : "No doctors are available yet."}
             </p>
-          )}
+          )}</>}
           <section className="workspace-card">
             <h2><SiteCopyText id="care.bookings" lang={lang}/></h2>
-            {!data.bookings.length && (
+            {!bookings.length && (
               <p><SiteCopyText id="care.noBookings" lang={lang}/></p>
             )}
-            {data.bookings.map((b) => (
+            {bookings.map((b) => (
               <article key={b.id}>
                 <p>
                   {date(b.consultation_slots.starts_at)} ·{" "}
@@ -342,7 +349,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                 }}
               >
                 <option value="">{ka ? "აირჩიე" : "Choose"}</option>
-                {data.threads.map((t) => (
+                {threads.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.doctor_id === data.userId
                       ? t.patient_label
@@ -351,7 +358,7 @@ export default function CareWorkspace({ lang }: { lang: "ka" | "en" }) {
                 ))}
               </select>
             </label>
-            {thread && (
+            {thread && threads.some(t => t.id === thread) && (
               <>
                 <p>
                   <SiteCopyText id="care.retention" lang={lang}/>

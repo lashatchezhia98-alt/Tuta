@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {canEditCommunityPost, communityPhotoUrl, memberDisplayName, memberInitials, normalizePost, POST_EDIT_WINDOW_MS, POST_TOPICS, postWordCount, validComment, validPost, validTopic} from '../src/community.mjs';
+import {canEditCommunityPost, communityAuthorInitials, communityPhotoUrl, memberDisplayName, memberInitials, normalizePost, POST_EDIT_WINDOW_MS, POST_TOPICS, postWordCount, validComment, validPost, validTopic} from '../src/community.mjs';
+
+test('ordinary community authors show initials instead of a stored full name or email', () => {
+  assert.equal(communityAuthorInitials('ნგ', 'ნინო გიორგაძე'), 'ნგ');
+  assert.equal(communityAuthorInitials('?', 'ნინო გიორგაძე'), 'ნ');
+  assert.equal(communityAuthorInitials('untrusted full name', 'Member'), '?');
+  assert.equal(communityAuthorInitials(undefined, 'member@example.test'), 'm');
+  assert.equal(communityAuthorInitials(undefined, 'Anonymous'), '?');
+});
 
 test('pull to refresh is scoped to the member feed and replaces pagination', () => {
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
