@@ -15,6 +15,7 @@ import { Icon } from "./Art";
 import { C, T, CTA, Chip, s } from "./ui";
 import {
   canEditCommunityPost,
+  communityPhotoUrl,
   memberDisplayName,
   normalizePost,
   POST_TOPICS,
@@ -62,6 +63,7 @@ type Signature = {
   publicId: string;
   timestamp: number;
   signature: string;
+  type?: "authenticated";
 };
 const PAGE = 20;
 const apiUrl = process.env.EXPO_PUBLIC_TUTA_API_URL?.trim().replace(/\/$/, "");
@@ -565,7 +567,7 @@ export function CommunityFeed({
         upload.append("timestamp", String(details.timestamp));
         upload.append("public_id", details.publicId);
         upload.append("signature", details.signature);
-        upload.append("type", "authenticated");
+        if (details.type === "authenticated") upload.append("type", details.type);
         const uploaded = await fetch(
           `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`,
           { method: "POST", body: upload },
@@ -985,9 +987,17 @@ export function CommunityFeed({
         </View>
       ) : null}
       {posts.map((post) => {
-        const uri = post.image_public_id && apiUrl && session
-          ? `${apiUrl}/api/community/photo?post=${encodeURIComponent(post.id)}`
-          : null;
+        const privatePhoto = post.image_public_id?.split("/").at(-1)?.startsWith("private_");
+        const source = privatePhoto
+          ? apiUrl && session ? {
+              uri: `${apiUrl}/api/community/photo?post=${encodeURIComponent(post.id)}`,
+              headers: { Authorization: `Bearer ${session.access_token}` },
+              cache: "reload" as const,
+            } : null
+          : (() => {
+              const uri = communityPhotoUrl(cloudName, post.image_public_id);
+              return uri ? { uri } : null;
+            })();
         const doctor = post.public_author_id
           ? doctors[post.public_author_id]
           : undefined;
@@ -1057,9 +1067,9 @@ export function CommunityFeed({
                 <T style={s.muted}>{t("ავტორის დაბლოკვა", "Block author")}</T>
               </Pressable>
             ) : null}
-            {uri ? (
+            {source ? (
               <Image
-                source={{ uri, headers: { Authorization: `Bearer ${session?.access_token}` }, cache: "reload" }}
+                source={source}
                 resizeMode="cover"
                 style={{
                   width: "100%",
