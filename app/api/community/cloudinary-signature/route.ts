@@ -34,12 +34,14 @@ export async function POST(request: Request) {
   const { data: { user }, error } = await auth.auth.getUser(token);
   if (error || !user || user.is_anonymous) return reply({ error: "Sign in is required." }, 401);
 
-  const anonymous = (await request.json().catch(() => ({})))?.anonymous === true;
-  const publicId = `tuta-community/${anonymous ? "anon" : user.id}/private_${randomUUID()}`;
-  const type = "authenticated";
+  const options = await request.json().catch(() => null);
+  const anonymous = options?.anonymous === true;
+  // Already-installed clients may not send Cloudinary's delivery type.
+  const protectedUpload = options?.delivery === "authenticated";
+  const publicId = `tuta-community/${anonymous ? "anon" : user.id}/${protectedUpload ? "private_" : ""}${randomUUID()}`;
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = createHash("sha1")
-    .update(`public_id=${publicId}&timestamp=${timestamp}&type=${type}${apiSecret}`)
+    .update(`public_id=${publicId}&timestamp=${timestamp}${protectedUpload ? "&type=authenticated" : ""}${apiSecret}`)
     .digest("hex");
-  return reply({ cloudName, apiKey, publicId, timestamp, signature, type });
+  return reply({ cloudName, apiKey, publicId, timestamp, signature, ...(protectedUpload ? { type: "authenticated" } : {}) });
 }

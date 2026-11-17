@@ -540,7 +540,7 @@ export default function CommunityPage() {
               Authorization: `Bearer ${session.access_token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ anonymous: anonymousPost }),
+            body: JSON.stringify({ anonymous: anonymousPost, delivery: "authenticated" }),
           });
           if (!signed.ok) throw new Error("signature");
           const details = (await signed.json()) as {
@@ -552,7 +552,7 @@ export default function CommunityPage() {
             type: string;
           };
           if (
-            details.cloudName !== cloudName ||
+            details.cloudName !== cloudName || details.type !== "authenticated" ||
             !details.publicId.startsWith(
               `tuta-community/${anonymousPost ? "anon" : session.user.id}/`,
             )

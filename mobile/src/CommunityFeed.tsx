@@ -568,7 +568,7 @@ export function CommunityFeed({
               Authorization: `Bearer ${session.access_token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ anonymous: anonymousPost }),
+            body: JSON.stringify({ anonymous: anonymousPost, delivery: "authenticated" }),
           },
         );
         if (!signed.ok) throw new Error("signature");
