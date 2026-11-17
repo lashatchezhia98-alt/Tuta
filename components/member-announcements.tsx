@@ -68,7 +68,7 @@ export default function MemberAnnouncements() {
 
   return <main className="inner-container settings-workspace ops-stack">
     <Link href="/app/settings">← {ka ? "ჩემი ანგარიში" : "My account"}</Link>
-    <h1>{ka ? "შეტყობინებები" : "Announcements"}</h1>
+    <h1>{ka ? "თუთას განცხადებები" : "Tuta announcements"}</h1>
     {state.status === "loading" && <p role="status">{ka ? "იტვირთება…" : "Loading…"}</p>}
     {state.status === "signed-out" && <Link href="/login">{ka ? "შეტყობინებების სანახავად შედი ანგარიშში" : "Sign in to view announcements"}</Link>}
     {state.status === "error" && <p role="alert">{ka ? "შეტყობინებები ვერ ჩაიტვირთა." : "Could not load announcements."} <button type="button" onClick={() => setRevision(value => value + 1)}>{ka ? "ხელახლა ცდა" : "Retry"}</button></p>}

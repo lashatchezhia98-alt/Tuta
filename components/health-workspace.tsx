@@ -1,6 +1,6 @@
 "use client";
 import { SiteCopyText } from "@/components/site-copy-provider";
-import { useState, useRef, Suspense, Fragment } from "react";
+import { useState, useRef, useEffect, Suspense, Fragment } from "react";
 import { useMembership } from "@/lib/use-membership";
 import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 import { useSearchParams } from "next/navigation";
@@ -9,9 +9,10 @@ import Link from "next/link";
 import { useHealthState, type HealthData } from "@/app/use-health-state";
 import {
   addDays,
-  dateKey,
-  calendarState,
-  forecast,
+  periodCalendarModel,
+  periodDayMarkers,
+  periodDayLabel,
+  predictionDateKey,
   symptomPatterns,
   distance,
   overlapsPeriod,
@@ -78,7 +79,7 @@ export default function HealthWorkspace({
   const ka = lang === "ka";
   const features = useSiteFeatures();
   return (
-    <section className="workspace">
+    <section className={kind === "dashboard" ? "workspace period-dashboard" : "workspace"}>
       <nav
         className="workspace-nav"
         aria-label={ka ? "პირადი სივრცე" : "My space"}
@@ -86,7 +87,7 @@ export default function HealthWorkspace({
         {workspaceNavigation
           .filter(([href]) => {
             const id = featureForRoute(href);
-            return !id || features[id];
+            return (kind !== "dashboard" || ["/app/dashboard", "/app/log", "/app/insights", "/app/report"].includes(href)) && (!id || features[id]);
           })
           .map(([href, id]) => (
             <Link
@@ -94,21 +95,26 @@ export default function HealthWorkspace({
               href={href}
               aria-current={href.endsWith("/" + kind) ? "page" : undefined}
             >
-              <SiteCopyText id={id} lang={lang}/>
+              {kind === "dashboard" && href === "/app/dashboard" ? (ka ? "შეჯამება" : "Summary") : <SiteCopyText id={id} lang={lang}/>}
             </Link>
           ))}
+        {kind === "dashboard" && features.period && <Link href="#period-calendar">{ka ? "კალენდარი" : "Calendar"}</Link>}
+        {kind === "dashboard" && features.notifications && <Link href="/app/reminders">{ka ? "შეხსენებები" : "Reminders"}</Link>}
       </nav>
       {["dashboard", "log", "insights"].includes(kind) && <nav className="mobile-period-nav" aria-label={ka ? "პერიოდის სექციები" : "Period sections"}>
         {workspaceNavigation.slice(1, 4).filter(([href]) => {
           const id = featureForRoute(href);
           return id && features[id];
-        }).map(([href, id]) => <Link key={href} href={href} aria-current={href.endsWith("/" + kind) ? "page" : undefined}><SiteCopyText id={id} lang={lang}/></Link>)}
+        }).map(([href, id]) => <Fragment key={href}>
+          <Link href={href} aria-current={href.endsWith("/" + kind) ? "page" : undefined}>{href === "/app/dashboard" ? (ka ? "შეჯამება" : "Summary") : <SiteCopyText id={id} lang={lang}/>}</Link>
+          {href === "/app/dashboard" && <Link href="/app/dashboard#period-calendar">{ka ? "კალენდარი" : "Calendar"}</Link>}
+        </Fragment>)}
       </nav>}
       <main className="workspace-main">
-        <p className="inner-kicker">
+        <p className={kind === "dashboard" ? "inner-kicker period-desktop-heading" : "inner-kicker"}>
           <SiteCopyText id="workspace.kicker" lang={lang}/>
         </p>
-        <h1><SiteCopyText id={workspaceTitles[kind] || "workspace.title"} lang={lang}/></h1>
+        <h1 className={kind === "dashboard" ? "period-desktop-heading" : undefined}>{kind === "reminders" ? (ka ? "კალენდრის შეხსენებები" : "Calendar reminders") : <SiteCopyText id={workspaceTitles[kind] || "workspace.title"} lang={lang}/>}</h1>
         {!health.loaded ? (
           <p role="status">{ka ? "იტვირთება…" : "Loading…"}</p>
         ) : !health.session ? (
@@ -150,6 +156,8 @@ export default function HealthWorkspace({
               </Suspense>
             ) : kind === "report" ? (
               <PremiumReport data={health.data} lang={lang} />
+            ) : kind === "reminders" ? (
+              <CalendarReminders data={health.data} lang={lang}/>
             ) : (
               <HealthInsights data={health.data} lang={lang} birthDate={health.session.user.user_metadata?.date_of_birth} />
             )}
@@ -160,9 +168,87 @@ export default function HealthWorkspace({
   );
 }
 
+function CalendarReminders({ data, lang }: Pick<Props, "data" | "lang">) {
+  const ka = lang === "ka";
+  const { starts } = periodCalendarModel(data);
+  return <section className="workspace-card">
+    <p>{ka ? "გადაიტანე სავარაუდო დღეები პირად კალენდარში. მოვლენის სათაური ჯანმრთელობის დეტალებს არ შეიცავს." : "Export estimated dates to your personal calendar. Event titles contain no health details."}</p>
+    <button type="button" disabled={!starts.length} onClick={() => download(reminderCalendar(starts), "tuta-reminders.ics", "text/calendar")}>
+      <SiteCopyText id="tracker.download" lang={lang}/>
+    </button>
+    {!starts.length && <p>{ka ? "ჯერ საჭიროა მიმდინარე პერიოდის ისტორია. ორსულობისა და დაგვიანების დროს პროგნოზები შეჩერებულია." : "Current period history is needed. Estimates are paused during pregnancy or an overdue cycle."}</p>}
+  </section>;
+}
+
+export function ProfileHealthTools({ lang }: { lang: Lang }) {
+  const { session, data, loaded, error, save } = useHealthState();
+  const features = useSiteFeatures();
+  if (!loaded || !session || session.user.is_anonymous) return null;
+  return <ProfileHealthActions key={session.user.id} data={data} save={save} error={error} lang={lang} period={features.period} reminders={features.notifications} accountDeletion={features["account-deletion"]}/>;
+}
+
+function ProfileHealthActions({ data, save, error, lang, period, reminders, accountDeletion }: Props & {
+  error: string; period: boolean; reminders: boolean; accountDeletion: boolean;
+}) {
+  const ka = lang === "ka";
+  const [name, setName] = useState<string | null>(null);
+  const [length, setLength] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [notice, setNotice] = useState("");
+  async function persist(next: HealthData, cleared = false) {
+    setPending(true);
+    setNotice("");
+    try {
+      await save(next);
+      setName(null);
+      setLength(null);
+      setNotice(cleared ? (ka ? "ჩანაწერები წაიშალა." : "Entries deleted.") : (ka ? "პარამეტრები შენახულია." : "Settings saved."));
+    } catch {
+      setNotice(ka ? "ცვლილება ვერ შეინახა. სცადე ხელახლა." : "Could not save the change. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+  return <section className="workspace-card">
+    <h2>{ka ? "მონაცემები და უსაფრთხოება" : "Data & safety"}</h2>
+    <div className="period-shortcuts">
+      <Link href="/app/activity">{ka ? "შეტყობინებები" : "Notifications"}</Link>
+      {reminders && <Link href="/app/reminders">{ka ? "კალენდრის შეხსენებები" : "Calendar reminders"}</Link>}
+      {accountDeletion && <Link href="/app/account-deletion">{ka ? "ანგარიშის წაშლის მოთხოვნა" : "Request account deletion"}</Link>}
+    </div>
+    {period && <details className="workspace-card">
+      <summary>{ka ? "ციკლის პარამეტრები" : "Cycle settings"}</summary>
+      <form className="workspace-form" onSubmit={event => {
+        event.preventDefault();
+        const cycleLength = Number(length ?? data.cycleLength);
+        if (pending || error || !Number.isInteger(cycleLength) || cycleLength < 21 || cycleLength > 45) return;
+        void persist({ ...data, name: (name ?? data.name).trim(), cycleLength });
+      }}>
+        <label>{ka ? "სახელი (სურვილისამებრ)" : "Name (optional)"}<input maxLength={80} value={name ?? data.name} onChange={event => setName(event.target.value)}/></label>
+        <label>{ka ? "ციკლის ხანგრძლივობა (დღე)" : "Cycle length (days)"}<input type="number" required min={21} max={45} value={length ?? data.cycleLength} onChange={event => setLength(event.target.value)}/></label>
+        <button type="submit" disabled={pending || !!error}>{ka ? "შენახვა" : "Save"}</button>
+        <Link href="/app/dashboard#period-calendar">{ka ? "პერიოდის თარიღების რედაქტირება" : "Edit period dates"}</Link>
+      </form>
+    </details>}
+    <div className="workspace-row">
+    <button type="button" disabled={pending || !!error} onClick={() => {
+      if (window.confirm(ka ? "ფაილი პირად ჯანმრთელობის მონაცემებს შეიცავს. გინდა ჩამოტვირთვა?" : "This file contains private health data. Download it?"))
+        download(JSON.stringify(data, null, 2), "tuta-health-export.json", "application/json");
+    }}>{ka ? "ჩემი მონაცემების ექსპორტი" : "Export my data"}</button>
+    <button type="button" disabled={pending || !!error} onClick={() => {
+      if (!window.confirm(ka ? "პერიოდის, დღიურისა და ორსულობის ჩანაწერები ყველა მოწყობილობიდან წაიშლება. ანგარიშსა და შეკვეთებს ეს არ ეხება. ქმედება შეუქცევადია. გავაგრძელოთ?" : "Permanently delete period, journal and pregnancy entries across all devices? Your account and orders will remain.")) return;
+      void persist({ version: 1, lang: data.lang, name: "", cycleLength: 28, periods: [], logs: [] }, true);
+    }}>{ka ? "ჯანმრთელობის ჩანაწერების წაშლა" : "Delete health entries"}</button>
+    </div>
+    <p role="status">{error ? (ka ? "ჩანაწერები ვერ ჩაიტვირთა." : "Could not load your records.") : notice}</p>
+  </section>;
+}
+
 function PeriodCalendar({ data, save, lang, birthDate }: Props) {
   const ka = lang === "ka",
-    today = dateKey();
+    calendar = periodCalendarModel(data),
+    today = calendar.today,
+    markers = periodDayMarkers(ka);
   const [month, setMonth] = useState(today.slice(0, 7)),
     [selected, setSelected] = useState(today),
     [duration, setDuration] = useState(1),
@@ -171,6 +257,10 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
     [message, setMessage] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[] | null>(null);
   const [replacing, setReplacing] = useState<string | undefined>();
+  const calendarSection = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (window.location.hash === "#period-calendar") calendarSection.current?.focus();
+  }, []);
   const first = month + "-01",
     start = addDays(
       first,
@@ -178,6 +268,16 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
     );
   const existing = data.periods.find((p) => p.start === selected);
   const recorded = data.periods.find(p => selected >= p.start && selected < addDays(p.start, p.duration));
+  function viewCalendar(date: string, marking = false) {
+    const period = marking ? data.periods.find(p => date >= p.start && date < addDays(p.start, p.duration)) : undefined;
+    setSelected(date);
+    setDuration(data.periods.find(p => p.start === date)?.duration ?? 1);
+    setMonth(date.slice(0, 7));
+    setReplacing(period?.start);
+    setSelectedDays(marking ? (period ? Array.from({ length: period.duration }, (_, i) => addDays(period.start, i)).filter(day => day <= today) : []) : null);
+    setMessage("");
+    calendarSection.current?.focus();
+  }
   async function saveDays() {
     if (busy || data.pregnancy?.active || !selectedDays) return;
     const period = periodFromSelectedDays(selectedDays, today);
@@ -261,16 +361,28 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
   }
   return (
     <>
+      <div className="period-mobile-heading">
+        <p>{data.name ? (ka ? `გამარჯობა, ${data.name}` : `Hello, ${data.name}`) : (ka ? "შენი სივრცე" : "Your space")}</p>
+        <h1>{ka ? "დღეს შენს რიტმში" : "Today in your rhythm"}</h1>
+      </div>
       <CycleOverview
         periods={data.periods}
         cycleLength={data.cycleLength}
         pregnancyActive={data.pregnancy?.active}
+        calendar={calendar}
         lang={lang}
+        onMark={() => viewCalendar(today, true)}
+        onCalendar={viewCalendar}
       />
+      <div className="period-shortcuts">
+        <a href="#period-calendar">{ka ? "კალენდარი" : "Calendar"}</a>
+        <Link href="/app/log">{ka ? "დღიური" : "Journal"}</Link>
+        <Link href="/app/log?section=activity#journal-activity">{ka ? "სქესობრივი აქტივობა" : "Sexual activity"}</Link>
+      </div>
       <div className="desktop-cycle-reference"><CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} /></div>
       {data.pregnancy?.active&&<button type="button" disabled={busy} onClick={()=>{if(confirm(ka?'გამორთო ორსულობის რეჟიმი? ისტორია შენარჩუნდება.':'Turn off pregnancy mode? History will be preserved.'))void save({...data,pregnancy:{...data.pregnancy!,active:false,updatedAt:new Date().toISOString()}}).catch(()=>setMessage(ka?'შენახვა ვერ მოხერხდა.':'Could not save.'))}}>{ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'}</button>}
       <div className="workspace-grid">
-        <section className="workspace-card">
+        <section ref={calendarSection} id="period-calendar" className="workspace-card" tabIndex={-1} aria-label={ka ? "კალენდარი" : "Calendar"}>
           <div className="mobile-period-controls">
             {selectedDays === null ? <button type="button" disabled={busy || data.pregnancy?.active} onClick={() => {
               setReplacing(recorded?.start);
@@ -309,18 +421,12 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
             ))}
             {Array.from({ length: 42 }, (_, i) => {
               const date = addDays(start, i),
-                state = calendarState(
-                  data.periods,
-                  data.cycleLength,
-                  date,
-                  today,
-                  data.pregnancy?.active,
-                );
+                day = calendar.day(date);
               return (
                 <button
                   key={date}
-                  className={`day ${state} ${selectedDays === null && date === selected ? "selected" : ""} ${selectedDays?.includes(date) ? "marked-bleeding-day" : ""}`}
-                  aria-label={`${date} ${state}`}
+                  className={`day ${day.state} ${selectedDays === null && date === selected ? "selected" : ""} ${selectedDays?.includes(date) ? "marked-bleeding-day" : ""}`}
+                  aria-label={periodDayLabel(day, date, ka)}
                   aria-pressed={selectedDays === null ? selected === date : selectedDays.includes(date)}
                   disabled={selectedDays !== null && (date > today || busy)}
                   onClick={() => {
@@ -336,13 +442,17 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                   style={{ opacity: date.startsWith(month) ? 1 : 0.45 }}
                 >
                   {Number(date.slice(-2))}
+                  <span className="period-day-markers" aria-hidden="true">{markers.filter(marker => day[marker.key]).map(marker => marker.symbol).join("")}</span>
                 </button>
               );
             })}
           </div>
-          <p>
-            <SiteCopyText id="tracker.legend" lang={lang}/>
-          </p>
+          <details className="period-legend">
+            <summary>{ka ? "კალენდრის ნიშნები" : "Calendar key"}</summary>
+            <p><SiteCopyText id="tracker.legend" lang={lang}/></p>
+            <ul>{markers.map(({key, symbol, label}) => <li key={key}>{symbol} {label}</li>)}</ul>
+          </details>
+          <p className="period-selected-status" aria-live="polite">{periodDayLabel(calendar.day(selected), selected, ka)}</p>
           <div className="mobile-period-controls">
             {selectedDays !== null && <div className="workspace-row">
               <button type="button" disabled={busy || !selectedDays.length} onClick={() => void saveDays()}><SiteCopyText id="tracker.save" lang={lang}/></button>
@@ -436,12 +546,12 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
         </p>
         <button
           disabled={
-            !forecast(data.periods, data.cycleLength, today, data.pregnancy?.active).starts.length
+            !calendar.starts.length
           }
           onClick={() =>
             download(
               reminderCalendar(
-                forecast(data.periods, data.cycleLength, today, data.pregnancy?.active).starts,
+                calendar.starts,
               ),
               "tuta-reminders.ics",
               "text/calendar",
@@ -490,7 +600,7 @@ function Journal({ data, save, lang }: Props) {
   const params = useSearchParams();
   const requested = params.get("date");
   const ka = lang === "ka",
-    today = dateKey();
+    today = predictionDateKey();
   const initial =
     requested &&
     /^\d{4}-\d{2}-\d{2}$/.test(requested) &&
@@ -499,7 +609,7 @@ function Journal({ data, save, lang }: Props) {
       ? requested
       : today;
   const [date, setDate] = useState(initial),
-    [intimacyOpen, setIntimacyOpen] = useState(false),
+    [intimacyOpen, setIntimacyOpen] = useState(() => params.get("section") === "activity"),
     [query, setQuery] = useState(""),
     [custom, setCustom] = useState(""),
     [busy, setBusy] = useState(false),
@@ -643,7 +753,7 @@ function Journal({ data, save, lang }: Props) {
             ))}
           </div>
         </fieldset>
-        <section className="journal-intimacy">
+        <section id="journal-activity" className="journal-intimacy">
           <button type="button" className="journal-intimacy-trigger" aria-expanded={intimacyOpen}
             onClick={() => setIntimacyOpen(open => !open)}>
             <span className="journal-intimacy-icon"><LockKeyhole size={22} aria-hidden="true"/></span>

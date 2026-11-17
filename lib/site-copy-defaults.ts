@@ -130,7 +130,7 @@ export const policyCopy = {
   },
 } as const;
 
-export type PageKind = "about"|"blog"|"market"|"premium"|"register"|"login"|"forgot-password"|"reset-password"|"dashboard"|"log"|"insights"|"report"|"settings"|"ovulation"|"period"|"admin"|"consultation";
+export type PageKind = "about"|"blog"|"market"|"premium"|"register"|"login"|"forgot-password"|"reset-password"|"dashboard"|"log"|"insights"|"report"|"reminders"|"settings"|"ovulation"|"period"|"admin"|"consultation";
 
 export const pageInfo: Record<PageKind, {ka:[string,string],en:[string,string]}> = {
   about:{ka:["თუთას შესახებ","თუთა შეიქმნა იმისთვის, რომ ჯანმრთელობაზე ზრუნვა იყოს მარტივი, პირადი და გასაგები."],en:["About TUTA","TUTA was created to make health awareness simple, private and easy to understand."]},
@@ -146,6 +146,7 @@ export const pageInfo: Record<PageKind, {ka:[string,string],en:[string,string]}>
   insights:{ka:["ციკლის ანალიზი","შეადარე ციკლების ხანგრძლივობა და ნახე განმეორებადი სიმპტომები."],en:["Cycle insights","Compare cycle lengths and explore recurring symptoms."]},
   report:{ka:["ანგარიში ექიმისთვის","მოამზადე ბოლო 6 თვის ჩანაწერების შეჯამება. დაბეჭდე ან შეინახე PDF-ად ექიმთან გასაზიარებლად."],en:["Report for your doctor","Summarize your entries from the last 6 months. Print or save as PDF to share with your doctor."]},
   settings:{ka:["პარამეტრები","ნახე ანგარიში და მონაცემების სინქრონიზაციის სტატუსი."],en:["Settings","View your account and data synchronization status."]},
+  reminders:{ka:["კალენდრის შეხსენებები","გადაიტანე სავარაუდო დღეები შენს პირად კალენდარში."],en:["Calendar reminders","Export estimated dates to your personal calendar."]},
   ovulation:{ka:["ოვულაციის კალკულატორი","გამოთვალე სავარაუდო ოვულაციის დღე და ნაყოფიერი ფანჯარა."],en:["Ovulation calculator","Estimate your ovulation day and fertile window."]},
   period:{ka:["პერიოდის კალკულატორი","გამოთვალე შემდეგი პერიოდის სავარაუდო თარიღი."],en:["Period calculator","Estimate the start date of your next period."]},
   admin:{ka:["ადმინისტრაცია","მართე საიტის ფუნქციების ხილვადობა და კონტენტი."],en:["Administration","Manage feature visibility and site content."]},

@@ -68,6 +68,8 @@ type Signature = {
 const PAGE = 20;
 const apiUrl = process.env.EXPO_PUBLIC_TUTA_API_URL?.trim().replace(/\/$/, "");
 const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim() || "";
+// Enable only after the production block endpoint and its migration are live.
+const memberBlockingEnabled = process.env.EXPO_PUBLIC_TUTA_COMMUNITY_BLOCKING === "1";
 const topicLabels: Record<string, [string, string]> = {
   cycle: ["ციკლი", "Cycle"],
   symptoms: ["სიმპტომები", "Symptoms"],
@@ -118,6 +120,8 @@ export function CommunityFeed({
   const [pulling, setPulling] = useState(false);
   const feedRequest = useRef(0);
   const feedBusy = useRef(false);
+  const [topicFilter, setTopicFilter] = useState("");
+  const [showTopicFilter, setShowTopicFilter] = useState(false);
   const [ownedPostIds, setOwnedPostIds] = useState<string[]>([]);
   const [topic, setTopic] = useState(""),
     [editingId, setEditingId] = useState<string | null>(null);
@@ -209,7 +213,7 @@ export function CommunityFeed({
       const client = supabase;
       const postsQuery = (fields: string) => {
         const query = client.from("community_posts").select(fields);
-        return (target ? query.eq("id", target.postId) : query
+        return (target ? query.eq("id", target.postId) : (topicFilter ? query.eq("topic", topicFilter) : query)
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .range(offset, offset + PAGE - 1))
@@ -259,7 +263,7 @@ export function CommunityFeed({
     }
   };
   useImperativeHandle(ref, () => ({ refresh: () => load(false, true) }));
-  // Reload only when the signed-in member changes.
+  // Reload from the first page whenever the feed scope changes.
   const reloadFeed = useEffectEvent(() => void load());
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -276,7 +280,7 @@ export function CommunityFeed({
       }
     }, 0);
     return () => clearTimeout(timer);
-  }, [lang, isMember, session?.user.id, target]);
+  }, [lang, isMember, session?.user.id, target, topicFilter]);
 
   async function loadComments(postId: string, older = false, focusId: string | null = null) {
     if (!supabase || !isMember) return;
@@ -884,17 +888,40 @@ export function CommunityFeed({
             <View style={{ marginTop: 12 }}>
               <Image
                 source={{ uri: photo.uri }}
+                accessibilityLabel={t("არჩეული ფოტო", "Selected photo")}
                 resizeMode="cover"
                 style={{ width: "100%", height: 220, borderRadius: 15 }}
               />
+            </View>
+          )}
+          {!editingId ? <View style={{ marginTop: 12, gap: 8, padding: 12, backgroundColor: C.bg, borderWidth: 1, borderColor: "#AD9BC8", borderStyle: "dashed", borderRadius: 16 }}>
+            <View style={s.wrap}>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setPhoto(null)}
-                style={{ minHeight: 44, justifyContent: "center" }}
+                disabled={posting}
+                onPress={() => void pickPhoto()}
+                style={[s.chip, s.row, { gap: 7, backgroundColor: C.lav, minHeight: 44 }]}
               >
-                <T weight="bold">{t("ფოტოს წაშლა", "Remove photo")}</T>
+                <Icon name="image" size={20} />
+                <T weight="bold" style={{ flexShrink: 1 }}>
+                  {photo ? t("ფოტოს შეცვლა", "Replace photo") : t("ფოტოს დამატება", "Add photo")}
+                </T>
               </Pressable>
+              {photo ? <Pressable
+                accessibilityRole="button"
+                disabled={posting}
+                onPress={() => { setPhoto(null); setComposerError(""); }}
+                style={[s.chip, s.row, { gap: 6, minHeight: 44 }]}
+              >
+                <Icon name="close" size={16} />
+                <T style={{ flexShrink: 1 }}>{t("ფოტოს მოხსნა", "Remove photo")}</T>
+              </Pressable> : null}
             </View>
+            <T style={[s.muted, { fontSize: 13 }]}>{t("ერთი ფოტო · არასავალდებულო · მაქს. 4 მბ", "One photo · optional · max 4 MB")}</T>
+          </View> : (
+            <T style={[s.muted, { marginTop: 12 }]}>
+              {t("ფოტო უცვლელი დარჩება", "Photo stays unchanged")}
+            </T>
           )}
           <View
             style={[
@@ -902,24 +929,6 @@ export function CommunityFeed({
               { justifyContent: "space-between", marginVertical: 12 },
             ]}
           >
-            {!editingId ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void pickPhoto()}
-                style={[s.chip, s.row]}
-              >
-                <Icon name="image" size={20} />
-                <T weight="bold" style={{ flexShrink: 1 }}>
-                  {photo
-                    ? t("ფოტოს შეცვლა", "Change photo")
-                    : t("ფოტოს დამატება", "Add photo")}
-                </T>
-              </Pressable>
-            ) : (
-              <T style={s.muted}>
-                {t("ფოტო უცვლელი დარჩება", "Photo stays unchanged")}
-              </T>
-            )}
             <Pressable
               accessibilityRole="button"
               onPress={() => {
@@ -981,6 +990,30 @@ export function CommunityFeed({
           <T weight="bold">{t("განახლება", "Refresh")}</T>
         </Pressable>
       </View>
+      {!target ? <View style={{ gap: 8, marginBottom: 12 }}>
+        <Pressable accessibilityRole="button"
+          accessibilityState={{ expanded: showTopicFilter }}
+          onPress={() => setShowTopicFilter(open => !open)}
+          style={[s.chip, { alignSelf: "flex-start", minHeight: 44, justifyContent: "center" }]}>
+          <T weight="bold">
+            {t("პოსტების თემები", "Post topics")}{topicFilter ? ` · ${t(...topicLabels[topicFilter])}` : ""} {showTopicFilter ? "▴" : "▾"}
+          </T>
+        </Pressable>
+        {showTopicFilter ? <View style={s.wrap}>
+          {["", ...POST_TOPICS].map(key => <Chip key={key}
+            label={key ? t(...topicLabels[key]) : t("ყველა პოსტი", "All posts")}
+            selected={topicFilter === key}
+            onPress={() => {
+              if (key === topicFilter) return;
+              ++feedRequest.current;
+              setLoading(true);
+              setPosts([]);
+              setHasMore(false);
+              setTopicFilter(key);
+            }}
+          />)}
+        </View> : null}
+      </View> : null}
       {loading && !pulling ? (
         <ActivityIndicator color={C.ink} style={{ marginVertical: 30 }} />
       ) : null}
@@ -991,9 +1024,11 @@ export function CommunityFeed({
       ) : null}
       {!loading && !feedError && posts.length === 0 ? (
         <View style={s.card}>
-          <T weight="bold">{t("ჯერ პოსტები არ არის", "No posts yet")}</T>
+          <T weight="bold">{topicFilter && !target
+            ? t("ამ თემაზე პოსტები ჯერ არ არის.", "No posts in this topic yet.")
+            : t("ჯერ პოსტები არ არის", "No posts yet")}</T>
           <T style={[s.muted, { marginTop: 6 }]}>
-            {t(
+            {topicFilter && !target ? t("სხვა პოსტების სანახავად აირჩიე „ყველა პოსტი“.","Select All posts to see other topics.") : t(
               "პირველი პოსტი შეგიძლია შენ დაწერო.",
               "You can write the first one.",
             )}
@@ -1075,7 +1110,7 @@ export function CommunityFeed({
               </Pressable>
             </View>
             <T style={{ lineHeight: 25 }}>{post.body}</T>
-            {!post.is_anonymous && post.public_author_id && post.public_author_id !== session?.user.id ? (
+            {memberBlockingEnabled && !post.is_anonymous && post.public_author_id && post.public_author_id !== session?.user.id ? (
               <Pressable accessibilityRole="button" onPress={() => blockMember(post.id)}
                 style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start" }}>
                 <T style={s.muted}>{t("ავტორის დაბლოკვა", "Block author")}</T>

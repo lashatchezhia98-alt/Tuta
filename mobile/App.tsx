@@ -43,7 +43,10 @@ import {
   periodFromSelectedDays,
   validBirthDate,
   cycleAt,
-  calendarState,
+  periodCalendarModel,
+  periodDayMarkers,
+  periodDayLabel,
+  predictionDateKey,
   averages,
   predictions,
   forecast,
@@ -84,6 +87,7 @@ import {
   ReportScreen,
   CalculatorScreen,
   RemindersScreen,
+  AnnouncementsScreen,
 } from "./src/ServiceScreens";
 import {
   CartProvider,
@@ -147,8 +151,10 @@ function Shell() {
   const [legacy, setLegacy] = useState<Data | null>(null),
     [loadedUser, setLoadedUser] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>(initialTab),
-    [logDate, setLogDate] = useState(dateKey()),
-    [calendarDate, setCalendarDate] = useState(dateKey()),
+    [logDate, setLogDate] = useState(predictionDateKey()),
+    [logActivityOnly, setLogActivityOnly] = useState(false),
+    [libraryCategory, setLibraryCategory] = useState(""),
+    [calendarDate, setCalendarDate] = useState(predictionDateKey()),
     [calendarEditing, setCalendarEditing] = useState(false),
     [dirty, setDirty] = useState(false),
     [pending, setPending] = useState<Tab | null>(null);
@@ -270,17 +276,17 @@ function Shell() {
       .select("payload,revision")
       .eq("user_id", userId)
       .maybeSingle();
-    if (error) throw error;
     if (
       activeUser.current !== userId ||
       generation !== epoch.current ||
       request !== readSequence.current
     )
       return;
+    if (error) throw error;
+    if (row && !validData(row.payload)) throw new Error("Invalid health data");
     healthError.current = false;
     setProblem("");
     if (row) {
-      if (!validData(row.payload)) throw new Error("Invalid health data");
       setData(row.payload);
       revision.current = Number(row.revision);
     } else {
@@ -344,7 +350,10 @@ function Shell() {
           if (active && !saving.current) void refresh(userId).catch(() => {});
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED" && active && !saving.current)
+          void refresh(userId).catch(() => {});
+      });
     const foreground = AppState.addEventListener("change", (state) => {
       if (state === "active" && active && !saving.current)
         void refresh(userId).catch(() => {});
@@ -478,12 +487,21 @@ function Shell() {
   };
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
-  const nav = (next: Tab) => {
+  const nav = (next: Tab, options?: { date?: string; activityOnly?: boolean; editing?: boolean; category?: string }) => {
     if (next === tab) return;
     if (tab === "log" && dirty) {
       setPending(next);
       return;
     }
+    if (next === "log") {
+      setLogDate(options?.date ?? predictionDateKey());
+      setLogActivityOnly(options?.activityOnly ?? false);
+    }
+    if (next === "calendar") {
+      setCalendarDate(options?.date ?? predictionDateKey());
+      setCalendarEditing(options?.editing ?? false);
+    }
+    if (next === "blog") setLibraryCategory(options?.category ?? "");
     setTrail((history) => [...history.slice(-19), tab]);
     setTab(next);
     scroll.current?.scrollTo({ y: 0, animated: false });
@@ -535,14 +553,11 @@ function Shell() {
     });
     return () => sub.remove();
   }, [tab, dirty, trail, menuOpen, authMode]);
-  const openLog = (date = dateKey()) => {
-    setLogDate(date);
-    nav("log");
+  const openLog = (date = predictionDateKey(), activityOnly = false) => {
+    nav("log", { date, activityOnly });
   };
-  const openCalendar = (date = dateKey(), editing = false) => {
-    setCalendarDate(date);
-    setCalendarEditing(editing);
-    nav("calendar");
+  const openCalendar = (date = predictionDateKey(), editing = false) => {
+    nav("calendar", { date, editing });
   };
   const canPullToRefresh = tab === "home" && !authMode && !!memberId
     && activityTarget?.userId !== memberId && pageAllowed(tab, features.features);
@@ -591,7 +606,7 @@ function Shell() {
           onForgot={() => setAuthMode("forgot")}
         />
       );
-    if (tab === "blog") return <LibraryScreen {...props} />;
+    if (tab === "blog") return <LibraryScreen key={libraryCategory} {...props} initialCategory={libraryCategory} />;
     if (tab === "market") return <MarketScreen {...props} />;
     if (tab === "cart") return <CartScreen {...props} session={session} onPaymentReturn={receivePaymentReturn} />;
     if (tab === "period-calculator" || tab === "ovulation-calculator")
@@ -626,6 +641,8 @@ function Shell() {
           setActivityTarget(post ? { ...post, userId: memberId } : null);
           nav(page);
         }} />;
+    if (tab === "announcements" && memberId)
+      return <AnnouncementsScreen key={memberId} lang={data.lang} userId={memberId} />;
     if (tab === "symptom-checker") return <SymptomReview lang={data.lang}
       token={session.access_token} onPremium={() => nav("premium")} onCare={() => nav("care")} />;
     if (tab === "account-deletion" && memberId) return <AccountDeletion lang={data.lang} userId={memberId} />;
@@ -669,6 +686,8 @@ function Shell() {
           save={save}
           token={session.access_token}
           onPremium={() => nav("premium")}
+          onJournal={() => openLog()}
+          onArticles={() => nav("blog", { category: "pregnancy" })}
         />
       );
     if (tab === "partners")
@@ -691,6 +710,7 @@ function Shell() {
         <Home
           data={data}
           openCalendar={openCalendar}
+          openLog={openLog}
           openPregnancy={() => nav("pregnancy")}
           birthDate={session.user.user_metadata?.date_of_birth}
         />
@@ -709,10 +729,11 @@ function Shell() {
     if (tab === "log")
       return (
         <Daily
-          key={logDate}
+          key={`${logDate}-${logActivityOnly}`}
           data={data}
           save={save}
           date={logDate}
+          activityOnly={logActivityOnly}
           dirty={setDirty}
         />
       );
@@ -745,11 +766,15 @@ function Shell() {
           <View style={[s.header, stackedHeader && { flexWrap: "wrap" }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t("საზოგადოების მთავარი", "Community home")}
+              accessibilityLabel={t("თუთას საწყისი გვერდი", "Tuta home")}
+              accessibilityState={{ disabled: authMode === "reset" }}
+              disabled={authMode === "reset"}
               style={[s.row, { minHeight: 44, flexShrink: 0 }]}
               onPress={() => {
                 setAuthMode(null);
-                nav("home");
+                setMenuOpen(false);
+                if (tab === initialTab) scroll.current?.scrollTo({ y: 0, animated: false });
+                else nav(initialTab);
               }}
             >
               <Image
@@ -871,6 +896,7 @@ function Shell() {
                     setDirty(false);
                     setTab(pending);
                     setPending(null);
+                    scroll.current?.scrollTo({ y: 0, animated: false });
                   }}
                 />
               </View>
@@ -1141,11 +1167,13 @@ function Setup({
 function Home({
   data,
   openCalendar,
+  openLog,
   openPregnancy,
   birthDate,
 }: {
   data: Data;
   openCalendar: (date?: string, editing?: boolean) => void;
+  openLog: (date?: string, activityOnly?: boolean) => void;
   openPregnancy: () => void;
   birthDate?: string;
 }) {
@@ -1171,11 +1199,11 @@ function Home({
         />
       </View>
     );
-  const c = cycleAt(data.periods, data.cycleLength);
+  const model = periodCalendarModel(data);
+  const { today, nextWindow } = model;
+  const c = cycleAt(data.periods, data.cycleLength, today, today);
   if (!c) return null;
-  const today = dateKey(),
-    model = forecast(data.periods, data.cycleLength),
-    left = distance(today, c.next);
+  const left = nextWindow ? distance(today, nextWindow.start) : 0;
   const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 3));
   const phase =
     model.status === "overdue" ||
@@ -1188,16 +1216,7 @@ function Home({
       : model.reliability === "low"
         ? t("სიზუსტე შეზღუდულია", "Limited accuracy")
         : t("საწყისი შეფასება", "Initial estimate");
-  return (
-    <View style={s.content}>
-      <T style={[s.muted, { fontSize: 15 }]}>
-        {data.name
-          ? t(`გამარჯობა, ${data.name}`, `Hello, ${data.name}`)
-          : t("შენი სივრცე", "Your space")}
-      </T>
-      <T weight="display" style={[s.title, { marginTop: 3, marginBottom: 18 }]}>
-        {t("დღეს შენს რიტმში", "Today in your rhythm")}
-      </T>
+  const cycleCard = (
       <View
         style={[
           s.card,
@@ -1250,14 +1269,17 @@ function Home({
           )}
         </T>
       </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => openCalendar(today, true)}
-        style={[s.card, s.topBar, { minHeight: 52 }]}
-      >
-        <T weight="bold" style={{ flex: 1 }}>{t("პერიოდის დღეების მონიშვნა", "Log period days")}</T>
-        <Icon name="arrow" size={19} />
-      </Pressable>
+  );
+  return (
+    <View style={s.content}>
+      <T style={[s.muted, { fontSize: 15 }]}>
+        {data.name
+          ? t(`გამარჯობა, ${data.name}`, `Hello, ${data.name}`)
+          : t("შენი სივრცე", "Your space")}
+      </T>
+      <T weight="display" style={[s.title, { marginTop: 3, marginBottom: 18 }]}>
+        {t("დღეს შენს რიტმში", "Today in your rhythm")}
+      </T>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t(
@@ -1283,31 +1305,36 @@ function Home({
           {model.status === "overdue"
             ? t("პროგნოზი შეჩერებულია", "Estimate paused")
             : left > 0
-              ? t(`${left} დღეში`, `In ${left} days`)
+              ? t(`${left} დღეში`, `In ${left} ${left === 1 ? "day" : "days"}`)
               : t("სავარაუდოდ დღეს", "Estimated today")}
         </T>
         <T style={[s.muted, { marginTop: 5 }]}>
-          {model.status === "active"
-            ? `${model.expected} · ${reliability}`
+          {nextWindow
+            ? `${nextWindow.start}${nextWindow.end !== nextWindow.start ? ` – ${nextWindow.end}` : ""} · ${reliability}`
             : t(
                 "ჩაწერე დაწყების თარიღი კალენდარში.",
                 "Record the start date in Calendar.",
               )}
         </T>
       </Pressable>
+      <View style={[s.wrap, { marginBottom: 12 }]}>
+        {[
+          { title: t("პერიოდის მონიშვნა", "Log period"), action: () => openCalendar(today, true) },
+          { title: t("დღიური", "Journal"), action: () => openLog() },
+          { title: t("კალენდარი", "Calendar"), action: () => openCalendar(today) },
+          { title: t("სქესობრივი აქტივობა", "Sexual activity"), action: () => openLog(today, true) },
+        ].map(({ title, action }) => <Pressable key={title} accessibilityRole="button" onPress={action} style={[s.card, { marginBottom: 0, minHeight: 44, padding: 10, justifyContent: "center" }]}>
+          <T weight="bold">{title}</T>
+        </Pressable>)}
+      </View>
       <View style={s.card}>
         <T weight="bold" style={{ fontSize: 18, marginBottom: 14 }}>
           {t("შენი კვირა", "Your week")}
         </T>
         <View style={{ flexDirection: "row" }}>
           {week.map((day) => {
-            const state = calendarState(
-              data.periods,
-              data.cycleLength,
-              day,
-              undefined,
-              data.pregnancy?.active,
-            );
+            const info = model.day(day);
+            const { state } = info;
             const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
             const labels = ka
               ? ["კვ", "ორ", "სა", "ოთ", "ხუ", "პა", "შა"]
@@ -1316,7 +1343,7 @@ function Home({
               <Pressable
                 key={day}
                 accessibilityRole="button"
-                accessibilityLabel={day}
+                accessibilityLabel={periodDayLabel(info, day, ka)}
                 onPress={() => openCalendar(day)}
                 style={{
                   flex: 1,
@@ -1331,7 +1358,7 @@ function Home({
                         ? C.lav
                         : state === "fertile"
                           ? C.yellow
-                          : "#F3F1F6",
+                          : state === "predicted" ? "#EEE6F7" : "#F3F1F6",
                 }}
               >
                 <T
@@ -1351,11 +1378,13 @@ function Home({
                 >
                   {Number(day.slice(-2))}
                 </T>
+                <DayMarkers info={info} ka={ka} color={day === today ? C.white : C.ink} />
               </Pressable>
             );
           })}
         </View>
       </View>
+      {cycleCard}
       <T style={s.muted}>
         {t(
           "პროგნოზები შეფასებაა და არ წარმოადგენს კონტრაცეფციის მეთოდს.",
@@ -1366,12 +1395,23 @@ function Home({
     </View>
   );
 }
+
+function DayMarkers({ info, ka, color = C.ink }: {
+  info: ReturnType<ReturnType<typeof periodCalendarModel>["day"]>;
+  ka: boolean;
+  color?: string;
+}) {
+  const symbols = periodDayMarkers(ka).filter(marker => info[marker.key]).map(marker => marker.symbol).join("");
+  return symbols ? <T accessible={false} style={{ position: "absolute", bottom: 1, fontSize: 9, lineHeight: 10, color }}>{symbols}</T> : null;
+}
+
 function Daily({
   data,
   save,
   date,
+  activityOnly = false,
   dirty,
-}: { date: string; dirty: (v: boolean) => void } & Shared) {
+}: { date: string; activityOnly?: boolean; dirty: (v: boolean) => void } & Shared) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
   const blank = (d: string): Log => ({
@@ -1384,7 +1424,7 @@ function Daily({
     notes: "",
   });
   const [savedDate, setSavedDate] = useState(date);
-  const [intimacyOpen, setIntimacyOpen] = useState(false);
+  const [intimacyOpen, setIntimacyOpen] = useState(activityOnly);
   const [entry, setEntry] = useState<Log>(
       () => data.logs.find((l) => l.date === date) || blank(date),
     ),
@@ -1415,7 +1455,7 @@ function Daily({
   const submit = async () => {
     try {
       stamp(entry.date);
-      if (entry.date > dateKey()) throw new Error();
+      if (entry.date > predictionDateKey()) throw new Error();
     } catch {
       setMessage(
         t(
@@ -1468,7 +1508,7 @@ function Daily({
         {t("ყოველდღიური ჩანაწერი", "DAILY CHECK-IN")}
       </T>
       <T weight="display" style={[s.title, { marginTop: 4, marginBottom: 10 }]}>
-        {t("როგორ ხარ დღეს?", "How do you feel?")}
+        {activityOnly ? t("პირადი ჩანაწერი", "Private entry") : t("როგორ ხარ დღეს?", "How do you feel?")}
       </T>
       <T style={[s.muted, { marginBottom: 20 }]}>
         {t(
@@ -1491,6 +1531,7 @@ function Daily({
           )}
         </T>
       </View>
+      {!activityOnly && <>
       <View style={s.section}>
         <FieldLabel>
           {t("როგორ გრძნობ თავს?", "How are you feeling today?")}
@@ -1557,6 +1598,7 @@ function Daily({
           ))}
         </View>
       </View>
+      </>}
       <View style={[s.section, { backgroundColor: "#F5EFFA" }]}>
         <Pressable
           accessibilityRole="button"
@@ -1607,6 +1649,7 @@ function Daily({
           </View>
         ) : null}
       </View>
+      {!activityOnly && <>
       <View style={s.section}>
         <FieldLabel>{t("დღის სიმპტომები", "Any symptoms today?")}</FieldLabel>
         <TextInput
@@ -1697,6 +1740,7 @@ function Daily({
           {entry.notes.length}/2000
         </T>
       </View>
+      </>}
       {message ? (
         <View style={s.banner}>
           <T accessibilityLiveRegion="polite">{message}</T>
@@ -1727,6 +1771,9 @@ function Calendar({
 } & Shared) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
+  const calendar = periodCalendarModel(data);
+  const { today } = calendar;
+  const [showKey, setShowKey] = useState(false);
   const [month, setMonth] = useState(
       () =>
         new Date(
@@ -1742,7 +1789,7 @@ function Calendar({
   const [editing, setEditing] = useState(initiallyEditing && !data.pregnancy?.active),
     [periodDays, setPeriodDays] = useState<string[]>(() =>
       initialPeriod
-        ? Array.from({ length: initialPeriod.duration }, (_, index) => addDays(initialPeriod.start, index)).filter((day) => day <= dateKey())
+        ? Array.from({ length: initialPeriod.duration }, (_, index) => addDays(initialPeriod.start, index)).filter((day) => day <= today)
         : [],
     ),
     [periodMessage, setPeriodMessage] = useState(""),
@@ -1758,9 +1805,10 @@ function Calendar({
     (_, i) => i - first + 1,
   );
   const selectedLog = data.logs.find((l) => l.date === selected);
-  const c = cycleAt(data.periods, data.cycleLength, selected);
+  const selectedInfo = calendar.day(selected);
+  const c = cycleAt(data.periods, data.cycleLength, selected, today);
   const recorded =
-    selected <= dateKey()
+    selected <= today
       ? recordedOn(selected)
       : undefined;
   const changeDate = (key: string) => {
@@ -1779,8 +1827,8 @@ function Calendar({
       );
       return;
     }
-    const period = periodFromSelectedDays(periodDays);
-    if (!period || !validSetup(period.start, data.cycleLength, period.duration)) {
+    const period = periodFromSelectedDays(periodDays, today);
+    if (!period || !validSetup(period.start, data.cycleLength, period.duration, today)) {
       setPeriodMessage(
         t(
           "მონიშნე მხოლოდ გასული, ზედიზედ დღეები (1–10).",
@@ -1884,19 +1932,13 @@ function Calendar({
             const key = dateKey(
               new Date(month.getFullYear(), month.getMonth(), n),
             );
-            const state = calendarState(
-              data.periods,
-              data.cycleLength,
-              key,
-              undefined,
-              data.pregnancy?.active,
-            );
-            const logged = data.logs.some((l) => l.date === key);
+            const info = calendar.day(key);
+            const { state } = info;
             return (
               <View key={key} style={s.cell}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${key}${state ? `, ${state}` : ""}${logged ? ", logged" : ""}`}
+                  accessibilityLabel={periodDayLabel(info, key, ka)}
                   accessibilityState={{ selected: selected === key }}
                   onPress={() => changeDate(key)}
                   style={[
@@ -1921,25 +1963,17 @@ function Calendar({
                     },
                   ]}
                 >
-                  <T weight={key === dateKey() ? "bold" : "regular"}>{n}</T>
-                  {logged && (
-                    <View
-                      style={{
-                        width: 4,
-                        height: 4,
-                        borderRadius: 3,
-                        backgroundColor: C.ink,
-                        position: "absolute",
-                        bottom: 4,
-                      }}
-                    />
-                  )}
+                  <T weight={key === today ? "bold" : "regular"}>{n}</T>
+                  <DayMarkers info={info} ka={ka} />
                 </Pressable>
               </View>
             );
           })}
         </View>
-        <View style={[s.wrap, { marginTop: 18 }]}>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: showKey }} onPress={() => setShowKey(!showKey)} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}>
+          <T weight="bold">{t("კალენდრის ნიშნები", "Calendar key")} {showKey ? "−" : "+"}</T>
+        </Pressable>
+        {showKey && <View style={s.wrap}>
           {[
             [C.lav, t("ჩაწერილი პერიოდი", "Recorded period"), false],
             [
@@ -1964,14 +1998,15 @@ function Calendar({
               <T style={{ fontSize: 12, flexShrink: 1 }}>{label}</T>
             </View>
           ))}
-        </View>
+          {periodDayMarkers(ka).map(({key, symbol, label}) => <T key={key} style={{ fontSize: 12 }}>{symbol} {label}</T>)}
+        </View>}
       </View>
       <View style={[s.card, { backgroundColor: C.ink }]}>
         <T style={{ color: C.lav, marginBottom: 8 }}>{selected}</T>
         <T weight="display" style={{ fontSize: 24, color: C.yellow }}>
           {recorded
             ? t("ჩაწერილი მენსტრუაცია", "Recorded period")
-            : selected > dateKey()
+            : selected > today
               ? t("სავარაუდო თარიღი", "Estimated date")
               : c
                 ? t(`ციკლის დღე ${c.day}`, `Cycle day ${c.day}`)
@@ -1983,7 +2018,7 @@ function Calendar({
                 `დაიწყო ${recorded.start} · ${recorded.duration} დღე`,
                 `Started ${recorded.start} · ${recorded.duration} days`,
               )
-            : selected > dateKey()
+            : selected > today
               ? t("ეს მხოლოდ პროგნოზია.", "This is only an estimate.")
               : c
                 ? phases[c.phase][ka ? 0 : 1]
@@ -1994,8 +2029,11 @@ function Calendar({
             {selectedLog.notes || t("დღიური შენახულია ✓", "Check-in saved ✓")}
           </T>
         )}
+        {periodDayMarkers(ka).filter(marker => selectedInfo[marker.key]).map(({key, label, symbol}) => (
+          <T key={key} style={{ color: C.white, marginTop: 5 }}>{symbol} {label}</T>
+        ))}
       </View>
-      {selected <= dateKey() && (
+      {selected <= today && (
         <>
           <CTA
             title={
@@ -2013,8 +2051,8 @@ function Calendar({
                 recorded
                   ? Array.from({ length: recorded.duration }, (_, index) =>
                       addDays(recorded.start, index),
-                    ).filter((day) => day <= dateKey())
-                  : selected <= dateKey()
+                    ).filter((day) => day <= today)
+                  : selected <= today
                     ? [selected]
                     : [],
               );
@@ -2049,7 +2087,7 @@ function Calendar({
           </T>
           <PeriodDaysPicker
             ka={ka}
-            initialDate={recorded?.start ?? (selected <= dateKey() ? selected : dateKey())}
+            initialDate={recorded?.start ?? (selected <= today ? selected : today)}
             days={periodDays}
             onToggle={(date) => {
               setPeriodDays((current) => current.includes(date) ? current.filter((day) => day !== date) : [...current, date]);

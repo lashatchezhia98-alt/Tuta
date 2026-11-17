@@ -7,6 +7,14 @@ export function monthLabel(date, ka) {
 export function dateKey(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
+// Use the same calendar day for account forecasts, even when devices are in different zones.
+const accountCalendar = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Tbilisi', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+export function predictionDateKey(now = new Date()) {
+  const parts = Object.fromEntries(accountCalendar.formatToParts(now).map(({type,value})=>[type,value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
 export function stamp(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new Error('Invalid date');
   const result = Date.parse(value + 'T00:00:00Z');
@@ -89,7 +97,7 @@ export function cycleAt(periods, fallback, date = dateKey(), asOf = dateKey()) {
   const phase=phaseForDay(day,duration,length);
   return {day,phase,next,ovulation,fertileStart,fertileEnd,overdue:distance(next,date)>0,length,duration,start:base.start};
 }
-export function forecast(periods, fallback, asOf=dateKey(), pregnancyActive=false) {
+export function forecast(periods, fallback, asOf=predictionDateKey(), pregnancyActive=false) {
   stamp(asOf);
   const recorded=ordered(periods).filter(p=>p.start<=asOf);
   const avg=averages(recorded,fallback);
@@ -115,26 +123,75 @@ export function forecast(periods, fallback, asOf=dateKey(), pregnancyActive=fals
     averageLength:avg.length,averageDuration:avg.duration,completed:lengths.length,
   };
 }
+
+/** @param {{periods: {start: string, duration: number}[], cycleLength: number, logs?: {date: string, flow: string, sexualActivity?: string}[], pregnancy?: {active: boolean}}} data */
+export function periodCalendarModel({ periods, cycleLength, logs = [], pregnancy }, today = predictionDateKey()) {
+  const model = forecast(periods, cycleLength, today, pregnancy?.active);
+  const duration = Math.round(model.averageDuration);
+  const windows = model.starts.map(start => ({ start, end: addDays(start, duration - 1) }));
+  const logByDate = new Map(logs.filter(log => log.date <= today).map(log => [log.date, log]));
+  const recorded = ordered(periods).filter(p => p.start <= today);
+  const recent = windows.length ? history(recorded).slice(-6) : [];
+  // A date without a flow entry is not evidence of a light day.
+  const heavierOffsets = windows.length ? new Set(Array.from({ length: duration }, (_, offset) => {
+    const flows = recent.filter(p => offset < p.duration)
+      .map(p => logByDate.get(addDays(p.start, offset))?.flow)
+      .filter(flow => ['none', 'spotting', 'light', 'medium', 'heavy'].includes(flow));
+    return flows.length >= 3 && flows.filter(flow => flow === 'heavy').length * 3 >= flows.length * 2
+      ? offset : -1;
+  })) : new Set();
+  return {
+    ...model, today, windows, nextWindow: windows[0] ?? null,
+    day(date) {
+      stamp(date);
+      const window = windows.find(w => date >= w.start && date <= w.end);
+      const state = stateForCalendarDay(recorded, model, date, today, window);
+      const log = logByDate.get(date);
+      return {
+        state,
+        expectedEnd: window?.end === date,
+        expectedHeavy: !!window && heavierOffsets.has(distance(window.start, date)),
+        heavy: log?.flow === 'heavy',
+        activity: ['protected', 'unprotected', 'unspecified'].includes(log?.sexualActivity),
+      };
+    },
+  };
+}
+
+/** @param {boolean} ka
+ * @returns {{key: 'heavy'|'expectedHeavy'|'expectedEnd'|'activity', symbol: string, label: string}[]} */
+export function periodDayMarkers(ka) {
+  return [
+    { key: 'heavy', symbol: '●', label: ka ? 'ჩაწერილი ძლიერი სისხლდენა' : 'Recorded heavy flow' },
+    { key: 'expectedHeavy', symbol: '◉', label: ka ? 'სავარაუდო ძლიერი სისხლდენა' : 'Estimated heavier flow' },
+    { key: 'expectedEnd', symbol: '–', label: ka ? 'პერიოდის სავარაუდო ბოლო დღე' : 'Estimated last day' },
+    { key: 'activity', symbol: '♥', label: ka ? 'ჩაწერილი სქესობრივი აქტივობა' : 'Sexual activity logged' },
+  ];
+}
+
+export function periodDayLabel(day, date, ka) {
+  const states = {
+    period: ka ? 'ჩაწერილი პერიოდი' : 'Recorded period',
+    predicted: ka ? 'სავარაუდო პერიოდი' : 'Estimated period',
+    fertile: ka ? 'სავარაუდო ნაყოფიერი დღე' : 'Estimated fertile day',
+  };
+  return [date, states[day.state], ...periodDayMarkers(ka).filter(marker => day[marker.key]).map(marker => marker.label)].filter(Boolean).join(', ');
+}
+
 export function calendarState(periods, fallback, date, asOf=dateKey(), pregnancyActive=false) {
-  stamp(date);
-  const recorded=ordered(periods).filter(p=>p.start<=asOf);
-  const known=date<=asOf&&recorded.some(p=>date>=p.start && date<addDays(p.start,p.duration));
-  if(known)return 'period';
-  if(pregnancyActive)return '';
-  const current=cycleAt(recorded,fallback,date,asOf);
-  if(!current)return '';
-  const model=forecast(recorded,fallback,asOf);
-  if(date>=asOf){
-    if(model.status==='overdue')return '';
-    const length=Math.round(model.averageLength);
-    const offset=distance(current.start,date)%length;
-    const boundary=Math.floor(distance(current.start,date)/length);
-    if(boundary>=1&&boundary<=6&&offset<Math.round(model.averageDuration))return 'predicted';
-    const ov=length-14;
-    if(model.fertilityAvailable&&boundary<=6&&offset>=ov-5&&offset<=ov+1)return 'fertile';
-    return '';
+  return periodCalendarModel({ periods, cycleLength: fallback, pregnancy: { active: pregnancyActive } }, asOf).day(date).state;
+}
+function stateForCalendarDay(recorded, model, date, today, window) {
+  if (date <= today && recorded.some(p => date >= p.start && date < addDays(p.start, p.duration))) return 'period';
+  if (window) return 'predicted';
+  // Fertility estimates are not recorded biological events.
+  if (date >= today && model.fertilityAvailable) {
+    const length = Math.round(model.averageLength);
+    const elapsed = distance(recorded.at(-1).start, date);
+    const offset = elapsed % length;
+    const ovulation = length - 14;
+    if (Math.floor(elapsed / length) <= 6 && offset >= ovulation - 5 && offset <= ovulation + 1) return 'fertile';
   }
-  // Fertility is never presented as a recorded biological event in the past.
   return '';
 }
 export function predictions(periods, fallback, asOf=dateKey()) {

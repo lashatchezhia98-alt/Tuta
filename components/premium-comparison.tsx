@@ -2,21 +2,7 @@ import { Check, Minus } from "lucide-react";
 import { SiteCopyText } from "@/components/site-copy-provider";
 import type { CopyLanguage } from "@/lib/site-copy";
 import styles from "./premium-comparison.module.css";
-
-const features = [
-  { id: "calendar", free: true },
-  { id: "predictions", free: true },
-  { id: "journal", free: true },
-  { id: "history", free: true },
-  { id: "community", free: true },
-  { id: "library", free: true },
-  { id: "patterns", free: false },
-  { id: "report", free: false },
-  { id: "pregnancy", free: false },
-  { id: "partner", free: false },
-  { id: "doctor_chat", free: false },
-  { id: "booking", free: false },
-] as const;
+import { premiumComparisonFeatures } from "@/lib/premium-comparison";
 
 function Availability({ included, lang }: { included: boolean; lang: CopyLanguage }) {
   return (
@@ -47,7 +33,7 @@ export default function PremiumComparison({ lang }: { lang: CopyLanguage }) {
             </tr>
           </thead>
           <tbody>
-            {features.map(({ id, free }) => (
+            {premiumComparisonFeatures.map(({ id, free }) => (
               <tr key={id}>
                 <th scope="row"><SiteCopyText id={`premium.compare.${id}`} lang={lang} /></th>
                 <td><Availability included={free} lang={lang} /></td>

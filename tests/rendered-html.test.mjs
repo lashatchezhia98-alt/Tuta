@@ -10,13 +10,54 @@ import { sourceModule } from './source-loader.mjs';
 const appRoot = new URL("../.next/server/app/", import.meta.url);
 const sourceRoot = new URL("../", import.meta.url);
 
-test("services catalog has one entry per destination with bilingual labels and descriptions", () => {
+test("article search matches either language's title or body and respects category", () => {
+  const { filterLibrary } = sourceModule("lib/library-search.ts");
+  const article = { category: "pregnancy", title_ka: "ორსულობა", title_en: "Pregnancy", body_ka: "კვირეული", body_en: "Clinician due date" };
+  assert.deepEqual(filterLibrary([article], "pregnancy", "  CLINICIAN  "), [article]);
+  assert.deepEqual(filterLibrary([article], "", "კვირეული"), [article]);
+  assert.deepEqual(filterLibrary([article], "cycle", "Pregnancy"), []);
+});
+
+test("mobile period summary mirrors the app and opens the real calendar date", () => {
+  const { periodCalendarModel } = sourceModule("mobile/src/cycle.mjs");
+  const CycleOverview = sourceModule("components/cycle-overview.tsx", {
+    "@/components/site-copy-provider": { SiteCopyText: ({ id }) => id },
+  }).default;
+  const periods = [{ start: "2026-11-13", duration: 4 }];
+  const calendar = periodCalendarModel({ periods, cycleLength: 30 }, "2026-11-17");
+  const opened = [];
+  const props = { periods, cycleLength: 30, lang: "ka", calendar, onMark: () => opened.push("mark"), onCalendar: date => opened.push(date) };
+  const html = renderToStaticMarkup(createElement(CycleOverview, props));
+  assert.match(html, /mobile-cycle-card[\s\S]*მიმდინარე ციკლი[\s\S]*mobile-cycle-day">5[\s\S]*ფოლიკულური[\s\S]*<svg/);
+  assert.match(html, /პერიოდის დღეების მონიშვნა[\s\S]*შემდეგი პერიოდი[\s\S]*26 დღეში[\s\S]*2026-12-13 – 2026-12-16/);
+  function buttons(node) {
+    if (!node || typeof node !== "object") return [];
+    return node.type === "button" ? [node] : [node.props?.children].flat(Infinity).flatMap(buttons);
+  }
+  for (const button of buttons(CycleOverview(props))) button.props.onClick();
+  assert.deepEqual(opened, ["mark", "2026-12-13", "2026-11-14", "2026-11-15", "2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"]);
+});
+
+test("activity inbox is a separate member destination from announcements", async () => {
+  const [activity, notices] = await Promise.all([
+    readFile(new URL("app/activity.html", appRoot), "utf8"),
+    readFile(new URL("app/notifications.html", appRoot), "utf8"),
+  ]);
+  assert.match(activity, /href="\/app\/notifications"/);
+  assert.match(activity, /იტვირთება/);
+  assert.notEqual(activity, notices);
+});
+
+test("every bilingual shared service has a real built web page", async () => {
   const { serviceGroups, serviceCopyKey } = sourceModule("lib/service-directory.ts");
   const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
   const items = serviceGroups.flatMap(group => group.items);
   const paths = items.map(([href]) => href);
-  assert.equal(paths.length, 22);
+  assert.equal(paths.length, 24);
   assert.equal(new Set(paths).size, paths.length);
+  const manifest = JSON.parse(await readFile(new URL("../.next/server/app-paths-manifest.json", import.meta.url), "utf8"));
+  const prerender = JSON.parse(await readFile(new URL("../.next/prerender-manifest.json", import.meta.url), "utf8"));
+  for (const path of paths) assert.ok(manifest[`${path}/page`] || prerender.routes[path], `Missing web destination: ${path}`);
   for (const path of paths) for (const lang of ["ka", "en"]) {
     assert.ok(getCopyText(emptyCopy(), serviceCopyKey(path), lang));
     assert.ok(getCopyText(emptyCopy(), serviceCopyKey(path) + ".detail", lang));
@@ -29,7 +70,9 @@ test("services catalog has one entry per destination with bilingual labels and d
 
 test("Premium compares both tiers and mobile navigation keeps services in the burger menu", async () => {
   const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
+  const sharedComparison = sourceModule("lib/premium-comparison.ts");
   const Comparison = await loadComponent("components/premium-comparison.tsx", {
+    "@/lib/premium-comparison": sharedComparison,
     "@/components/site-copy-provider": {
       SiteCopyText: ({ id, lang }) => createElement("span", { "data-site-copy": id }, getCopyText(emptyCopy(), id, lang)),
     },
@@ -44,7 +87,12 @@ test("Premium compares both tiers and mobile navigation keeps services in the bu
     assert.ok(table.includes(`data-site-copy="premium.compare.free">${free}`));
     assert.ok(table.includes(`data-site-copy="premium.compare.paid">${premium}`));
     assert.ok(table.includes(unavailable));
+    assert.equal([...table.matchAll(/scope="row"/g)].length, 12);
   }
+  assert.equal(sharedComparison.premiumComparisonFeatures.filter(row => row.free).length, 6);
+  const native = await readFile(new URL("mobile/src/ServiceScreens.tsx", sourceRoot), "utf8");
+  assert.match(native, /premiumComparisonFeatures\.map/);
+  assert.match(native, /<PremiumComparison lang=\{lang\} \/>/);
   const html = await readFile(new URL("premium.html", appRoot), "utf8");
   const nav = html.match(/<nav class="mobile-app-tabbar".*?<\/nav>/)?.[0];
   assert.ok(nav);
@@ -52,6 +100,18 @@ test("Premium compares both tiers and mobile navigation keeps services in the bu
   assert.doesNotMatch(nav, /href="\/app\/features"/);
   assert.match(nav, /href="\/app\/dashboard"[^]*href="\/community"[^]*href="\/market"[^]*href="\/app\/settings"/);
   assert.equal([...nav.matchAll(/class="mobile-app-tab-label"/g)].length, 3);
+});
+
+test("Tuta brand points to the start on web and in the native header", async () => {
+  const [home, inner, community, mobile] = await Promise.all(
+    ["app/page.tsx", "app/inner-page.tsx", "app/community/community-page.tsx", "mobile/App.tsx"]
+      .map(path => readFile(new URL(path, sourceRoot), "utf8")),
+  );
+  assert.match(home, /<Link href="\/" onNavigate=/);
+  assert.match(home, /router\.replace\("\/app\/dashboard"\)/);
+  assert.match(inner, /function InnerLogo[^\n]*href="\/"/);
+  assert.match(community, /<Link href="\/" className="inner-logo">\s*<BrandMark/);
+  assert.match(mobile, /"Tuta home"\)[^]*?else nav\(initialTab\)/);
 });
 
 test("privacy offers password changes with current-password verification and a safe sign-in return", async () => {
@@ -208,7 +268,7 @@ test("community page exposes topics and the post composer", async () => {
   assert.doesNotMatch(moderationApi, /reporter_id/);
 });
 
-test("community feed has no topic filters, and reported posts include their photo", async () => {
+test("community topics are collapsible and filtered server-side; reported posts include their photo", async () => {
   const [web, mobile, admin, moderationApi, editPolicy] = await Promise.all([
     readFile(new URL("app/community/community-page.tsx", sourceRoot), "utf8"),
     readFile(new URL("mobile/src/CommunityFeed.tsx", sourceRoot), "utf8"),
@@ -216,13 +276,34 @@ test("community feed has no topic filters, and reported posts include their phot
     readFile(new URL("app/api/admin/community-reports/route.ts", sourceRoot), "utf8"),
     readFile(new URL("supabase/migrations/20261112120000_limit_community_post_edits.sql", sourceRoot), "utf8"),
   ]);
-  assert.doesNotMatch(web, /setFilter\(|\.eq\("topic"/);
-  assert.doesNotMatch(mobile, /topicFilter|setTopicFilter|\.eq\("topic"/);
+  assert.match(web, /aria-expanded=\{showTopicFilter\}/);
+  assert.match(web, /hidden=\{!showTopicFilter\}/);
+  assert.match(web, /else if \(topicFilter\) query = query\.eq\("topic", topicFilter\)/);
+  assert.match(mobile, /accessibilityState=\{\{ expanded: showTopicFilter \}\}/);
+  assert.match(mobile, /target \? query\.eq\("id", target\.postId\) : \(topicFilter \? query\.eq\("topic", topicFilter\)/);
   assert.match(web, /canEditCommunityPost\(post\.created_at, true, now\)/);
   assert.match(mobile, /canEditCommunityPost\(post\.created_at, true, now\)/);
   assert.match(editPolicy, /created_at > statement_timestamp\(\) - interval '30 minutes'/);
   assert.match(moderationApi, /image_public_id/);
   assert.match(admin, /\/api\/admin\/community-reports\/photo\?report=/);
+});
+
+test("community topic filtering is sent to the data API with pagination", async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const requests = [];
+  const client = createClient("https://example.test", "test-public-key", {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: async (url) => {
+      requests.push(new URL(url));
+      return Response.json([]);
+    } },
+  });
+  await client.from("community_posts").select("id,topic").eq("topic", "nutrition").range(0, 19).throwOnError();
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].pathname, "/rest/v1/community_posts");
+  assert.equal(requests[0].searchParams.get("topic"), "eq.nutrition");
+  assert.equal(requests[0].searchParams.get("offset"), "0");
+  assert.equal(requests[0].searchParams.get("limit"), "20");
 });
 
 test("the public homepage has no admin entry; the direct admin login renders its own form", async () => {

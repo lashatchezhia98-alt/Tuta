@@ -1,13 +1,14 @@
 "use client";
 import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { loadCommentPage, mergeComments } from "@/mobile/src/comment-pages.mjs";
 import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
 import { canEditCommunityPost } from "@/mobile/src/community.mjs";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import Image from "next/image";
+import { ImagePlus, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useSiteFeatures, useSiteFeaturesStatus } from "@/lib/site-features";
 import HeaderActions from "@/components/header-actions";
@@ -60,6 +61,7 @@ const names: Record<string, [string, string]> = {
   questions: ["კითხვები", "Questions"],
 };
 const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const validId = (value: string | null) => value && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value) ? value : null;
 const words = (value: string) =>
   value.trim().split(/\s+/u).filter(Boolean).length;
 const validPost = (value: string) =>
@@ -106,6 +108,7 @@ export default function CommunityPage() {
   const [authReady, setAuthReady] = useState(false);
   const isMember = Boolean(session && !session.user.is_anonymous);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [focusedPost, setFocusedPost] = useState<string | null>(null);
   const [ownedPostIds, setOwnedPostIds] = useState<string[]>([]);
   const [doctors, setDoctors] = useState<Record<string, Doctor>>({});
   const [now, setNow] = useState(() => Date.now());
@@ -115,8 +118,13 @@ export default function CommunityPage() {
   const [compose, setCompose] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [topic, setTopic] = useState("");
+  const [topicFilter, setTopicFilter] = useState<(typeof topics)[number] | "">("");
+  const [showTopicFilter, setShowTopicFilter] = useState(false);
+  const feedRequest = useRef(0);
   const [body, setBody] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const photoButton = useRef<HTMLButtonElement>(null);
   const [anonymousPost, setAnonymousPost] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reportingPost, setReportingPost] = useState<string | null>(null);
@@ -243,19 +251,25 @@ export default function CommunityPage() {
   const loadPosts = useCallback(async () => {
     if (!client || !isMember) return;
     const epoch = commentEpoch.current;
+    const request = ++feedRequest.current;
+    const isCurrent = () => epoch === commentEpoch.current && request === feedRequest.current;
     setLoading(true);
-    const query = client
+    const target = validId(new URLSearchParams(window.location.search).get("post"));
+    setFocusedPost(target);
+    let query = client
       .from("community_posts")
       .select(
         "id,public_author_id,is_anonymous,display_name,author_initials,topic,body,image_public_id,created_at",
       )
       .order("created_at", { ascending: false })
       .limit(50);
+    if (target) query = query.eq("id", target);
+    else if (topicFilter) query = query.eq("topic", topicFilter);
     const [{ data, error }, owned] = await Promise.all([
       query,
       client.from("community_post_owners").select("post_id"),
     ]);
-    if (epoch !== commentEpoch.current) return;
+    if (!isCurrent()) return;
     setOwnedPostIds(
       owned.error
         ? []
@@ -272,8 +286,8 @@ export default function CommunityPage() {
       setPosts(list);
       await loadDoctors(list.map((post) => post.public_author_id));
     }
-    setLoading(false);
-  }, [client, isMember, loadDoctors]);
+    if (isCurrent()) setLoading(false);
+  }, [client, isMember, loadDoctors, topicFilter]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadPosts();
@@ -281,7 +295,7 @@ export default function CommunityPage() {
     return () => window.clearTimeout(timer);
   }, [loadPosts]);
 
-  const loadComments = async (postId: string, older = false) => {
+  const loadComments = async (postId: string, older = false, focusId: string | null = null) => {
     if (!client || !isMember) return;
     const epoch = commentEpoch.current,
       turn = (commentRequests.current[postId] || 0) + 1;
@@ -291,11 +305,13 @@ export default function CommunityPage() {
       [postId]: { ...current[postId], busy: true },
     }));
     try {
-      const page = await loadCommentPage(
-        client,
-        postId,
-        older ? commentPages[postId]?.before : null,
-      );
+      const [page, focus] = await Promise.all([
+        loadCommentPage(client, postId, older ? commentPages[postId]?.before : null),
+        focusId ? client.from("community_comments")
+          .select("id,post_id,public_author_id,is_anonymous,parent_comment_id,display_name,body,created_at,author_initials,is_post_author")
+          .eq("post_id", postId).eq("id", focusId).maybeSingle() : null,
+      ]);
+      if (focus?.data) page.comments = mergeComments(page.comments, [focus.data]);
       if (
         epoch !== commentEpoch.current ||
         commentRequests.current[postId] !== turn
@@ -337,6 +353,21 @@ export default function CommunityPage() {
       }
     }
   };
+  const openedTarget = useRef("");
+  const openNotificationThread = useEffectEvent(() => {
+    const params = new URLSearchParams(window.location.search);
+    const target = validId(params.get("post"));
+    const comment = validId(params.get("comment"));
+    const key = `${session?.user.id}:${target}:${comment}`;
+    if (!isMember || !target || !posts.some(post => post.id === target) || openedTarget.current === key) return;
+    openedTarget.current = key;
+    setOpenComments(current => ({ ...current, [target]: true }));
+    void loadComments(target, false, comment);
+  });
+  useEffect(() => {
+    openNotificationThread();
+  }, [posts, session?.user.id]);
+
   const toggleComments = (id: string) => {
     if (!openComments[id]) void loadComments(id);
     setOpenComments((current) => ({ ...current, [id]: !current[id] }));
@@ -778,17 +809,55 @@ export default function CommunityPage() {
                   {words(body)}/200 {t("სიტყვა", "words")}
                 </p>
                 {!editing ? (
-                  <label className="mt-3 block text-sm font-medium">
-                    {<SiteCopyText id="feed.photo" lang={lang}/>}
+                  <div className="mt-4 rounded-2xl border border-dashed border-[#AD9BC8] bg-[#F6F1FB] p-3 sm:p-4">
                     <input
+                      ref={photoInput}
                       type="file"
+                      hidden
                       accept="image/jpeg,image/png,image/webp"
-                      onChange={(event) =>
-                        setPhoto(event.target.files?.[0] || null)
-                      }
-                      className="mt-2 block w-full text-sm"
+                      onChange={(event) => {
+                        const selected = event.currentTarget.files?.[0];
+                        if (selected) setPhoto(selected);
+                        // Allow selecting the same file again after removal.
+                        event.currentTarget.value = "";
+                      }}
                     />
-                  </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        ref={photoButton}
+                        disabled={busy}
+                        aria-describedby="community-photo-help"
+                        onClick={() => photoInput.current?.click()}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#B9A6D1] bg-[#E9DFF5] px-4 font-semibold text-[#1E1B2E] hover:bg-[#DDCFEE] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#74618F] disabled:opacity-50"
+                      >
+                        <ImagePlus size={20} aria-hidden="true"/>
+                        {photo ? t("ფოტოს შეცვლა", "Replace photo") : t("ფოტოს დამატება", "Add photo")}
+                      </button>
+                      <p id="community-photo-help" className="text-sm text-[#62596F]">
+                        <SiteCopyText id="feed.photo" lang={lang}/>
+                      </p>
+                    </div>
+                    {photo && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <p role="status" className="min-w-0 flex-1 break-all text-sm font-medium">
+                          {t("არჩეული ფოტო:", "Selected photo:")} {photo.name}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            setPhoto(null);
+                            photoButton.current?.focus();
+                          }}
+                          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl border border-[#CBBBD9] bg-white px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#74618F] disabled:opacity-50"
+                        >
+                          <X size={16} aria-hidden="true"/>
+                          {t("ფოტოს მოხსნა", "Remove photo")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <p className="mt-3 text-sm text-[#6F687D]">
                     {t(
@@ -824,6 +893,38 @@ export default function CommunityPage() {
                 {notice}
               </p>
             ) : null}
+            <div className="mb-3 flex flex-wrap justify-between gap-2">
+              {!focusedPost && <button type="button"
+                className="min-h-11 rounded-full border border-[#D8CBE7] bg-white px-4 font-semibold"
+                aria-expanded={showTopicFilter}
+                aria-controls="community-topic-filters"
+                onClick={() => setShowTopicFilter(open => !open)}>
+                {t("პოსტების თემები", "Post topics")}{topicFilter ? ` · ${t(...names[topicFilter])}` : ""} {showTopicFilter ? "▴" : "▾"}
+              </button>}
+              {focusedPost && <button type="button" className="min-h-11 px-2" onClick={() => {
+                window.history.replaceState(null, "", "/community");
+                void loadPosts();
+              }}>{t("საზოგადოებაში დაბრუნება", "Back to community")}</button>}
+              <button type="button" className="ml-auto min-h-11 px-2 font-semibold" disabled={loading} onClick={() => void loadPosts()}>
+                {t("განახლება", "Refresh")}
+              </button>
+            </div>
+            {!focusedPost && <div id="community-topic-filters" hidden={!showTopicFilter}>
+              <div role="group" aria-label={t("პოსტების გაფილტვრა", "Filter posts")} className="mb-4 flex flex-wrap gap-2">
+                {(["", ...topics] as const).map(key => <button key={key} type="button"
+                  aria-pressed={topicFilter === key}
+                  onClick={() => {
+                    if (key !== topicFilter) {
+                      ++feedRequest.current;
+                      setLoading(true);
+                      setTopicFilter(key);
+                    }
+                  }}
+                  className={`min-h-11 rounded-full border border-[#D8CBE7] px-4 text-sm ${topicFilter === key ? "bg-[#E3D8F1] font-bold" : "bg-white"}`}>
+                  {key ? t(...names[key]) : t("ყველა პოსტი", "All posts")}
+                </button>)}
+              </div>
+            </div>}
             {loading ? (
               <p className="py-12 text-center">{t("იტვირთება…", "Loading…")}</p>
             ) : feedError ? (
@@ -845,7 +946,9 @@ export default function CommunityPage() {
               </div>
             ) : posts.length === 0 ? (
               <div className="rounded-3xl border bg-white p-8">
-                {<SiteCopyText id="feed.empty" lang={lang}/>}
+                {topicFilter && !focusedPost
+                  ? t("ამ თემაზე პოსტები ჯერ არ არის.", "No posts in this topic yet.")
+                  : <SiteCopyText id="feed.empty" lang={lang}/>}
               </div>
             ) : (
               <div className="space-y-5">

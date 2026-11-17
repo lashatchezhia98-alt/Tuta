@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   ArrowRight,
   BarChart3,
@@ -33,17 +35,45 @@ type Lang = "ka" | "en";
 import { homeCopy as content } from "@/lib/site-copy-defaults";
 
 function Brand({lang,inverse=false}:{lang:Lang,inverse?:boolean}) {
-  return <Link href="/" className={`flex items-center gap-2.5 ${inverse?"text-white":"text-[#1E1B2E]"}`} aria-label={lang === 'ka' ? 'თუთა მთავარი' : 'TUTA home'}><BrandMark/><strong className="text-[22px] font-black tracking-[-1px]"><SiteCopyText id="nav.brand" lang={lang}/></strong></Link>
+  return <Link href="/" onNavigate={event => {
+    if (window.location.pathname === "/" && !window.location.search && !window.location.hash) {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }} className={`flex items-center gap-2.5 ${inverse?"text-white":"text-[#1E1B2E]"}`} aria-label={lang === 'ka' ? 'თუთას საწყისი გვერდი' : 'TUTA home'}><BrandMark/><strong className="text-[22px] font-black tracking-[-1px]"><SiteCopyText id="nav.brand" lang={lang}/></strong></Link>
 }
 
 function NavLinks({lang}:{lang:Lang}) {const features=useSiteFeatures();return features.market?<a href="/market"><SiteCopyText id="nav.marketShort" lang={lang}/></a>:null}
 
 export default function Home(){
   const [lang,setLang]=useState<Lang>("ka");
+  const router=useRouter();
   const features=useSiteFeatures();
   const consult=features.doctorConsultation;
   useEffect(()=>{if(localStorage.getItem("tuta-language")==="en")queueMicrotask(()=>setLang("en"))},[]);
   useEffect(()=>{localStorage.setItem("tuta-language",lang);document.documentElement.lang=lang},[lang]);
+  useEffect(() => {
+    // Keep the public landing accessible for preview and website-copy editing.
+    if (new URLSearchParams(window.location.search).get("view") === "public") return;
+    let active = true;
+    let observed = false;
+    try {
+      const client = getSupabaseBrowserClient();
+      const accept = (user: { is_anonymous?: boolean } | undefined) => {
+        if (active && user && !user.is_anonymous) router.replace("/app/dashboard");
+      };
+      const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+        observed = true;
+        if (event !== "PASSWORD_RECOVERY") accept(session?.user);
+      });
+      void client.auth.getSession().then(({ data }) => {
+        if (!observed) accept(data.session?.user);
+      }).catch(() => {});
+      return () => { active = false; subscription.unsubscribe(); };
+    } catch {
+      return () => { active = false; };
+    }
+  }, [router]);
   const t=content[lang];
   const icons=[CalendarDays,HeartPulse,BarChart3];
   return <>

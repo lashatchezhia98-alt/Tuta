@@ -39,6 +39,7 @@ export function defaultSiteFeatures(): SiteFeatureSettings {
 export function featureForRoute(route: string): SiteFeatureId | null {
   const extra = extraPages.find(page => route === '/app/' + page.slug);
   if(extra) return extra.slug;
+  if (route === "/app/reminders") return "notifications";
   if (route === "/community") return "community";
   if (route === "/blog") return "library";
   if (route === "/premium") return "premium";

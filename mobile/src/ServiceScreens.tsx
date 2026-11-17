@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Pressable,
+  StyleSheet,
   TextInput,
   View,
 } from "react-native";
@@ -18,11 +19,56 @@ import { checkoutInApp, openPaymentCheckout } from "./open-payment-checkout";
 import { useResource } from "./useResource";
 import { useMembership } from "./useMembership";
 import { useFeatureEnabled } from "./useJourneyEnabled";
-import { forecast, predictions } from "./cycle.mjs";
+import { forecast } from "./cycle.mjs";
 import { calculateCycleEstimate, calculatorMessages, formatCalculatorDate } from "./cycle-calculator.mjs";
 import { healthReport, reminderCalendar } from "./health-report";
 import { sexualActivityOptions } from "./sexual-activity";
 import { symptoms } from "./symptoms.mjs";
+import { filterLibrary, libraryCategories } from "../../lib/library-search";
+import { premiumComparisonCopy, premiumComparisonFeatures } from "../../lib/premium-comparison";
+import { Icon } from "./Art";
+
+const comparisonStyles = StyleSheet.create({
+  frame: { borderWidth: 1, borderColor: C.line, borderRadius: 16, overflow: "hidden", backgroundColor: C.white },
+  row: { flexDirection: "row", borderTopWidth: 1, borderColor: C.line },
+  feature: { flex: 3, minWidth: 0, justifyContent: "center", padding: 10 },
+  plan: { flex: 1.15, minWidth: 0, justifyContent: "center", alignItems: "center", paddingVertical: 10, paddingHorizontal: 3 },
+  heading: { fontSize: 13, textAlign: "center" },
+  badge: { width: 26, height: 26, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+});
+
+function PremiumComparison({ lang }: { lang: Lang }) {
+  const ka = lang === "ka";
+  const copy = (key: keyof typeof premiumComparisonCopy) => premiumComparisonCopy[key][ka ? 0 : 1];
+  const freeLabel = copy("premium.compare.free");
+  const paidLabel = copy("premium.compare.paid");
+  const included = ka ? "შედის" : "included";
+  const excluded = ka ? "არ შედის" : "not included";
+  return <View style={{ gap: 10 }}>
+    <T accessibilityRole="header" weight="bold" style={{ fontSize: 21 }}>{copy("premium.compare.title")}</T>
+    <T style={s.muted}>{copy("premium.compare.intro")}</T>
+    <View style={comparisonStyles.frame}>
+      <View style={{ flexDirection: "row", backgroundColor: C.bg }} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+        <View style={comparisonStyles.feature}><T weight="bold" style={{ fontSize: 13 }}>{copy("premium.compare.feature")}</T></View>
+        <View style={comparisonStyles.plan}><T weight="bold" style={comparisonStyles.heading}>{freeLabel}</T></View>
+        <View style={[comparisonStyles.plan, { backgroundColor: C.lav }]}><T weight="bold" style={comparisonStyles.heading}>{paidLabel}</T></View>
+      </View>
+      {premiumComparisonFeatures.map(({ id, free }) => {
+        const feature = copy(`premium.compare.${id}`);
+        return <View key={id} accessible accessibilityLabel={`${feature}. ${freeLabel}: ${free ? included : excluded}. ${paidLabel}: ${included}.`} style={comparisonStyles.row}>
+          <View style={comparisonStyles.feature}><T style={{ fontSize: 14 }}>{feature}</T></View>
+          <View style={comparisonStyles.plan}>{free
+            ? <View style={[comparisonStyles.badge, { backgroundColor: C.bg }]}><Icon name="check" size={15} /></View>
+            : <T style={s.muted}>–</T>}</View>
+          <View style={[comparisonStyles.plan, { backgroundColor: "#F3EEF8" }]}>
+            <View style={[comparisonStyles.badge, { backgroundColor: C.yellow }]}><Icon name="check" size={15} /></View>
+          </View>
+        </View>;
+      })}
+    </View>
+    <T style={s.muted}>{copy("premium.compare.note")}</T>
+  </View>;
+}
 type Nav = { lang: Lang; onNavigate: (tab: Tab) => void };
 export function ResourceStatus({
   loading,
@@ -57,7 +103,7 @@ export function ResourceStatus({
     </View>
   );
 }
-export function LibraryScreen({ lang }: Nav) {
+export function LibraryScreen({ lang, initialCategory = "" }: Nav & { initialCategory?: string }) {
   const ka = lang === "ka",
     resource = useResource<{
       articles: {
@@ -69,16 +115,12 @@ export function LibraryScreen({ lang }: Nav) {
         category: string;
       }[];
     }>("/api/library");
-  const [category, setCategory] = useState(""),
+  const [category, setCategory] = useState(initialCategory),
     [query, setQuery] = useState(""),
     [selected, setSelected] = useState("");
-  const categories = [
-    ["cycle", "პერიოდი", "Period"],
-    ["pregnancy", "ორსულობა", "Pregnancy"],
-    ["nutrition", "კვება", "Nutrition"],
-    ["mental-health", "ემოციური ჯანმრთელობა", "Mental wellbeing"],
-  ];
+  const categories: Record<string, [string, string]> = libraryCategories;
   const article = resource.data?.articles.find((a) => a.id === selected);
+  const visibleArticles = filterLibrary(resource.data?.articles ?? [], category, query);
   return (
     <View style={s.content}>
       <T weight="display" style={s.title}>
@@ -94,11 +136,10 @@ export function LibraryScreen({ lang }: Nav) {
           />
           <View style={[s.card, { marginTop: 16 }]}>
             <T weight="bold" style={{ fontSize: 23, marginBottom: 16 }}>
-              {ka ? article.title_ka : article.title_en}
+              {ka ? article.title_ka : article.title_en || article.title_ka}
             </T>
-            <T selectable style={{ lineHeight: 28 }}>
-              {ka ? article.body_ka : article.body_en}
-            </T>
+            {!ka && !article.body_en && <T style={s.muted}>English translation is not available yet.</T>}
+            <T selectable style={{ lineHeight: 28 }}>{ka ? article.body_ka : article.body_en || article.body_ka}</T>
           </View>
         </>
       ) : (
@@ -116,7 +157,7 @@ export function LibraryScreen({ lang }: Nav) {
               selected={!category}
               onPress={() => setCategory("")}
             />
-            {categories.map(([id, a, b]) => (
+            {Object.entries(categories).map(([id, [a, b]]) => (
               <Chip
                 key={id}
                 label={ka ? a : b}
@@ -125,14 +166,7 @@ export function LibraryScreen({ lang }: Nav) {
               />
             ))}
           </View>
-          {resource.data?.articles
-            .filter(
-              (a) =>
-                (!category || category === a.category) &&
-                `${a.title_ka} ${a.title_en}`
-                  .toLowerCase()
-                  .includes(query.toLowerCase()),
-            )
+          {visibleArticles
             .map((a) => (
               <Pressable
                 key={a.id}
@@ -141,14 +175,15 @@ export function LibraryScreen({ lang }: Nav) {
                 style={s.card}
               >
                 <T style={s.muted}>
-                  {categories.find((c) => c[0] === a.category)?.[ka ? 1 : 2]}
+                  {categories[a.category]?.[ka ? 0 : 1]}
                 </T>
                 <T weight="bold" style={{ fontSize: 20, marginVertical: 12 }}>
-                  {ka ? a.title_ka : a.title_en}
+                  {ka ? a.title_ka : a.title_en || a.title_ka}
                 </T>
                 <T>{ka ? "წაკითხვა →" : "Read →"}</T>
               </Pressable>
             ))}
+          {resource.data?.articles.length && !visibleArticles.length ? <T>{ka ? "სტატია ვერ მოიძებნა." : "No matching articles."}</T> : null}
           {resource.data && !resource.data.articles.length && (
             <T>
               {ka
@@ -254,22 +289,7 @@ export function PremiumScreen({ lang, session, onPaymentReturn }: Nav & {
           </T>
         )}
       </View>
-      <View style={s.card}>
-        <FieldLabel>{ka ? "უფასო" : "Free"}</FieldLabel>
-        <T>
-          {ka
-            ? "პერიოდის კალენდარი, დღიური, ციკლების ისტორია და საზოგადოების პოსტები."
-            : "Period calendar, daily journal, cycle history and member community."}
-        </T>
-      </View>
-      <View style={s.card}>
-        <FieldLabel>Premium</FieldLabel>
-        <T>
-          {ka
-            ? "განმეორებადი სიმპტომების ანალიზი, ექიმისთვის ანგარიში, ორსულობის აღრიცხვა, პარტნიორთან გაზიარება და ექიმთან ჩატი/ჯავშანი, როცა ექიმები ხელმისაწვდომია."
-            : "Recurring symptom patterns, doctor reports, pregnancy tracking, partner sharing and doctor chat/booking when doctors are available."}
-        </T>
-      </View>
+      <PremiumComparison lang={lang} />
       <View style={s.banner}>
         <T weight="bold">
           {ka ? "მხოლოდ სატესტო გადახდა" : "Test checkout only"}
@@ -932,7 +952,7 @@ export function RemindersScreen({ data }: { data: Data }) {
   async function share() {
     const file = new File(Paths.cache, "tuta-reminders.ics");
     try {
-      file.write(reminderCalendar(predictions(data.periods, data.cycleLength)));
+      file.write(reminderCalendar(model.starts));
       if (!(await Sharing.isAvailableAsync())) throw Error();
       await Sharing.shareAsync(file.uri, {
         mimeType: "text/calendar",
@@ -955,8 +975,8 @@ export function RemindersScreen({ data }: { data: Data }) {
       </T>
       <T style={s.muted}>
         {ka
-          ? "ავტომატური push შეტყობინებები ჯერ არ იგზავნება. შეგიძლია სავარაუდო თარიღები კალენდარში გადაიტანო. სათაური არ შეიცავს ჯანმრთელობის დეტალებს."
-          : "Automatic push notifications are not enabled yet. Export estimated dates to your calendar. Event titles contain no health details."}
+          ? "გადაიტანე სავარაუდო თარიღები პირად კალენდარში. მოვლენის სათაური ჯანმრთელობის დეტალებს არ შეიცავს."
+          : "Export estimated dates to your personal calendar. Event titles contain no health details."}
       </T>
       <CTA
         title={ka ? "კალენდრის ფაილის გაზიარება" : "Share calendar file"}
@@ -973,6 +993,38 @@ export function RemindersScreen({ data }: { data: Data }) {
       {Boolean(message) && <T accessibilityRole="alert">{message}</T>}
     </View>
   );
+}
+
+export function AnnouncementsScreen({ lang, userId }: { lang: Lang; userId: string }) {
+  const ka = lang === "ka";
+  const { data, error, loading, refresh } = useResource<{ rows: { id: string; title: string; body: string; scheduled_at: string; read_at: string | null }[] }>("/api/notifications", userId, 60_000);
+  const [busy, setBusy] = useState(false);
+  const [writeFailed, setWriteFailed] = useState(false);
+  async function read(id: string) {
+    if (busy) return;
+    setBusy(true);
+    setWriteFailed(false);
+    try {
+      await api("/api/notifications", { body: { id }, userId });
+      await refresh();
+    } catch {
+      setWriteFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <View style={s.content}>
+    <T weight="display" style={s.title}>{ka ? "თუთას განცხადებები" : "Tuta announcements"}</T>
+    {loading && !data ? <T>{ka ? "იტვირთება…" : "Loading…"}</T> : null}
+    {error || writeFailed ? <View style={s.card}><T accessibilityRole="alert">{ka ? "განცხადებების განახლება ვერ მოხერხდა." : "Could not update announcements."}</T><CTA title={ka ? "ხელახლა ცდა" : "Retry"} onPress={() => { setWriteFailed(false); void refresh(); }}/></View> : null}
+    {data?.rows.length === 0 ? <T>{ka ? "ჯერ განცხადებები არ არის." : "No announcements yet."}</T> : null}
+    {data?.rows.map(row => <View key={row.id} style={s.card}>
+      <T weight="bold">{row.title}</T>
+      <T style={s.muted}>{new Intl.DateTimeFormat(ka ? "ka-GE" : "en-GB", { dateStyle: "medium", timeZone: "Asia/Tbilisi" }).format(new Date(row.scheduled_at))}</T>
+      <T>{row.body}</T>
+      {row.read_at ? <T style={s.muted}>{ka ? "წაკითხულია" : "Read"}</T> : <CTA light disabled={busy} title={ka ? "წაკითხულად მონიშვნა" : "Mark as read"} onPress={() => void read(row.id)}/>}
+    </View>)}
+  </View>;
 }
 export function PlannedScreen({ lang, page, onNavigate }: { page: Tab } & Nav) {
   const ka = lang === "ka";

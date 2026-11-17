@@ -1,5 +1,5 @@
 "use client";
-import { BookOpen, ChevronRight, FileText, Globe, Grid2X2, LockKeyhole, Menu, Moon, Sparkles, Stethoscope, Store, UserRound, X } from 'lucide-react';
+import { Bell, BookOpen, ChevronRight, FileText, Globe, Grid2X2, LockKeyhole, LogOut, Menu, Moon, Sparkles, Stethoscope, Store, UserRound, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -13,6 +13,13 @@ import { burgerLanguage, burgerMenuGroups } from "@/mobile/src/burger-menu";
 const icons = { book: BookOpen, services: Grid2X2, care: Stethoscope,
   spark: Sparkles, periodMoon: Moon, communityStars: Sparkles, market: Store,
   profile: UserRound, report: FileText, moon: Moon, lock: LockKeyhole, terms: FileText };
+const desktopLinks = [
+  ["/app/dashboard", "nav.period", "period"],
+  ["/community", null, "community"],
+  ["/app/features", "nav.services", null],
+  ["/market", "nav.market", "market"],
+  ["/app/settings", "nav.profile", null],
+] as const;
 
 export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(lang:'ka'|'en')=>void}) {
   const ka=lang==='ka';
@@ -20,8 +27,35 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
   const features=useSiteFeatures();
   const language=burgerLanguage[lang];
   const [signedIn,setSignedIn]=useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState(false);
   useEffect(()=>{let alive=true,observed=false;try{const client=getSupabaseBrowserClient();const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{observed=true;if(alive)setSignedIn(Boolean(session&&!session.user.is_anonymous))});void client.auth.getSession().then(({data:{session}})=>{if(alive&&!observed)setSignedIn(Boolean(session&&!session.user.is_anonymous))}).catch(()=>{});return()=>{alive=false;subscription.unsubscribe()}}catch{return()=>{alive=false}}},[]);
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setSignOutError(false);
+    try {
+      const { error } = await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
+      if (error) throw error;
+      // Full navigation drops private state immediately, even if already on "/".
+      window.location.replace("/");
+    } catch {
+      setSignOutError(true);
+    } finally {
+      setSigningOut(false);
+    }
+  }
   return <div className="header-actions">
+    {signedIn && <nav className="desktop-member-nav" aria-label={ka ? "მთავარი ნავიგაცია" : "Main navigation"}>
+      {desktopLinks.filter(([, , feature]) => !feature || features[feature]).map(([href, copy]) => {
+        const active = href === "/app/dashboard"
+          ? ["/app/dashboard", "/app/log", "/app/insights", "/app/reminders", "/app/report"].includes(pathname)
+          : pathname === href || pathname.startsWith(href + "/");
+        return <Link key={href} href={href} aria-current={active ? "page" : undefined}>
+          {copy ? <SiteCopyText id={copy} lang={lang}/> : ka ? "საზოგადოება" : "Community"}
+        </Link>;
+      })}
+    </nav>}
     {!signedIn&&<>
       <div className="header-auth-links">
         <Link className="header-sign-in" href="/login"><SiteCopyText id="nav.signIn" lang={lang}/></Link>
@@ -41,6 +75,7 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
         </SheetContent>
       </Sheet>
     </>}
+    {signedIn && <Link className="header-activity" href="/app/activity" aria-label={ka ? "შეტყობინებები" : "Activity notifications"}><Bell size={23} aria-hidden="true"/></Link>}
     <Sheet>
       <SheetTrigger asChild><button className="header-burger" aria-label={ka?'მენიუს გახსნა':'Open menu'}><Menu size={22}/></button></SheetTrigger>
       <SheetContent className="tuta-menu-sheet" showCloseButton={false}>
@@ -77,6 +112,13 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
             <span lang={language.code}>{language.next}</span>
           </button>
         </SheetClose>
+        {signedIn && <div className="tuta-menu-sign-out">
+          <button type="button" className="tuta-menu-row" onClick={() => void signOut()} disabled={signingOut}>
+            <span className="tuta-menu-icon"><LogOut size={19} aria-hidden="true"/></span>
+            <strong className="tuta-menu-label">{signingOut ? (ka ? "ანგარიშიდან გამოსვლა…" : "Signing out…") : <SiteCopyText id="settings.signOut" lang={lang}/>}</strong>
+          </button>
+          {signOutError && <p role="alert">{ka ? "გამოსვლა ვერ მოხერხდა. სცადე ხელახლა." : "Could not sign out. Try again."}</p>}
+        </div>}
       </SheetContent>
     </Sheet>
   </div>;

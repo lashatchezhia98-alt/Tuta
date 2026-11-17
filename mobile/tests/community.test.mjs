@@ -16,7 +16,8 @@ test('pull to refresh is scoped to the member feed and replaces pagination', () 
 
 test('intimacy choices are collapsed by default with accessible single selection and clearing', () => {
   const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
-  assert.match(app, /\[intimacyOpen, setIntimacyOpen\] = useState\(false\)/);
+  assert.match(app, /activityOnly = false/);
+  assert.match(app, /\[intimacyOpen, setIntimacyOpen\] = useState\(activityOnly\)/);
   assert.match(app, /accessibilityState=\{\{ expanded: intimacyOpen \}\}/);
   assert.match(app, /intimacyOpen \?[\s\S]*accessibilityRole="radiogroup"[\s\S]*accessibilityRole="radio" accessibilityState=\{\{ checked \}\}/);
   assert.match(app, /onPress=\{\(\) => change\(\{ sexualActivity: undefined \}\)\}/);

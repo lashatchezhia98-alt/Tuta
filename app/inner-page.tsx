@@ -16,7 +16,7 @@ import CycleOverview from "@/components/cycle-overview";
 import { forecast } from "../mobile/src/cycle.mjs";
 import PremiumCheckout from "@/components/premium-checkout";
 import PremiumComparison from "@/components/premium-comparison";
-import HealthWorkspace from "@/components/health-workspace";
+import HealthWorkspace, { ProfileHealthTools } from "@/components/health-workspace";
 import Library from "@/components/library";
 import CareWorkspace from "@/components/care-workspace";
 import Marketplace from "@/components/marketplace";
@@ -37,7 +37,7 @@ import { aboutCards, pageInfo, type PageKind } from "@/lib/site-copy-defaults";
 function useSiteLanguage(){const [lang,setLang]=useState<Lang>("ka");useEffect(()=>{if(localStorage.getItem("tuta-language")==="en")setLang("en")},[]);useEffect(()=>{localStorage.setItem("tuta-language",lang);document.documentElement.lang=lang},[lang]);return{lang,setLang}}
 function InnerLogo({lang,inverse=false}:{lang:Lang,inverse?:boolean}){return <a href="/" className={`inner-logo ${inverse?"inverse":""}`}><BrandMark/><strong><SiteCopyText id="nav.brand" lang={lang}/></strong></a>}
 
-function InnerHeader({lang,setLang,showActions=true}:{lang:Lang,setLang:(v:Lang)=>void,consult?:boolean,showActions?:boolean}){return <header className="inner-header"><div className="inner-container inner-nav"><InnerLogo lang={lang}/>{showActions&&<HeaderActions lang={lang} setLang={setLang}/>}</div></header>}
+function InnerHeader({lang,setLang,showActions=true,periodStyle=false}:{lang:Lang,setLang:(v:Lang)=>void,consult?:boolean,showActions?:boolean,periodStyle?:boolean}){return <header className={periodStyle ? "inner-header period-inner-header" : "inner-header"}><div className="inner-container inner-nav"><InnerLogo lang={lang}/>{showActions&&<HeaderActions lang={lang} setLang={setLang}/>}</div></header>}
 
 function StandardPage({kind,lang}:{kind:PageKind,lang:Lang}){const cards=aboutCards[lang];return <><section className="inner-hero"><div className="inner-container"><span className="inner-kicker">TUTA HEALTH</span><h1><SiteCopyText id={`page.${kind}.0`} lang={lang}/></h1><p><SiteCopyText id={`page.${kind}.1`} lang={lang}/></p></div></section><section className="inner-body inner-container"><div className="info-grid">{cards.map(([title],index)=><article key={title}><h2><SiteCopyText id={`about.${index}.0`} lang={lang}/></h2><p><SiteCopyText id={`about.${index}.1`} lang={lang}/></p></article>)}</div><p><a href="/privacy">{lang==='ka'?'კონფიდენციალურობა':'Privacy'}</a> · <a href="/terms">{lang==='ka'?'წესები და პირობები':'Terms'}</a></p></section></>}
 function PremiumPage({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA PREMIUM</span><h1><SiteCopyText id="premium.title" lang={lang}/></h1><p><SiteCopyText id="premium.intro" lang={lang}/></p></div></section><PremiumComparison lang={lang}/><PremiumCheckout lang={lang}/></>}
@@ -238,13 +238,13 @@ export default function InnerPage({kind}:{kind:PageKind}){
   const {lang,setLang}=useSiteLanguage();
   const features=useSiteFeatures();
   const featureStatus=useSiteFeaturesStatus();
-  const pathByKind:Partial<Record<PageKind,string>>={blog:"/blog",market:"/market",premium:"/premium",consultation:"/consultation",dashboard:"/app/dashboard",log:"/app/log",insights:"/app/insights",report:"/app/report"};
+  const pathByKind:Partial<Record<PageKind,string>>={blog:"/blog",market:"/market",premium:"/premium",consultation:"/consultation",dashboard:"/app/dashboard",log:"/app/log",insights:"/app/insights",report:"/app/report",reminders:"/app/reminders"};
   const featureId=featureForRoute(pathByKind[kind]||"");
   const featureDisabled=featureId!==null&&!features[featureId];
   if(featureDisabled&&kind!=='consultation'&&featureStatus!=='ready')return <><InnerHeader lang={lang} setLang={setLang}/><main className="inner-container settings-workspace"><p role="status">{featureStatus==='loading'?(lang==='ka'?'პარამეტრები იტვირთება…':'Loading settings…'):(lang==='ka'?'პარამეტრები ვერ ჩაიტვირთა. სცადე განახლება.':'Could not load settings. Please retry.')}</p>{featureStatus==='error'&&<button type="button" onClick={()=>window.location.reload()}>{lang==='ka'?'განახლება':'Reload'}</button>}</main></>;
   if(kind==="login"||kind==="register"||kind==="forgot-password"||kind==="reset-password")return <AuthPage kind={kind} lang={lang}/>;
-  if(kind==='settings')return <><InnerHeader lang={lang} setLang={setLang}/><main className="inner-container settings-workspace"><h1><SiteCopyText id="settings.title" lang={lang}/></h1><AccountSettings lang={lang}/><p><a href="/forgot-password"><SiteCopyText id="settings.reset" lang={lang}/></a> · <a href="/privacy"><SiteCopyText id="settings.privacy" lang={lang}/></a></p></main></>;
-  if(["dashboard","log","insights","report"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation}/><HealthWorkspace kind={kind} lang={lang}/></>;
+  if(kind==='settings')return <><InnerHeader lang={lang} setLang={setLang}/><main className="inner-container settings-workspace"><h1><SiteCopyText id="settings.title" lang={lang}/></h1><AccountSettings lang={lang}/><ProfileHealthTools lang={lang}/><SiteSocialLinks lang={lang}/><p><a href="/forgot-password"><SiteCopyText id="settings.reset" lang={lang}/></a> · <a href="/privacy"><SiteCopyText id="settings.privacy" lang={lang}/></a></p></main></>;
+  if(["dashboard","log","insights","report","reminders"].includes(kind))return featureDisabled?<UnavailableFeature lang={lang}/>:<><InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} periodStyle/><HealthWorkspace kind={kind} lang={lang}/></>;
   return <>
     <InnerHeader lang={lang} setLang={setLang} consult={features.doctorConsultation} showActions={kind!=="admin"}/>
     {kind==="consultation"?<CareWorkspace lang={lang}/>:featureDisabled?<UnavailableFeature lang={lang}/>:kind==="blog"?<div className="inner-container"><Library lang={lang}/></div>:kind==="market"?<Marketplace lang={lang}/>:kind==="premium"?<PremiumPage lang={lang}/>:kind==="period"||kind==="ovulation"?<FreeCalculator kind={kind} lang={lang}/>:<StandardPage kind={kind} lang={lang}/>}

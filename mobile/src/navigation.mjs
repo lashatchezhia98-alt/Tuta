@@ -122,6 +122,21 @@ export const destinations = [
     feature: "notifications",
   },
   {
+    id: "announcements",
+    group: "profile",
+    ka: "თუთას განცხადებები",
+    en: "Tuta announcements",
+    icon: "bell",
+    feature: "notifications",
+  },
+  {
+    id: "activity",
+    group: "profile",
+    ka: "შეტყობინებები",
+    en: "Notifications",
+    icon: "bell",
+  },
+  {
     id: "premium",
     group: "profile",
     ka: "პრემიუმი",

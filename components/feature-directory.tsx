@@ -20,14 +20,14 @@ export default function FeatureDirectory({slug}:{slug?:string}) {
   const status=useSiteFeaturesStatus();
   useEffect(()=>{const timer=setTimeout(()=>{if(localStorage.getItem('tuta-language')==='en')setLang('en')},0);return()=>clearTimeout(timer)},[]);
   const ka=lang==='ka'; const page=extraPages.find(p=>p.slug===slug);
-  if(page && page.slug!=='partners' && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features"><SiteCopyText id="directory.title" lang={lang}/></Link></main>;
+  if(page && page.slug!=='partners' && page.slug!=='pregnancy' && !features[page.slug]) return <main className="inner-container" style={{padding:32}}><h1>{ka?'ფუნქცია დროებით გამორთულია':'Feature temporarily disabled'}</h1><Link href="/app/features"><SiteCopyText id="directory.title" lang={lang}/></Link></main>;
   return <div className="inner-container" style={{padding:'24px 16px 80px'}}>
     <header style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:16,marginBottom:32}}>
       <Link href="/" className="inner-logo"><BrandMark/>{ka?'თუთა':'TUTA'}</Link>
       <HeaderActions lang={lang} setLang={next=>{setLang(next);localStorage.setItem('tuta-language',next);document.documentElement.lang=next}}/>
     </header>
     {page && <nav aria-label={ka?'ნავიგაცია':'Navigation'} style={{marginBottom:24}}><Link href="/app/features">← <SiteCopyText id="directory.servicesTitle" lang={lang}/></Link></nav>}
-    {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:page.slug==='symptom-checker'?<SymptomReview lang={lang}/>:page.slug==='account-deletion'?<AccountDeletion lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main className="service-directory">
+    {page ? <main><h1><SiteCopyText id={`extra.${page.slug}.title`} lang={lang}/></h1><p><SiteCopyText id={`extra.${page.slug}.intro`} lang={lang}/></p>{page.slug==='journey'?<GuidedJourney lang={lang}/>:page.slug==='pregnancy'?<PregnancyWorkspace lang={lang} enabled={status === "ready" && features.pregnancy}/>:page.slug==='partners'?<PartnerWorkspace lang={lang}/>:page.slug==='symptom-checker'?<SymptomReview lang={lang}/>:page.slug==='account-deletion'?<AccountDeletion lang={lang}/>:<section className="workspace-card" style={{marginTop:24,padding:24}}><h2>{ka?'მიმდინარე მდგომარეობა':'Current availability'}</h2><p>{ka?page.status:page.englishStatus}</p><Link href={page.link}>{ka?page.action:page.englishAction} →</Link></section>}</main> : <main className="service-directory">
       <h1><SiteCopyText id="directory.servicesTitle" lang={lang}/></h1><p><SiteCopyText id="directory.intro" lang={lang}/></p>
       {status !== "ready" && <p role="status">{status === "loading"
         ? (ka ? "სერვისები იტვირთება…" : "Loading services…")

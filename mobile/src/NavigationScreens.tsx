@@ -12,7 +12,8 @@ export const serviceTargets = {
   "/app/journey": "journey", "/tools/period-calculator": "period-calculator",
   "/tools/ovulation-calculator": "ovulation-calculator", "/consultation": "care",
   "/app/report": "report", "/app/pregnancy": "pregnancy", "/app/partners": "partners",
-  "/community": "home", "/blog": "blog", "/app/notifications": "notifications",
+  "/community": "home", "/blog": "blog", "/app/activity": "activity",
+  "/app/notifications": "announcements", "/app/reminders": "notifications",
   "/market": "market", "/market/orders": "orders", "/premium": "premium",
   "/app/settings": "profile", "/privacy": "privacy", "/about": "about",
   "/terms": "terms", "/app/symptom-checker": "symptom-checker",
@@ -88,10 +89,8 @@ export function ServicesScreen(props: Nav) {
               <Pressable key={href} accessibilityRole="button" onPress={() => props.onNavigate(serviceTargets[href])}
                 style={{ minHeight: 62, flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderColor: C.line, borderTopWidth: index === 0 ? 0 : 1 }}>
                 <View style={{ flex: 1, gap: 4 }}>
-                  <T weight="bold">{href === "/app/notifications" ? (ka ? "შეხსენებები" : "Reminders") : (ka ? labelKa : labelEn)}</T>
-                  <T style={s.muted}>{href === "/app/notifications"
-                    ? (ka ? "დააყენე პერიოდის შეხსენება ამ მოწყობილობაზე." : "Set period reminders on this device.")
-                    : (ka ? detailKa : detailEn)}</T>
+                  <T weight="bold">{ka ? labelKa : labelEn}</T>
+                  <T style={s.muted}>{ka ? detailKa : detailEn}</T>
                   {access === "premium" && <T style={{ alignSelf: "flex-start", backgroundColor: C.yellow, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, fontSize: 12 }}>{ka ? "პრემიუმი" : "Premium"}</T>}
                 </View>
                 <Icon name="arrow" size={18}/>

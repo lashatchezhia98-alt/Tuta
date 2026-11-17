@@ -2,6 +2,7 @@ import { aboutCards, homeCopy, pageInfo, policyCopy } from "./site-copy-defaults
 import { memberCopyFields } from "./member-copy-defaults";
 import { extraPages } from "./page-directory";
 import { serviceCopyKey, serviceGroups } from "./service-directory";
+import { premiumComparisonCopy } from "./premium-comparison";
 
 export type CopyLanguage = "ka" | "en";
 export type CopyOverrides = Record<CopyLanguage, Record<string, string>>;
@@ -92,24 +93,7 @@ const additional: Record<string, [string, string]> = {
   "premium.pay": ["სატესტო გადახდაზე გადასვლა","Continue to test payment"],
   "premium.status": ["გადახდის სტატუსის შემოწმება","Check payment status"],
   "premium.testCards": ["სატესტო ბარათები","Test cards"],
-  "premium.compare.title": ["შეადარე გეგმები", "Compare plans"],
-  "premium.compare.intro": ["ნახე, რით შეგიძლია ისარგებლო უფასოდ და რას გთავაზობს პრემიუმი დამატებით.", "See what you get for free and what Premium adds."],
-  "premium.compare.feature": ["შესაძლებლობა", "Feature"],
-  "premium.compare.free": ["უფასო", "Free"],
-  "premium.compare.paid": ["პრემიუმი", "Premium"],
-  "premium.compare.calendar": ["პერიოდის კალენდარი", "Period calendar"],
-  "premium.compare.predictions": ["პერიოდისა და ოვულაციის პროგნოზი", "Period and ovulation estimates"],
-  "premium.compare.journal": ["დღიური და სიმპტომების აღრიცხვა", "Journal and symptom tracking"],
-  "premium.compare.history": ["ციკლის ისტორია", "Cycle history"],
-  "premium.compare.community": ["საზოგადოება და ანონიმური პოსტები", "Community and anonymous posts"],
-  "premium.compare.library": ["ჯანმრთელობის ბლოგები", "Health articles"],
-  "premium.compare.patterns": ["განმეორებადი სიმპტომების ანალიზი", "Recurring symptom analysis"],
-  "premium.compare.report": ["ანგარიში ექიმისთვის", "Report for your doctor"],
-  "premium.compare.pregnancy": ["ორსულობის მონიტორინგი", "Pregnancy tracking"],
-  "premium.compare.partner": ["პარტნიორის მოწვევა და გაზიარება", "Invite a partner and share updates"],
-  "premium.compare.doctor_chat": ["ექიმთან მიმოწერა", "Message a doctor"],
-  "premium.compare.booking": ["ექიმთან ვიზიტის დაჯავშნა", "Book a doctor appointment"],
-  "premium.compare.note": ["ექიმთან მიმოწერა და ჯავშანი ხელმისაწვდომ ექიმებზეა დამოკიდებული. პრემიუმის გადახდა ჯერ სატესტოა.", "Messaging and bookings depend on doctor availability. Premium payments are currently in test mode."],
+  ...premiumComparisonCopy,
   "auth.email": ["ელფოსტა", "Email"],
   "auth.firstName": ["სახელი", "First name"],
   "auth.lastName": ["გვარი", "Last name"],

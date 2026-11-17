@@ -4,6 +4,7 @@ import { SiteCopyText } from "@/components/site-copy-provider";
 import { useCallback, useEffect, useState } from "react";
 import {useUnsavedChanges} from '@/lib/use-unsaved-changes';
 import { articleCategories } from "@/lib/content-validation";
+import { filterLibrary, libraryCategories } from "@/lib/library-search";
 type Article = {
   id: string;
   title_ka: string;
@@ -14,12 +15,7 @@ type Article = {
   status?: string;
   publish_at: string | null;
 };
-const categories: Record<string, [string, string]> = {
-  cycle: ["პერიოდი", "Period"],
-  pregnancy: ["ორსულობა", "Pregnancy"],
-  nutrition: ["კვება", "Nutrition"],
-  "mental-health": ["ემოციური ჯანმრთელობა", "Mental wellbeing"],
-};
+const categories: Record<string, [string, string]> = libraryCategories;
 const blank = {
   title_ka: "",
   title_en: "",
@@ -71,6 +67,14 @@ export default function Library({
     const timer = setTimeout(() => void load(), 0);
     return () => clearTimeout(timer);
   }, [load]);
+  useEffect(() => {
+    if (admin) return;
+    const category = new URLSearchParams(window.location.search).get("category");
+    if (!category || !Object.hasOwn(categories, category)) return;
+    const timer = window.setTimeout(() => setFilter(category), 0);
+    return () => window.clearTimeout(timer);
+  }, [admin]);
+  const visibleArticles = filterLibrary(articles, filter, query);
   async function save(remove = false) {
     setBusy(true);
     setMessage("");
@@ -248,15 +252,8 @@ export default function Library({
                 : "No articles yet."
               : "")}
       </p>
-      {articles
-        .filter(
-          (a) =>
-            (!filter || a.category === filter) &&
-            [a.title_ka, a.title_en, a.body_ka, a.body_en]
-              .join(" ")
-              .toLowerCase()
-              .includes(query.toLowerCase()),
-        )
+      {!loading && articles.length > 0 && visibleArticles.length === 0 && <p role="status">{ka ? "სტატია ვერ მოიძებნა." : "No matching articles."}</p>}
+      {visibleArticles
         .map((a) => (
           <article className="workspace-card" key={a.id}>
             <p>

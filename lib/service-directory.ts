@@ -17,7 +17,9 @@ export const serviceGroups = [
   { id: "discover", ka: "საზოგადოება და ბიბლიოთეკა", en: "Community & library", items: [
     ["/community", "საზოგადოება", "Community", "შესვლის შემდეგ წაიკითხე პოსტები ან გაუზიარე სხვებს გამოცდილება.", "Sign in to read posts or share your experience."],
     ["/blog", "ჯანმრთელობის სტატიები", "Health articles", "მოძებნე სტატიები შენთვის საინტერესო თემაზე.", "Find articles on topics that interest you."],
-    ["/app/notifications", "შეტყობინებები", "Announcements", "ნახე თუთასგან მიღებული შეტყობინებები.", "Read announcements from Tuta."],
+    ["/app/activity", "შეტყობინებები", "Notifications", "ნახე პასუხები, ვიზიტებისა და შეკვეთების განახლებები.", "See replies, appointment and order updates."],
+    ["/app/notifications", "თუთას განცხადებები", "Tuta announcements", "ნახე თუთასგან მიღებული განცხადებები.", "Read announcements from Tuta."],
+    ["/app/reminders", "კალენდრის შეხსენებები", "Calendar reminders", "გადაიტანე სავარაუდო დღეები შენს პირად კალენდარში.", "Export estimated dates to your personal calendar."],
   ] },
   { id: "shop", ka: "მარკეტი და გამოწერა", en: "Market & subscription", items: [
     ["/market", "მარკეტი", "Market", "დაათვალიერე პროდუქტები და დაამატე კალათაში.", "Browse products and add them to your cart."],

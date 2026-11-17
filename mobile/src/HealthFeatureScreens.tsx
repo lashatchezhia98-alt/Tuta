@@ -14,6 +14,8 @@ type Props = {
   save: (next: Data) => Promise<boolean>;
   token: string;
   onPremium: () => void;
+  onJournal: () => void;
+  onArticles: () => void;
 };
 function FeatureStatus({
   status,
@@ -46,7 +48,7 @@ function FeatureStatus({
   );
 }
 
-export function PregnancyScreen({ data, save, token, onPremium }: Props) {
+export function PregnancyScreen({ data, save, token, onPremium, onJournal, onArticles }: Props) {
   const ka = data.lang === "ka";
   const { status, retry } = useFeatureEnabled("pregnancy");
   const { active: member } = useMembership(token, root);
@@ -240,6 +242,8 @@ export function PregnancyScreen({ data, save, token, onPremium }: Props) {
           )
         }
       />
+      <CTA light title={ka ? "დღიური" : "Journal"} onPress={onJournal}/>
+      <CTA light title={ka ? "სტატიები ორსულობაზე" : "Pregnancy articles"} onPress={onArticles}/>
     </View>
   );
 }

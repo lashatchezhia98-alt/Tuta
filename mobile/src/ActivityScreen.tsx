@@ -177,6 +177,8 @@ export function ActivityScreen({
           onPress={() => setShowSettings((value) => !value)} />
         <Chip label={t("განახლება", "Refresh")} selected={false}
           onPress={() => { if (!lock.current) void refresh(); }} />
+        <Chip label={t("თუთას განცხადებები", "Tuta announcements")} selected={false}
+          onPress={() => onOpen("announcements")} />
       </View>
       {error ? <T accessibilityRole="alert">{t("შეტყობინებები სრულად ვერ ჩაიტვირთა.", "Could not load all notification data.")}</T> : null}
       {writeError ? <T accessibilityRole="alert">{t("ცვლილება ვერ შეინახა. სცადე ხელახლა.", "Could not save the change. Try again.")}</T> : null}

@@ -57,6 +57,8 @@ function activeTab(pathname: string) {
   if (
     pathname.startsWith("/app/settings") ||
     pathname.startsWith("/app/notifications") ||
+    pathname.startsWith("/app/activity") ||
+    pathname.startsWith("/app/reminders") ||
     pathname.startsWith("/app/profile")
   )
     return "profile";
