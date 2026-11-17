@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { loadCommentPage, mergeComments } from "./comment-pages.mjs";
 import { doctorPhotoUrl } from "./doctor-photo.mjs";
 import {
@@ -90,13 +90,17 @@ function friendlyDate(value: string, lang: Lang) {
   }
 }
 
+export type CommunityFeedHandle = { refresh: () => Promise<void> };
+
 export function CommunityFeed({
+  ref,
   lang,
   session,
   target,
   onShowFeed,
   onSignIn,
 }: {
+  ref?: Ref<CommunityFeedHandle>;
   lang: Lang;
   session: Session | null;
   target: { postId: string; commentId: string | null } | null;
@@ -111,6 +115,9 @@ export function CommunityFeed({
     [loadingMore, setLoadingMore] = useState(false),
     [hasMore, setHasMore] = useState(false),
     [feedError, setFeedError] = useState("");
+  const [pulling, setPulling] = useState(false);
+  const feedRequest = useRef(0);
+  const feedBusy = useRef(false);
   const [ownedPostIds, setOwnedPostIds] = useState<string[]>([]);
   const [topic, setTopic] = useState(""),
     [editingId, setEditingId] = useState<string | null>(null);
@@ -179,8 +186,8 @@ export function CommunityFeed({
       });
   };
 
-  const load = async (more = false) => {
-    if (!isMember) return;
+  const load = async (more = false, pull = false) => {
+    if (!isMember || (more && feedBusy.current)) return;
     const epoch = commentEpoch.current;
     if (!supabase) {
       setFeedError(
@@ -191,8 +198,12 @@ export function CommunityFeed({
       );
       return;
     }
-    if (more) setLoadingMore(true);
-    else setLoading(true);
+    const request = ++feedRequest.current;
+    feedBusy.current = true;
+    const isCurrent = () => epoch === commentEpoch.current && request === feedRequest.current;
+    setLoadingMore(more);
+    setLoading(!more);
+    setPulling(pull);
     const offset = more ? posts.length : 0;
     try {
       const client = supabase;
@@ -212,7 +223,7 @@ export function CommunityFeed({
       const { data, error } = result.error?.code === "42703"
         ? await postsQuery(baseFields)
         : result;
-      if (epoch !== commentEpoch.current) return;
+      if (!isCurrent()) return;
       if (error) throw error;
       setOwnedPostIds(
         owned.error
@@ -231,7 +242,7 @@ export function CommunityFeed({
       }
       await loadDoctors(page.map((post) => post.public_author_id));
     } catch {
-      if (epoch === commentEpoch.current)
+      if (isCurrent())
         setFeedError(
           t(
             "ლენტი ვერ ჩაიტვირთა. შეამოწმე კავშირი ან მონაცემთა ბაზის გამართვა.",
@@ -239,12 +250,15 @@ export function CommunityFeed({
           ),
         );
     } finally {
-      if (epoch === commentEpoch.current) {
+      if (isCurrent()) {
+        feedBusy.current = false;
         setLoading(false);
         setLoadingMore(false);
+        setPulling(false);
       }
     }
   };
+  useImperativeHandle(ref, () => ({ refresh: () => load(false, true) }));
   // Reload only when the signed-in member changes.
   const reloadFeed = useEffectEvent(() => void load());
   useEffect(() => {
@@ -967,7 +981,7 @@ export function CommunityFeed({
           <T weight="bold">{t("განახლება", "Refresh")}</T>
         </Pressable>
       </View>
-      {loading ? (
+      {loading && !pulling ? (
         <ActivityIndicator color={C.ink} style={{ marginVertical: 30 }} />
       ) : null}
       {feedError ? (

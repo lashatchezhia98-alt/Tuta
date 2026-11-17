@@ -1,6 +1,26 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import {canEditCommunityPost, communityPhotoUrl, memberDisplayName, memberInitials, normalizePost, POST_EDIT_WINDOW_MS, POST_TOPICS, postWordCount, validComment, validPost, validTopic} from '../src/community.mjs';
+
+test('pull to refresh is scoped to the member feed and replaces pagination', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  const feed = readFileSync(new URL('../src/CommunityFeed.tsx', import.meta.url), 'utf8');
+  assert.match(app, /canPullToRefresh = tab === "home" && !authMode && !!memberId\s+&& activityTarget\?\.userId !== memberId && pageAllowed/);
+  assert.match(app, /refreshControl=\{canPullToRefresh \?/);
+  assert.match(app, /await feed\.refresh\(\);\s+\} finally \{\s+refreshRequest\.current = false;\s+setRefreshingMember\(null\)/);
+  assert.match(feed, /refresh: \(\) => load\(false, true\)/);
+  assert.match(feed, /request === feedRequest\.current/);
+  assert.match(feed, /if \(!isCurrent\(\)\) return;[\s\S]*more \? \[\.\.\.current, \.\.\.page\] : page/);
+});
+
+test('intimacy choices are collapsed by default with accessible single selection and clearing', () => {
+  const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
+  assert.match(app, /\[intimacyOpen, setIntimacyOpen\] = useState\(false\)/);
+  assert.match(app, /accessibilityState=\{\{ expanded: intimacyOpen \}\}/);
+  assert.match(app, /intimacyOpen \?[\s\S]*accessibilityRole="radiogroup"[\s\S]*accessibilityRole="radio" accessibilityState=\{\{ checked \}\}/);
+  assert.match(app, /onPress=\{\(\) => change\(\{ sexualActivity: undefined \}\)\}/);
+});
 
 test('only the author can edit a post during the first 30 minutes', () => {
   const now = Date.parse('2026-11-12T12:30:00.000Z');

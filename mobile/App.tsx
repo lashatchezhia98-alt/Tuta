@@ -8,6 +8,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   TextInput,
@@ -53,7 +54,7 @@ import {
 import { isSupabaseConfigured, supabase } from "./src/supabase";
 import { EMPTY_SOCIAL_LINKS, type SocialLinks, type SocialPlatform } from "./src/site-social-links";
 import type { Session } from "@supabase/supabase-js";
-import { CommunityFeed } from "./src/CommunityFeed";
+import { CommunityFeed, type CommunityFeedHandle } from "./src/CommunityFeed";
 import { AppMenu, MenuPage } from "./src/MenuPages";
 import { ActivityScreen, useActivityBadge, type ActivityPost } from "./src/ActivityScreen";
 import { watchPushTaps } from "./src/push-device";
@@ -181,6 +182,9 @@ function Shell() {
   const headerWidth = Math.min(width, 520) - insets.left - insets.right;
   const stackedHeader = headerWidth < 300 + 180 * Math.max(0, fontScale - 1);
   const scroll = useRef<ScrollView>(null);
+  const communityFeed = useRef<CommunityFeedHandle>(null);
+  const refreshRequest = useRef(false);
+  const [refreshingMember, setRefreshingMember] = useState<string | null>(null);
   const saving = useRef(false);
   const handledAuthLink = useRef<string | null>(null);
   const handledPaymentLink = useRef<string | null>(null);
@@ -540,6 +544,20 @@ function Shell() {
     setCalendarEditing(editing);
     nav("calendar");
   };
+  const canPullToRefresh = tab === "home" && !authMode && !!memberId
+    && activityTarget?.userId !== memberId && pageAllowed(tab, features.features);
+  const refreshCommunity = async () => {
+    const feed = communityFeed.current;
+    if (!canPullToRefresh || !feed || refreshRequest.current) return;
+    refreshRequest.current = true;
+    setRefreshingMember(memberId);
+    try {
+      await feed.refresh();
+    } finally {
+      refreshRequest.current = false;
+      setRefreshingMember(null);
+    }
+  };
   const renderPage = () => {
     if (!pageAllowed(tab, features.features))
       return (
@@ -553,6 +571,7 @@ function Shell() {
     if (tab === "home")
       return (
         <CommunityFeed
+          ref={communityFeed}
           key={activityTarget?.userId === memberId ? activityTarget?.postId : "feed"}
           lang={data.lang}
           session={session}
@@ -800,6 +819,15 @@ function Shell() {
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
               automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
               scrollsChildToFocus
+              alwaysBounceVertical={canPullToRefresh || undefined}
+              refreshControl={canPullToRefresh ? (
+                <RefreshControl
+                  refreshing={refreshingMember === memberId}
+                  onRefresh={() => void refreshCommunity()}
+                  tintColor={C.ink}
+                  colors={[C.ink]}
+                />
+              ) : undefined}
               style={{ flex: 1, marginBottom: keyboard.overlap }}
               contentContainerStyle={{ paddingBottom: 24 + (keyboard.visible ? 16 : insets.bottom) }}
             >
@@ -1354,6 +1382,7 @@ function Daily({
     notes: "",
   });
   const [savedDate, setSavedDate] = useState(date);
+  const [intimacyOpen, setIntimacyOpen] = useState(false);
   const [entry, setEntry] = useState<Log>(
       () => data.logs.find((l) => l.date === date) || blank(date),
     ),
@@ -1526,19 +1555,55 @@ function Daily({
           ))}
         </View>
       </View>
-      <View style={s.section}>
-        <FieldLabel>{t("სქესობრივი აქტივობა (არასავალდებულო)", "Sexual activity (optional)")}</FieldLabel>
-        <T style={s.muted}>{t("პირადი ჩანაწერია და პროგნოზს არ ცვლის.", "Private and does not change predictions.")}</T>
-        <View style={[s.wrap, { marginTop: 12 }]}>
-          {sexualActivityOptions.map(([id, a, b]) => (
-            <Chip key={id} label={t(a, b)} selected={entry.sexualActivity === id}
-              onPress={() => change({ sexualActivity: entry.sexualActivity === id ? undefined : id })} />
-          ))}
-          {entry.sexualActivity ? (
-            <Chip label={t("მონიშვნის მოხსნა", "Clear selection")} selected={false}
-              onPress={() => change({ sexualActivity: undefined })} />
-          ) : null}
-        </View>
+      <View style={[s.section, { backgroundColor: "#F5EFFA" }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: intimacyOpen }}
+          onPress={() => setIntimacyOpen(open => !open)}
+          style={[s.row, { minHeight: 48, gap: 12 }]}
+        >
+          <View style={{ width: 44, height: 44, borderRadius: 16, backgroundColor: C.yellow, alignItems: "center", justifyContent: "center" }}>
+            <Icon name="lock" size={22} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <T weight="bold">{t("სქესობრივი აქტივობა", "Sexual activity")}</T>
+            <T style={s.muted}>{t("პირადი · არასავალდებულო", "Private · optional")}</T>
+          </View>
+          <View style={{ transform: [{ rotate: intimacyOpen ? "-90deg" : "90deg" }] }}>
+            <Icon name="arrow" size={18} />
+          </View>
+        </Pressable>
+        {intimacyOpen ? (
+          <View style={{ marginTop: 14, gap: 8 }}>
+            <T style={s.muted}>{t("ეს ჩანაწერი პროგნოზს არ ცვლის.", "This entry does not change predictions.")}</T>
+            <View accessibilityRole="radiogroup" style={{ gap: 8 }}>
+              {sexualActivityOptions.map(([id, a, b]) => {
+                const checked = entry.sexualActivity === id;
+                return (
+                  <Pressable key={id} accessibilityRole="radio" accessibilityState={{ checked }}
+                    onPress={() => change({ sexualActivity: id })}
+                    style={({ pressed }) => [s.row, {
+                      minHeight: 52, gap: 12, padding: 10, borderRadius: 15, borderWidth: 1,
+                      borderColor: checked ? "#8867AC" : C.line,
+                      backgroundColor: checked ? C.lav : C.white, opacity: pressed ? 0.8 : 1,
+                    }]}>
+                    <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: id === "protected" ? C.silver : id === "unprotected" ? C.yellow : C.bg, alignItems: "center", justifyContent: "center" }}>
+                      <Icon name={id === "protected" ? "shield" : id === "unprotected" ? "heart" : "more"} size={18} />
+                    </View>
+                    <T weight={checked ? "bold" : "regular"} style={{ flex: 1 }}>{t(a, b)}</T>
+                    {checked ? <Icon name="check" size={20} /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+            {entry.sexualActivity ? (
+              <Pressable accessibilityRole="button" onPress={() => change({ sexualActivity: undefined })}
+                style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start" }}>
+                <T style={s.muted}>{t("მონიშვნის მოხსნა", "Clear selection")}</T>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
       <View style={s.section}>
         <FieldLabel>{t("დღის სიმპტომები", "Any symptoms today?")}</FieldLabel>
