@@ -18,7 +18,8 @@ import { checkoutInApp, openPaymentCheckout } from "./open-payment-checkout";
 import { useResource } from "./useResource";
 import { useMembership } from "./useMembership";
 import { useFeatureEnabled } from "./useJourneyEnabled";
-import { forecast, addDays, validSetup, predictions } from "./cycle.mjs";
+import { forecast, predictions } from "./cycle.mjs";
+import { calculateCycleEstimate, calculatorMessages, formatCalculatorDate } from "./cycle-calculator.mjs";
 import { healthReport, reminderCalendar } from "./health-report";
 import { symptoms } from "./symptoms.mjs";
 type Nav = { lang: Lang; onNavigate: (tab: Tab) => void };
@@ -858,28 +859,19 @@ export function CalculatorScreen({
   lang: Lang;
   ovulation?: boolean;
 }) {
-  const ka = lang === "ka",
+  const ka = lang === "ka", i = ka ? 0 : 1,
     [start, setStart] = useState(""),
-    [length, setLength] = useState("28"),
-    [duration, setDuration] = useState("5"),
-    [result, setResult] = useState("");
-  function calculate() {
-    if (!validSetup(start, Number(length), Number(duration))) {
-      setResult(
-        ka
-          ? "შეამოწმე ველები: ციკლი 21–45, სისხლდენა 1–10 დღე."
-          : "Check fields: cycle 21–45, bleeding 1–10 days.",
-      );
-      return;
-    }
-    const next = addDays(start, Number(length)),
-      ov = addDays(next, -14);
-    setResult(
-      ovulation
-        ? `${ka ? "სავარაუდო ოვულაცია" : "Estimated ovulation"}: ${ov}\n${ka ? "სავარაუდო ნაყოფიერი დღეები" : "Estimated fertile days"}: ${addDays(ov, -5)} / ${addDays(ov, 1)}`
-        : `${ka ? "შემდეგი პერიოდის ვარაუდი" : "Next period estimate"}: ${next}`,
-    );
-  }
+    [length, setLength] = useState(28),
+    [duration, setDuration] = useState(5),
+    [calculated, setCalculated] = useState(false);
+  const result = calculated ? calculateCycleEstimate(start, length, duration) : null;
+  const format = (value: string) => formatCalculatorDate(value, ka);
+  const message = !result ? null
+    : result.status !== "estimated" ? calculatorMessages[result.status][i]
+    : !ovulation ? `${ka ? "პერიოდის სავარაუდო დასაწყისი" : "Estimated period start"}: ${format(result.nextPeriod)}`
+    : !result.fertility ? calculatorMessages.unavailable[i]
+    : result.fertility.passed ? calculatorMessages.fertilityPassed[i]
+    : `${ka ? "სავარაუდო ოვულაცია" : "Estimated ovulation"}: ${format(result.fertility.ovulation)}\n${ka ? "სავარაუდო ნაყოფიერი დღეები" : "Estimated fertile days"}: ${format(result.fertility.start)} – ${format(result.fertility.end)}`;
   return (
     <View style={s.content}>
       <T weight="display" style={s.title}>
@@ -900,18 +892,18 @@ export function CalculatorScreen({
         ka={ka}
         label={ka ? "ბოლო პერიოდის დაწყება" : "Last period start"}
         value={start}
-        onChange={setStart}
+        onChange={(value) => { setStart(value); setCalculated(false); }}
       />
       <View style={{ gap: 12, marginVertical: 16 }}>
-        <NumberWheel label={ka ? "ციკლის ხანგრძლივობა (დღე)" : "Cycle length (days)"} value={Number(length) || 28} min={21} max={45} onChange={(n) => setLength(String(n))} ka={ka}/>
-        <NumberWheel label={ka ? "სისხლდენის ხანგრძლივობა (დღე)" : "Bleeding duration (days)"} value={Number(duration) || 5} min={1} max={10} onChange={(n) => setDuration(String(n))} ka={ka}/>
+        <NumberWheel label={ka ? "ციკლის ხანგრძლივობა (დღე)" : "Cycle length (days)"} value={length} min={21} max={45} onChange={(n) => { setLength(n); setCalculated(false); }} ka={ka}/>
+        <NumberWheel label={ka ? "სისხლდენის ხანგრძლივობა (დღე)" : "Bleeding duration (days)"} value={duration} min={1} max={10} onChange={(n) => { setDuration(n); setCalculated(false); }} ka={ka}/>
       </View>
-      <CTA title={ka ? "გამოთვლა" : "Calculate"} onPress={calculate} />
-      {result && (
+      <CTA title={ka ? "გამოთვლა" : "Calculate"} onPress={() => setCalculated(true)} />
+      {message ? (
         <View style={[s.card, { marginTop: 16 }]}>
-          <T accessibilityLiveRegion="polite">{result}</T>
+          <T accessibilityLiveRegion="polite">{message}</T>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }

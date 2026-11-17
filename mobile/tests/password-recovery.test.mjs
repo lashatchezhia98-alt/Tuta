@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { authCallback, MOBILE_AUTH_CALLBACK, recoveryError } from "../src/password-recovery.mjs";
+import { authCallback, MOBILE_AUTH_CALLBACK, recoveryError, recoveryLinkError } from "../src/password-recovery.mjs";
+
+test("expired links are recognized in a browser query or fragment without a session", () => {
+  assert.equal(recoveryLinkError("?error_code=otp_expired"), "expired");
+  assert.equal(recoveryLinkError("", "#type=recovery&error_code=otp_expired"), "expired");
+  assert.equal(recoveryLinkError("?error=access_denied", "#type=recovery"), "invalid");
+  assert.equal(recoveryLinkError("?next=/app/dashboard", "#type=recovery&access_token=fixture"), null);
+});
 
 test("only a Tuta recovery callback with a full session is accepted", () => {
   const tokens = { access_token: "test-access", refresh_token: "test-refresh" };

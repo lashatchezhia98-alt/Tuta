@@ -180,6 +180,12 @@ export function ActivityScreen({
       </View>
       {error ? <T accessibilityRole="alert">{t("შეტყობინებები სრულად ვერ ჩაიტვირთა.", "Could not load all notification data.")}</T> : null}
       {writeError ? <T accessibilityRole="alert">{t("ცვლილება ვერ შეინახა. სცადე ხელახლა.", "Could not save the change. Try again.")}</T> : null}
+      {showSettings && !pushAvailable ? (
+        <T style={[s.muted, { marginBottom: 12 }]}>{t(
+          "ამ ვერსიაში ტელეფონზე შეტყობინებები მიუწვდომელია. შეტყობინებების ნახვა აქ შეგიძლია.",
+          "Phone alerts are unavailable in this version. You can still view notifications here.",
+        )}</T>
+      ) : null}
       {showSettings && prefs ? (
         <View style={s.card}>
           {pushAvailable ? <>

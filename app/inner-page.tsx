@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
-import { CycleSettings, getCycle, isoDate } from "../lib/cycle";
+import { CycleSettings, isoDate } from "../lib/cycle";
 import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { authRedirectBase } from "../lib/auth-redirect";
-import { recoveryError } from "../mobile/src/password-recovery.mjs";
+import { recoveryError, recoveryLinkError } from "../mobile/src/password-recovery.mjs";
 import {useHealthState,type HealthData} from "./use-health-state";
 import BrandMark from '@/components/brand-mark';
 import SiteSocialLinks from "@/components/site-social-links";
@@ -55,7 +55,7 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
   const [confirmPassword,setConfirmPassword]=useState("");
   const [busy,setBusy]=useState(false);
   const [recoveryUser,setRecoveryUser]=useState<string|null>(null);
-  const [recoveryLinkState,setRecoveryLinkState]=useState<"missing"|"invalid"|"network"|null>(null);
+  const [recoveryLinkState,setRecoveryLinkState]=useState<"missing"|"expired"|"invalid"|"network"|null>(null);
   const recoveryReady=Boolean(recoveryUser);
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
@@ -84,7 +84,14 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
     if(!reset)return;
     let active=true;
     try{
-      const hash=new URLSearchParams(window.location.hash.slice(1));
+      const {search,hash:fragment}=window.location;
+      const linkError=recoveryLinkError(search,fragment);
+      if(linkError){
+        queueMicrotask(()=>{if(active){setRecoveryUser(null);setRecoveryLinkState(linkError)}});
+        return()=>{active=false};
+      }
+      const hash=new URLSearchParams(fragment.slice(1));
+      const query=new URLSearchParams(search);
       const supabase=getSupabaseBrowserClient();
       const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{
         if(active&&event==="PASSWORD_RECOVERY"&&session){setRecoveryUser(session.user.id);setRecoveryLinkState(null)}
@@ -93,11 +100,15 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
       void supabase.auth.initialize().then(async ({error})=>{
         const {data:{session}}=await supabase.auth.getSession();
         if(!active)return;
-        if(error||hash.has("error_code")){setRecoveryLinkState(recoveryError(error)==="network"?"network":"invalid");return}
+        if(error){
+          const issue=recoveryError(error);
+          setRecoveryLinkState(issue==="network"||issue==="expired"?issue:"invalid");
+          return;
+        }
         if(session&&hash.get("access_token")===session.access_token&&["recovery","invite"].includes(hash.get("type")||"")){
           setRecoveryUser(session.user.id);setRecoveryLinkState(null);return;
         }
-        setRecoveryLinkState(hash.has("access_token")?"invalid":"missing");
+        setRecoveryLinkState(hash.has("access_token")||query.has("code")?"invalid":"missing");
       }).catch(()=>{if(active)setRecoveryLinkState("network")});
       return()=>{active=false;subscription.unsubscribe()};
     }catch{queueMicrotask(()=>{if(active)setRecoveryLinkState("network")});return()=>{active=false}}
@@ -169,12 +180,11 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
     {(register||reset)&&<PasswordField label={confirmationLabel} lang={lang} value={confirmPassword} onChange={setConfirmPassword}/>}
     {register&&<p>{ka?'ანგარიშის შექმნამდე გაეცანი':'Before creating an account, read our'} <a href="/terms" target="_blank" rel="noreferrer">{ka?'წესებსა და პირობებს':'Terms of use'}</a> {ka?'და':'and'} <a href="/privacy" target="_blank" rel="noreferrer">{ka?'კონფიდენციალურობის წესებს':'Privacy notice'}</a>.</p>}
     {error&&<p className="admin-login-error" role="alert">{error}</p>}{notice&&<p className="auth-notice" role="status">{notice}</p>}
-    {reset&&!recoveryReady&&recoveryLinkState&&<p className="admin-login-error" role="alert">{recoveryLinkState==="network"?(ka?"კავშირის შემოწმება ვერ მოხერხდა.":"Could not verify your recovery link."):recoveryLinkState==="invalid"?(ka?"ბმული აღარ მოქმედებს. მოითხოვე ახალი ბმული.":"This link no longer works. Request a new one."):(ka?"ჯერ გახსენი ელფოსტაზე მიღებული აღდგენის ბმული.":"Open the recovery link from your email first.")}</p>}
+    {reset&&!recoveryReady&&recoveryLinkState&&<p className="admin-login-error" role="alert">{recoveryLinkState==="network"?(ka?"კავშირის შემოწმება ვერ მოხერხდა. სცადე ხელახლა.":"Could not verify your recovery link. Try again."):recoveryLinkState==="expired"?(ka?"აღდგენის ბმულს ვადა გაუვიდა.":"Your recovery link has expired."):recoveryLinkState==="invalid"?(ka?"აღდგენის ბმული აღარ მოქმედებს.":"This recovery link no longer works."):(ka?"ჯერ გახსენი ელფოსტაზე მიღებული აღდგენის ბმული.":"Open the recovery link from your email first.")}</p>}
     <button type="submit" disabled={busy||(reset&&!recoveryReady)}><SiteCopyText id={busy?"auth.working":login?"nav.signIn":register?"auth.create":forgot?"auth.send":"auth.reset"} lang={lang}/></button>
-  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{reset&&recoveryLinkState&&!recoveryReady&&<a href="/forgot-password">{ka?"მოითხოვე ახალი ბმული":"Request a new link"}</a>}{!onAuthenticated&&<a href={login?"/register":"/login"}><SiteCopyText id={login?"auth.needAccount":"auth.back"} lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
+  </form>{login&&<a href="/forgot-password"><SiteCopyText id="auth.forgot" lang={lang}/></a>}{reset&&!recoveryReady&&<a href="/forgot-password">{ka?"მოითხოვე ახალი ბმული":"Request a new link"}</a>}{!onAuthenticated&&<a href={login?"/register":"/login"}><SiteCopyText id={login?"auth.needAccount":"auth.back"} lang={lang}/></a>}</>}</div><div className="auth-art"><div className="auth-moon"/><p><SiteCopyText id="auth.private" lang={lang}/></p></div></section>
 }
 
-function Calculator({kind,lang}:{kind:"period"|"ovulation",lang:Lang}){const [date,setDate]=useState("");const [length,setLength]=useState(28);const result=useMemo(()=>{if(!date||length<21||length>45)return null;try{return getCycle(date,length,5)}catch{return null}},[date,length]);const format=(v:string)=>new Intl.DateTimeFormat(lang==="ka"?"ka-GE":"en-GB",{day:"numeric",month:"long",year:"numeric"}).format(new Date(`${v}T12:00:00`));return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA TOOLS</span><h1>{pageInfo[kind][lang][0]}</h1><p>{pageInfo[kind][lang][1]}</p></div></section><section className="calculator inner-container"><label>{lang==="ka"?"ბოლო პერიოდის პირველი დღე":"First day of last period"}<input type="date" value={date} onChange={e=>setDate(e.target.value)} max={isoDate(new Date())}/></label><label>{lang==="ka"?"ციკლის საშუალო ხანგრძლივობა":"Average cycle length"}<input type="number" min="21" max="45" value={length} onChange={e=>setLength(Math.round(Number(e.target.value)))}/></label>{date&&(!result||length<21||length>45)&&<p style={{gridColumn:"1/-1",color:"#9b2c3b"}}>{lang==="ka"?"შეიყვანე სწორი თარიღი და ციკლის ხანგრძლივობა (21–45 დღე).":"Enter a valid date and cycle length (21–45 days)."}</p>}<div className="calculator-result"><small>{kind==="period"?(lang==="ka"?"შემდეგი პერიოდი":"Next period"):(lang==="ka"?"სავარაუდო ოვულაცია":"Estimated ovulation")}</small><strong>{result?(kind==="period"?format(result.nextPeriod):format(result.ovulation)):"..."}</strong>{result&&<><small style={{display:"block",marginTop:18}}>{lang==="ka"?"ნაყოფიერი ფანჯარა":"Fertile window"}</small><strong>{format(result.fertileStart)} – {format(result.fertileEnd)}</strong></>}</div></section></>}
 
 function Consultation({lang}:{lang:Lang}){return <><section className="inner-hero compact"><div className="inner-container"><span className="inner-kicker">TUTA CARE</span><h1>{pageInfo.consultation[lang][0]}</h1><p>{pageInfo.consultation[lang][1]}</p></div></section><section className="inner-container" style={{padding:"60px 20px 100px"}}><div className="calculator-result"><small>{lang==="ka"?"დაგეგმილი სერვისი":"PLANNED SERVICE"}</small><h2 style={{margin:"10px 0"}}>{lang==="ka"?"კონსულტაცია ჯერ მიუწვდომელია":"Consultations are not available yet"}</h2><p>{lang==="ka"?"ექიმების სია, ჩატი და ჯავშანი ამ ვერსიაში არ მუშაობს. Premium გამოწერაც ჯერ არ იყიდება.":"Doctor profiles, chat and booking are not active in this version. Premium subscriptions are not on sale yet."}</p></div></section></>}
 

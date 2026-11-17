@@ -1,6 +1,14 @@
 export const MOBILE_AUTH_CALLBACK = "com.tutahealth.app://auth-callback";
 export const WEB_PASSWORD_RECOVERY = "https://tutahealth.ge/forgot-password";
 
+/** @returns {"expired" | "invalid" | null} */
+export function recoveryLinkError(search = "", hash = "") {
+  const params = [new URLSearchParams(search), new URLSearchParams(hash.replace(/^#/, ""))];
+  if (params.some((entry) => entry.get("error_code") === "otp_expired")) return "expired";
+  return params.some((entry) => ["error", "error_code", "error_description"].some((key) => entry.has(key)))
+    ? "invalid" : null;
+}
+
 /** @param {string | null} url
  * @returns {{error: "expired" | "invalid"} | {access_token: string, refresh_token: string} | null}
  */
@@ -9,12 +17,12 @@ export function authCallback(url) {
     (base) => url === base || url.startsWith(base + "?") || url.startsWith(base + "#"),
   )) return null;
   const [base, hash] = url.split("#");
-  const query = new URLSearchParams(base.split("?")[1] ?? "");
+  const search = base.split("?")[1] ?? "";
+  const error = recoveryLinkError(search, hash);
+  if (error) return { error };
+  const query = new URLSearchParams(search);
   const fragment = new URLSearchParams(hash ?? "");
   const read = (key) => fragment.get(key) ?? query.get(key);
-  if (["error", "error_code", "error_description"].some((key) => read(key))) {
-    return { error: read("error_code") === "otp_expired" ? "expired" : "invalid" };
-  }
   const access_token = read("access_token"), refresh_token = read("refresh_token");
   if (!access_token || !refresh_token || !["recovery", "invite"].includes(read("type"))) {
     return { error: "invalid" };
