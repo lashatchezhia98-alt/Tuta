@@ -3,95 +3,67 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Icon, MoonFlower } from "./Art";
 import { C, T, s } from "./ui";
 import type { Lang, Tab } from "./types";
-import { destinations } from "./navigation.mjs";
+import { burgerLanguage, burgerMenuGroups } from "./burger-menu";
 import { ChangePassword } from "./ChangePassword";
 
-const menuPages = [
-  { id: "services", icon: "services", ka: "სერვისები", en: "Services" },
-  ...destinations.filter((page) => page.group === "info"),
-];
-
 export function AppMenu({
-  visible,
-  lang,
-  onClose,
-  onNavigate,
-  onLanguage,
+  visible, lang, features, signedIn, current, onClose, onNavigate, onLanguage,
 }: {
   visible: boolean;
   lang: Lang;
-  showSettings: boolean;
+  features: Parameters<typeof burgerMenuGroups>[0];
+  signedIn: boolean;
+  current: Tab;
   onClose: () => void;
   onNavigate: (page: Tab) => void;
   onLanguage: () => void;
 }) {
   const ka = lang === "ka";
+  const language = burgerLanguage[lang];
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <SafeAreaProvider>
-        <SafeAreaView
-          style={{ flex: 1, backgroundColor: C.bg }}
-          edges={["top", "bottom"]}
-        >
-          <View style={s.header}>
-            <T weight="bold" style={{ fontSize: 24 }}>
-              {ka ? "მენიუ" : "Menu"}
-            </T>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={ka ? "დახურვა" : "Close menu"}
-              onPress={onClose}
-              style={s.round}
-            >
-              <Icon name="close" />
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={s.content}>
-            <T style={[s.muted, { marginBottom: 20 }]}>
-              {ka
-                ? "აქ ნახავ სერვისებს, ინფორმაციას თუთაზე და ენის პარამეტრებს."
-                : "Find services, information about Tuta, and language settings here."}
-            </T>
-            <View style={s.card}>
-              {menuPages
-                .map((page) => (
-                  <Pressable
-                    key={page.id}
-                    accessibilityRole="button"
-                    onPress={() => {
-                      onClose();
-                      onNavigate(page.id as Tab);
-                    }}
-                    style={{
-                      minHeight: 60,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 14,
-                    }}
-                  >
-                    <Icon name={page.icon} />
-                    <T style={{ flex: 1 }}>{ka ? page.ka : page.en}</T>
-                    <Icon name="arrow" size={18} />
-                  </Pressable>
-                ))}
+        <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={["top", "bottom"]}>
+          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 28, width: "100%", maxWidth: 520, alignSelf: "center" }}>
+            <View style={[s.row, { justifyContent: "space-between", marginBottom: 20 }]}>
+              <T weight="bold" accessibilityRole="header" style={{ fontSize: 26 }}>{ka ? "მენიუ" : "Menu"}</T>
+              <Pressable accessibilityRole="button" accessibilityLabel={ka ? "მენიუს დახურვა" : "Close menu"} onPress={onClose} style={s.round}>
+                <Icon name="close" size={22} />
+              </Pressable>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onLanguage}
-              style={[
-                s.card,
-                s.wrap,
-                { minHeight: 60, justifyContent: "space-between" },
-              ]}
-            >
-              <T weight="bold">{ka ? "ენა" : "Language"}</T>
-              <T>{ka ? "ქართული · EN" : "English · ქა"}</T>
+            {burgerMenuGroups(features, signedIn).map(group => (
+              <View key={group.id} style={{ marginBottom: 16 }}>
+                <T accessibilityRole="header" weight="bold" style={[s.muted, { marginBottom: 8 }]}>{group.label[lang]}</T>
+                <View style={{ borderWidth: 1, borderColor: C.line, borderRadius: 20, backgroundColor: C.white, padding: 4 }}>
+                  {group.entries.map(entry => (
+                    <Pressable key={entry.tab} accessibilityRole="button" accessibilityState={{ selected: current === entry.tab }}
+                      onPress={() => { onClose(); onNavigate(entry.tab); }}
+                      style={({ pressed }) => [s.row, { minHeight: 52, paddingHorizontal: 10, paddingVertical: 7, gap: 11, borderRadius: 15, backgroundColor: current === entry.tab || pressed ? "#F2ECF8" : C.white }]}>
+                      <MenuIcon name={entry.icon} />
+                      <T style={{ flex: 1 }}>{entry.label[lang]}</T>
+                      <Icon name="arrow" color={C.muted} size={16} />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ))}
+            <Pressable accessibilityRole="button" accessibilityLabel={`${language.label}: ${language.next}`} onPress={onLanguage}
+              style={[s.row, { minHeight: 52, gap: 11, padding: 10, borderRadius: 20, backgroundColor: C.white, borderColor: C.line, borderWidth: 1 }]}>
+              <MenuIcon name="language" />
+              <T weight="bold" style={{ flex: 1 }}>{language.label}</T>
+              <T style={s.muted}>{language.next}</T>
             </Pressable>
           </ScrollView>
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
   );
+}
+
+function MenuIcon({ name }: { name: string }) {
+  return <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: name === "book" ? C.yellow : "#F2ECF8", alignItems: "center", justifyContent: "center" }}>
+    <Icon name={name} size={19} />
+  </View>;
 }
 export function MenuPage({
   page,

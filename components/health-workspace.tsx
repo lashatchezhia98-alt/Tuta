@@ -19,6 +19,8 @@ import {
 } from "../mobile/src/cycle.mjs";
 import { symptoms } from "../mobile/src/symptoms.mjs";
 import { healthReport, reminderCalendar } from "@/lib/health-report";
+import { sexualActivityOptions } from "@/mobile/src/sexual-activity";
+import { Check, ChevronDown, Heart, LockKeyhole, MoreHorizontal, ShieldCheck } from "lucide-react";
 import CycleOverview from "./cycle-overview";
 import CycleEducation from "./cycle-education";
 
@@ -473,6 +475,17 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
   );
 }
 
+function JournalFace({ mood }: { mood: string }) {
+  const mouth = mood === "happy" ? "M21 36q9 13 18 0" : mood === "low" ? "M22 42q8-12 16 0"
+    : mood === "tense" ? "m21 39 4-3 5 3 5-3 4 3" : "M24 39q6 5 12 0";
+  return <svg width="50" height="50" viewBox="0 0 60 60" aria-hidden="true">
+    <circle cx="30" cy="30" r="28" fill={mood === "happy" ? "#fdf0cc" : mood === "low" ? "#d8e0ed" : "#e3d8f1"}/>
+    {mood === "calm" || mood === "tired" ? <path d="M15 24q5 7 10 0m10 0q5 7 10 0" fill="none" stroke="#1e1b2e" strokeWidth="2"/>
+      : <><circle cx="21" cy="25" r="2.5" fill="#1e1b2e"/><circle cx="39" cy="25" r="2.5" fill="#1e1b2e"/></>}
+    <path d={mouth} fill="none" stroke="#1e1b2e" strokeWidth="2" strokeLinecap="round"/>
+  </svg>;
+}
+
 function Journal({ data, save, lang }: Props) {
   const params = useSearchParams();
   const requested = params.get("date");
@@ -486,6 +499,7 @@ function Journal({ data, save, lang }: Props) {
       ? requested
       : today;
   const [date, setDate] = useState(initial),
+    [intimacyOpen, setIntimacyOpen] = useState(false),
     [query, setQuery] = useState(""),
     [custom, setCustom] = useState(""),
     [busy, setBusy] = useState(false),
@@ -519,6 +533,7 @@ function Journal({ data, save, lang }: Props) {
     )
       return;
     setDate(value);
+    setIntimacyOpen(false);
     setEntry(blank(value));
     setDirty(false);
     setMessage("");
@@ -536,11 +551,13 @@ function Journal({ data, save, lang }: Props) {
     setMessage("");
     try {
       if (date > today) throw Error();
+      const savedEntry = { ...entry, date };
+      if (savedEntry.sexualActivity === undefined) delete savedEntry.sexualActivity;
       await save({
         ...data,
         logs: [
           ...data.logs.filter((l) => l.date !== date),
-          ...(remove ? [] : [{ ...entry, date }]),
+          ...(remove ? [] : [savedEntry]),
         ].sort((a, b) => a.date.localeCompare(b.date)),
       });
       setDirty(false);
@@ -563,7 +580,7 @@ function Journal({ data, save, lang }: Props) {
   }
   return (
     <form
-      className="workspace-card workspace-form"
+      className="workspace-card workspace-form app-style-journal"
       onSubmit={(e) => {
         e.preventDefault();
         void submit();
@@ -582,7 +599,7 @@ function Journal({ data, save, lang }: Props) {
         </label>
         <fieldset>
           <legend><SiteCopyText id="journal.mood" lang={lang}/></legend>
-          <div className="workspace-row">
+          <div className="workspace-row journal-moods">
             {["happy", "calm", "low", "tense", "tired"].map((id) => (
               <button
                 type="button"
@@ -590,31 +607,29 @@ function Journal({ data, save, lang }: Props) {
                 aria-pressed={entry.mood === id}
                 onClick={() => change({ mood: id })}
               >
+                <JournalFace mood={id}/>
                 <SiteCopyText id={`journal.mood.${id}`} lang={lang}/>
               </button>
             ))}
           </div>
         </fieldset>
         {(["energy", "pain"] as const).map((key) => (
-          <label key={key}>
+          <fieldset key={key}>
+            <legend>
             <SiteCopyText id={`journal.${key}`} lang={lang}/>{" "}
             (1–5)
-            <input
-              type="number"
-              required
-              min={1}
-              max={5}
-              value={entry[key]}
-              onChange={(e) => change({ [key]: Number(e.target.value) })}
-            />
-          </label>
+            </legend>
+            <div className="journal-scores">
+              {[1, 2, 3, 4, 5].map(score => (
+                <button key={score} type="button" aria-pressed={entry[key] === score}
+                  onClick={() => change({ [key]: score })}>{score}</button>
+              ))}
+            </div>
+          </fieldset>
         ))}
-        <label>
-          <SiteCopyText id="journal.flow" lang={lang}/>
-          <select
-            value={entry.flow}
-            onChange={(e) => change({ flow: e.target.value })}
-          >
+        <fieldset>
+          <legend><SiteCopyText id="journal.flow" lang={lang}/></legend>
+          <div className="workspace-row">
             {[
               ["none", "არ არის", "None"],
               ["spotting", "ლაქები", "Spotting"],
@@ -622,12 +637,41 @@ function Journal({ data, save, lang }: Props) {
               ["medium", "საშუალო", "Medium"],
               ["heavy", "ძლიერი", "Heavy"],
             ].map(([id, a, b]) => (
-              <option key={id} value={id}>
+              <button key={id} type="button" aria-pressed={entry.flow === id} onClick={() => change({ flow: id })}>
                 {ka ? a : b}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        </fieldset>
+        <section className="journal-intimacy">
+          <button type="button" className="journal-intimacy-trigger" aria-expanded={intimacyOpen}
+            onClick={() => setIntimacyOpen(open => !open)}>
+            <span className="journal-intimacy-icon"><LockKeyhole size={22} aria-hidden="true"/></span>
+            <span className="journal-intimacy-text">
+              <strong>{ka ? "სქესობრივი აქტივობა" : "Sexual activity"}</strong>
+              <small>{ka ? "პირადი · არასავალდებულო" : "Private · optional"}</small>
+            </span>
+            <ChevronDown size={18} aria-hidden="true"/>
+          </button>
+          {intimacyOpen ? <fieldset className="journal-intimacy-options">
+            <legend>{ka ? "ეს ჩანაწერი პროგნოზს არ ცვლის." : "This entry does not change predictions."}</legend>
+            {sexualActivityOptions.map(([id, a, b]) => {
+              const Icon = id === "protected" ? ShieldCheck : id === "unprotected" ? Heart : MoreHorizontal;
+              const checked = entry.sexualActivity === id;
+              return <label key={id} className="journal-intimacy-option" data-selected={checked}>
+                <input className="sr-only" type="radio" name="journal-sexual-activity" value={id} checked={checked}
+                  onChange={() => change({ sexualActivity: id })}/>
+                <span className="journal-intimacy-icon" data-option={id}><Icon size={18} aria-hidden="true"/></span>
+                <span className="journal-intimacy-text">{ka ? a : b}</span>
+                {checked ? <Check size={20} aria-hidden="true"/> : null}
+              </label>;
+            })}
+            {entry.sexualActivity ? <button type="button" className="journal-intimacy-clear"
+              onClick={() => change({ sexualActivity: undefined })}>
+              {ka ? "მონიშვნის მოხსნა" : "Clear selection"}
+            </button> : null}
+          </fieldset> : null}
+        </section>
         <fieldset>
           <legend><SiteCopyText id="journal.symptoms" lang={lang}/></legend>
           <label>
@@ -763,8 +807,9 @@ function HealthInsights({
   report?: boolean;
   birthDate?: string;
 }) {
+  const [includeActivity, setIncludeActivity] = useState(false);
   const ka = lang === "ka",
-    summary = healthReport(data),
+    summary = healthReport(data, undefined, report && includeActivity),
     patterns = symptomPatterns(data.periods, data.logs);
   const membership=useMembership();
   return (
@@ -776,7 +821,11 @@ function HealthInsights({
       <p>
         <SiteCopyText id="insights.periodNote" lang={lang}/>
       </p>
-      {report && (
+      {report && <>
+        <label className="no-print report-intimacy-opt-in">
+          <input type="checkbox" checked={includeActivity} onChange={event => setIncludeActivity(event.target.checked)}/>
+          {ka ? "PDF-ში სქესობრივი აქტივობის დამატება" : "Include sexual activity in the PDF"}
+        </label>
         <button
           className="no-print"
           onClick={() => {
@@ -792,7 +841,15 @@ function HealthInsights({
         >
           <SiteCopyText id="report.download" lang={lang}/>
         </button>
-      )}
+      </>}
+      {report && summary.sexualActivity?.length ? (
+        <section className="workspace-card">
+          <h2>{ka ? "სქესობრივი აქტივობა" : "Sexual activity"}</h2>
+          <ul>{summary.sexualActivity.map(({ date, sexualActivity }) => (
+            <li key={date}>{date}: {sexualActivityOptions.find(([id]) => id === sexualActivity)?.[ka ? 1 : 2]}</li>
+          ))}</ul>
+        </section>
+      ) : null}
       <div className="workspace-grid">
         <section className="workspace-card">
           <h2><SiteCopyText id="insights.lengths" lang={lang}/></h2>

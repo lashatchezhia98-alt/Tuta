@@ -17,6 +17,27 @@ import {
 } from "../src/market-model.mjs";
 import { sourceModule } from "../../tests/source-loader.mjs";
 
+test("web and mobile use the same burger destinations, with blogs first and account links protected", () => {
+  const { burgerMenuGroups, burgerLanguage } = sourceModule("mobile/src/burger-menu.ts");
+  const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
+  const features = Object.fromEntries(["library", "doctorConsultation", "premium", "period", "community", "market"].map(key => [key, true]));
+  const all = burgerMenuGroups(features, true).flatMap(group => group.entries);
+  assert.deepEqual(all.map(entry => entry.tab), ["blog", "services", "care", "premium", "cycle", "home", "market", "profile", "orders", "about", "privacy", "terms"]);
+  assert.equal(all[0].href, "/blog");
+  assert.equal(new Set(all.map(entry => entry.href)).size, all.length);
+  for (const entry of all) {
+    if (entry.tab !== "services") assert.ok(destinations.some(page => page.id === entry.tab));
+    if (entry.copy) for (const lang of ["ka", "en"])
+      assert.equal(getCopyText(emptyCopy(), entry.copy, lang), entry.label[lang], entry.copy);
+  }
+  assert.deepEqual(burgerMenuGroups({}, false).flatMap(group => group.entries.map(entry => entry.tab)), ["services", "about", "privacy", "terms"]);
+  assert.ok(burgerMenuGroups({}, true).some(group => group.entries.some(entry => entry.tab === "orders")));
+  assert.equal(burgerLanguage.ka.code, "en");
+  assert.equal(burgerLanguage.en.code, "ka");
+  for (const path of ["../../components/header-actions.tsx", "../src/MenuPages.tsx"])
+    assert.match(readFileSync(new URL(path, import.meta.url), "utf8"), /burgerMenuGroups\(features, signedIn\)/);
+});
+
 test("every shared services entry opens a real native destination", () => {
   const { serviceGroups } = sourceModule("lib/service-directory.ts");
   const { serviceTargets } = sourceModule("mobile/src/NavigationScreens.tsx", {

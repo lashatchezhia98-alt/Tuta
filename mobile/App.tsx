@@ -964,7 +964,9 @@ function Shell() {
           <AppMenu
             visible={menuOpen}
             lang={data.lang}
-            showSettings={!session}
+            signedIn={!!memberId}
+            features={features.features}
+            current={tab}
             onClose={() => setMenuOpen(false)}
             onNavigate={nav}
             onLanguage={() => {

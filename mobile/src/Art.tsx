@@ -113,6 +113,8 @@ export function Icon({
     care: "M5 3v5a5 5 0 0 0 10 0V3M5 5H3m12 0h2M10 13v3a5 5 0 0 0 10 0v-3m2-2a2 2 0 1 1-4 0 2 2 0 0 1 4 0",
     book: "M3 4c4-1 7 0 9 2 2-2 5-3 9-2v15c-4-1-7 0-9 2-2-2-5-3-9-2ZM12 6v15",
     report: "M5 3h14v18H5ZM8 8h8M8 12h8M8 16h5",
+    terms: "M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8m-8 4h5",
+    language: "M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0Zm0 0h20M12 2c-5 5-5 15 0 20 5-5 5-15 0-20Z",
   };
   const paths: Record<string, string> = {
     home: "M3 10 12 3l9 7v11h-6v-7H9v7H3Z",

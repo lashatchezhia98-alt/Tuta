@@ -1,5 +1,5 @@
 "use client";
-import { Menu } from 'lucide-react';
+import { BookOpen, ChevronRight, FileText, Globe, Grid2X2, LockKeyhole, Menu, Moon, Sparkles, Stethoscope, Store, UserRound, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -8,11 +8,17 @@ import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 import { SiteCopyText } from "@/components/site-copy-provider";
+import { burgerLanguage, burgerMenuGroups } from "@/mobile/src/burger-menu";
+
+const icons = { book: BookOpen, services: Grid2X2, care: Stethoscope,
+  spark: Sparkles, periodMoon: Moon, communityStars: Sparkles, market: Store,
+  profile: UserRound, report: FileText, moon: Moon, lock: LockKeyhole, terms: FileText };
 
 export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(lang:'ka'|'en')=>void}) {
   const ka=lang==='ka';
   const pathname=usePathname();
   const features=useSiteFeatures();
+  const language=burgerLanguage[lang];
   const [signedIn,setSignedIn]=useState(false);
   useEffect(()=>{let alive=true,observed=false;try{const client=getSupabaseBrowserClient();const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{observed=true;if(alive)setSignedIn(Boolean(session&&!session.user.is_anonymous))});void client.auth.getSession().then(({data:{session}})=>{if(alive&&!observed)setSignedIn(Boolean(session&&!session.user.is_anonymous))}).catch(()=>{});return()=>{alive=false;subscription.unsubscribe()}}catch{return()=>{alive=false}}},[]);
   return <div className="header-actions">
@@ -37,22 +43,40 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
     </>}
     <Sheet>
       <SheetTrigger asChild><button className="header-burger" aria-label={ka?'მენიუს გახსნა':'Open menu'}><Menu size={22}/></button></SheetTrigger>
-      <SheetContent className="bg-[#F9F8FC] p-6 overflow-y-auto">
-        <SheetHeader><SheetTitle><SiteCopyText id="nav.menu" lang={lang}/></SheetTitle></SheetHeader>
-        <nav className="burger-links" aria-label={ka?'მთავარი მენიუ':'Main menu'}>
-          {pathname!=="/app/features"&&<SheetClose asChild><Link href="/app/features"><SiteCopyText id="nav.services" lang={lang}/></Link></SheetClose>}
-          {features.community&&<Link href="/community"><SiteCopyText id="nav.community" lang={lang}/></Link>}
-          <Link href="/about"><SiteCopyText id="nav.about" lang={lang}/></Link>
-          {pathname!=="/privacy"&&<SheetClose asChild><Link href="/privacy"><SiteCopyText id="policy.privacy.title" lang={lang}/></Link></SheetClose>}
-          {features.library&&<Link href="/blog"><SiteCopyText id="nav.library" lang={lang}/></Link>}
-          {features.market&&<Link href="/market"><SiteCopyText id="nav.market" lang={lang}/></Link>}
-          {features.period&&<Link href="/app/dashboard"><SiteCopyText id="nav.period" lang={lang}/></Link>}
-          {features.premium&&<Link href="/premium"><SiteCopyText id="nav.premium" lang={lang}/></Link>}
-          {features.doctorConsultation&&<Link href="/consultation"><SiteCopyText id="nav.care" lang={lang}/></Link>}
-          <Link href="/market/orders"><SiteCopyText id="nav.orders" lang={lang}/></Link>
-          {signedIn&&pathname!=="/app/settings"&&<SheetClose asChild><Link href="/app/settings"><SiteCopyText id="nav.profile" lang={lang}/></Link></SheetClose>}
+      <SheetContent className="tuta-menu-sheet" showCloseButton={false}>
+        <SheetHeader className="tuta-menu-header">
+          <SheetTitle><SiteCopyText id="nav.menu" lang={lang}/></SheetTitle>
+          <SheetDescription className="sr-only">{ka ? "თუთას გვერდები და ენა" : "Tuta pages and language"}</SheetDescription>
+          <SheetClose asChild><button type="button" className="header-burger" aria-label={ka ? "მენიუს დახურვა" : "Close menu"}><X size={22}/></button></SheetClose>
+        </SheetHeader>
+        <nav aria-label={ka?'მთავარი მენიუ':'Main menu'}>
+          {burgerMenuGroups(features, signedIn).map(group => (
+            <section className="tuta-menu-group" key={group.id} aria-labelledby={`tuta-menu-${group.id}`}>
+              <h2 id={`tuta-menu-${group.id}`}>{group.label[lang]}</h2>
+              <ul>
+                {group.entries.map(entry => {
+                  const Icon = icons[entry.icon as keyof typeof icons] || Sparkles;
+                  return <li key={entry.tab}>
+                    <SheetClose asChild>
+                      <Link className="tuta-menu-row" href={entry.href} aria-current={pathname === entry.href ? "page" : undefined}>
+                        <span className="tuta-menu-icon" data-icon={entry.icon}><Icon size={19} aria-hidden="true"/></span>
+                        <span className="tuta-menu-label">{entry.copy ? <SiteCopyText id={entry.copy} lang={lang}/> : entry.label[lang]}</span>
+                        <ChevronRight className="tuta-menu-arrow" size={16} aria-hidden="true"/>
+                      </Link>
+                    </SheetClose>
+                  </li>;
+                })}
+              </ul>
+            </section>
+          ))}
         </nav>
-        <div className="burger-language"><span><SiteCopyText id="nav.language" lang={lang}/></span><button onClick={()=>setLang(ka?'en':'ka')} lang={ka?'en':'ka'}>{ka?'English':'ქართული'}</button></div>
+        <SheetClose asChild>
+          <button type="button" className="tuta-menu-row tuta-menu-language" onClick={()=>setLang(language.code)}>
+            <span className="tuta-menu-icon"><Globe size={19} aria-hidden="true"/></span>
+            <strong className="tuta-menu-label"><SiteCopyText id="nav.language" lang={lang}/></strong>
+            <span lang={language.code}>{language.next}</span>
+          </button>
+        </SheetClose>
       </SheetContent>
     </Sheet>
   </div>;

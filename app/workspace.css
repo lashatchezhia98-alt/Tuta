@@ -296,6 +296,62 @@
 .community-mobile-heading { display: none; }
 .mobile-app-tabbar { display: none; }
 .mobile-period-nav, .mobile-period-controls, .mobile-cycle-reference { display: none; }
+
+[data-slot="sheet-content"].tuta-menu-sheet {
+  z-index: 110;
+  width: min(100%, 420px);
+  max-width: none;
+  gap: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(28px, env(safe-area-inset-bottom));
+  background: #f9f8fc;
+  color: #1e1b2e;
+}
+.tuta-menu-sheet .tuta-menu-header { flex-direction: row; align-items: center; justify-content: space-between; padding: 0; margin-bottom: 20px; }
+.tuta-menu-header [data-slot="sheet-title"] { font-size: 26px; font-weight: 700; line-height: 1.2; }
+.tuta-menu-group { margin: 0 0 16px; }
+.tuta-menu-group h2 { margin: 0 0 8px; color: #6f687d; font-size: 14px; font-weight: 700; line-height: 22px; }
+.tuta-menu-group ul { margin: 0; padding: 4px; list-style: none; background: #fff; border: 1px solid #e6e2ec; border-radius: 20px; }
+.tuta-menu-row { display: flex; width: 100%; min-height: 52px; align-items: center; gap: 11px; border-radius: 15px; padding: 7px 10px; color: #1e1b2e; font-size: 16px; text-decoration: none; text-align: start; }
+.tuta-menu-row:hover, .tuta-menu-row[aria-current="page"] { background: #f2ecf8; }
+.tuta-menu-row:focus-visible { outline: 2px solid #74618f; outline-offset: -2px; }
+.tuta-menu-icon { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border-radius: 12px; background: #f2ecf8; }
+.tuta-menu-icon[data-icon="book"] { background: #fdf0cc; }
+.tuta-menu-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tuta-menu-arrow { flex: 0 0 16px; color: #6f687d; }
+.tuta-menu-language { min-height: 58px; border: 1px solid #e6e2ec; border-radius: 20px; background: #fff; cursor: pointer; }
+.tuta-menu-language > span[lang] { color: #6f687d; }
+.journal-intimacy { min-width: 0; padding: 18px; border: 1px solid #ece9f0; border-radius: 22px; background: #f5effa; }
+.journal-intimacy .journal-intimacy-trigger, .journal-intimacy .journal-intimacy-clear {
+  display: flex; align-items: center; min-height: 48px; gap: 12px; border: 0; padding: 0;
+  background: transparent; color: #1e1b2e; font: inherit; text-align: start; cursor: pointer;
+}
+.journal-intimacy-trigger { width: 100%; }
+.journal-intimacy-trigger[aria-expanded="true"] > svg { transform: rotate(180deg); }
+.journal-intimacy-icon { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border-radius: 16px; background: #fdf0cc; }
+.journal-intimacy-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.journal-intimacy-text small { display: block; color: #6f687d; font-size: 14px; line-height: 22px; }
+.journal-intimacy .journal-intimacy-options { display: grid; gap: 8px; border: 0; margin: 14px 0 0; padding: 0; min-width: 0; }
+.journal-intimacy-options legend { color: #6f687d; font-size: 14px; margin-bottom: 8px; }
+.journal-intimacy .journal-intimacy-option { display: flex; min-height: 52px; align-items: center; gap: 12px; padding: 10px; border: 1px solid #e6e2ec; border-radius: 15px; background: white; cursor: pointer; }
+.journal-intimacy-option[data-selected="true"] { border-color: #8867ac; background: #e3d8f1; font-weight: 700; }
+.journal-intimacy-option:focus-within { outline: 2px solid #74618f; outline-offset: 2px; }
+.journal-intimacy-option .journal-intimacy-icon { width: 30px; height: 30px; flex-basis: 30px; border-radius: 10px; background: #f9f8fc; }
+.journal-intimacy-icon[data-option="protected"] { background: #d8e0ed; }
+.journal-intimacy-icon[data-option="unprotected"] { background: #fdf0cc; }
+.report-intimacy-opt-in { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-block: 8px; }
+.journal-moods > button { display: grid; flex: 1 1 82px; min-height: 112px; justify-items: center; align-content: center; gap: 8px; border-radius: 18px; background: #f8f7fa; font-size: 14px; }
+.journal-moods > button[aria-pressed="true"], .journal-scores > button[aria-pressed="true"] { background: #e3d8f1; border-color: #8867ac; font-weight: 700; }
+.journal-scores { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.journal-scores > button { min-height: 48px; padding-inline: 0; font-size: 22px; }
+
+@media (max-width: 767px) {
+  [data-slot="sheet-content"].tuta-menu-sheet { width: 100%; border: 0; }
+  .app-style-journal { padding: 0; border: 0; background: transparent; box-shadow: none; }
+  .app-style-journal > fieldset { padding: 0; border: 0; gap: 14px; }
+  .app-style-journal > fieldset > fieldset { border-color: #ece9f0; border-radius: 22px; background: #fff; padding: 16px; }
+}
 .privacy-password-form .password-field input { width: 100%; min-height: 50px; padding-right: 56px; font-size: 16px; }
 
 @media (max-width: 767px) {
