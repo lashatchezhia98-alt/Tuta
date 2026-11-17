@@ -35,10 +35,11 @@ export async function POST(request: Request) {
   if (error || !user || user.is_anonymous) return reply({ error: "Sign in is required." }, 401);
 
   const anonymous = (await request.json().catch(() => ({})))?.anonymous === true;
-  const publicId = `tuta-community/${anonymous ? "anon" : user.id}/${randomUUID()}`;
+  const publicId = `tuta-community/${anonymous ? "anon" : user.id}/private_${randomUUID()}`;
+  const type = "authenticated";
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = createHash("sha1")
-    .update(`public_id=${publicId}&timestamp=${timestamp}${apiSecret}`)
+    .update(`public_id=${publicId}&timestamp=${timestamp}&type=${type}${apiSecret}`)
     .digest("hex");
-  return reply({ cloudName, apiKey, publicId, timestamp, signature });
+  return reply({ cloudName, apiKey, publicId, timestamp, signature, type });
 }

@@ -10,7 +10,6 @@ import DoctorEnrollment from "@/components/doctor-enrollment";
 import AdminMarket from "@/components/admin-market";
 import MarketOrders from "@/components/market-orders";
 import BrandMark from "@/components/brand-mark";
-import { communityPhotoUrl } from "@/mobile/src/community.mjs";
 import AdminWebsiteCopy from "@/components/admin-website-copy";
 import AdminInvitations from "@/components/admin-invitations";
 import AdminSocialLinks from "@/components/admin-social-links";
@@ -171,7 +170,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
           <p className="admin-report-author">{ka ? "ავტორი:" : "Author:"} {report.post.is_anonymous ? (ka ? "ანონიმური" : "Anonymous") : report.post.display_name} · {report.post.topic}</p>
           <blockquote>{report.post.body}</blockquote>
           {report.post.image_public_id ? (() => {
-            const imageUrl = communityPhotoUrl(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "", report.post.image_public_id);
+            const imageUrl = `/api/admin/community-reports/photo?report=${encodeURIComponent(report.id)}`;
             return imageUrl ? <Image src={imageUrl} alt={ka ? "გასაჩივრებული პოსტის ფოტო" : "Photo attached to the reported post"} width={720} height={540} unoptimized style={{ display: "block", width: "100%", maxWidth: 520, height: "auto", maxHeight: 420, objectFit: "contain", borderRadius: 14, margin: "12px 0" }} /> : null;
           })() : null}
           <div className="admin-report-actions"><button type="button" disabled={reportBusy === report.id} onClick={() => void handleReport(report, "dismiss")}>{ka ? "საჩივრის დახურვა" : "Dismiss report"}</button><button type="button" disabled={reportBusy === report.id} onClick={() => void handleReport(report, "remove_post")} className="danger">{ka ? "პოსტის წაშლა" : "Delete post"}</button></div>

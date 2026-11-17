@@ -222,7 +222,7 @@ test("community feed has no topic filters, and reported posts include their phot
   assert.match(mobile, /canEditCommunityPost\(post\.created_at, true, now\)/);
   assert.match(editPolicy, /created_at > statement_timestamp\(\) - interval '30 minutes'/);
   assert.match(moderationApi, /image_public_id/);
-  assert.match(admin, /communityPhotoUrl\(/);
+  assert.match(admin, /\/api\/admin\/community-reports\/photo\?report=/);
 });
 
 test("the public homepage has no admin entry; the direct admin login renders its own form", async () => {

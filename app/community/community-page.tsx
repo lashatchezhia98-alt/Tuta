@@ -7,6 +7,7 @@ import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
 import { canEditCommunityPost } from "@/mobile/src/community.mjs";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
+import Image from "next/image";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useSiteFeatures, useSiteFeaturesStatus } from "@/lib/site-features";
 import HeaderActions from "@/components/header-actions";
@@ -69,13 +70,26 @@ const nameOf = (metadata: Record<string, unknown> | undefined) => {
     .slice(0, 30);
   return value.length >= 2 ? value : "Member";
 };
-const photoUrl = (publicId: string | null) =>
-  cloudName &&
-  publicId &&
-  /^[a-zA-Z0-9_-]+$/.test(cloudName) &&
-  /^tuta-community\/(?:[0-9a-f-]{36}|anon)\/[a-zA-Z0-9_-]+$/.test(publicId)
-    ? `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto,w_1200/${publicId}`
-    : null;
+function PostPhoto({ id, token, alt }: { id: string; token: string; alt: string }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    const abort = new AbortController();
+    let objectUrl = "";
+    fetch(`/api/community/photo?post=${encodeURIComponent(id)}`, {
+      headers: { Authorization: `Bearer ${token}` }, signal: abort.signal,
+    }).then(response => response.ok ? response.blob() : null).then(blob => {
+      if (blob && !abort.signal.aborted) {
+        objectUrl = URL.createObjectURL(blob);
+        setSrc(objectUrl);
+      }
+    }).catch(() => {});
+    return () => {
+      abort.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id, token]);
+  return src ? <Image unoptimized src={src} width={1200} height={900} alt={alt} className="mt-5 h-auto max-h-[520px] w-full rounded-2xl object-cover" /> : null;
+}
 
 export default function CommunityPage() {
   const features = useSiteFeatures();
@@ -107,6 +121,7 @@ export default function CommunityPage() {
   const [busy, setBusy] = useState(false);
   const [reportingPost, setReportingPost] = useState<string | null>(null);
   const [reportBusy, setReportBusy] = useState<string | null>(null);
+  const [blockStatus, setBlockStatus] = useState("");
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -355,6 +370,22 @@ export default function CommunityPage() {
       await loadComments(postId);
     }
   };
+  const blockMember = async (id: string) => {
+    if (!session || !window.confirm(t("დაბლოკო ეს მომხმარებელი?", "Block this member?"))) return;
+    const response = await fetch("/api/community/block", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ postId: id }),
+    }).catch(() => null);
+    setBlockStatus(response?.ok
+      ? t("მომხმარებელი დაიბლოკა.", "Member blocked.")
+      : t("დაბლოკვა ვერ მოხერხდა.", "Could not block this member."));
+    if (response?.ok) {
+      setPosts([]);
+      await loadPosts();
+    }
+  };
+
   const reportPost = async (
     post: Post,
     reason: "spam" | "abuse" | "privacy" | "medical_misinformation",
@@ -487,6 +518,7 @@ export default function CommunityPage() {
             publicId: string;
             timestamp: number;
             signature: string;
+            type: string;
           };
           if (
             details.cloudName !== cloudName ||
@@ -501,6 +533,7 @@ export default function CommunityPage() {
           upload.append("timestamp", String(details.timestamp));
           upload.append("public_id", details.publicId);
           upload.append("signature", details.signature);
+          upload.append("type", "authenticated");
           const response = await fetch(
             `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`,
             { method: "POST", body: upload },
@@ -913,6 +946,12 @@ export default function CommunityPage() {
                         )}
                       </div>
                     </div>
+                    {!post.is_anonymous && post.public_author_id && post.public_author_id !== session?.user.id ? (
+                      <button type="button" className="min-h-11 text-sm text-[#5E4780]" onClick={() => void blockMember(post.id)}>
+                        {t("ავტორის დაბლოკვა", "Block author")}
+                      </button>
+                    ) : null}
+                    {blockStatus && posts[0]?.id === post.id ? <p role="status">{blockStatus}</p> : null}
                     {reportingPost === post.id ? (
                       <div className="mt-3 rounded-2xl bg-[#F9F8FC] p-3">
                         <p className="mb-2 text-sm font-semibold">
@@ -958,13 +997,8 @@ export default function CommunityPage() {
                     <p className="mt-5 whitespace-pre-wrap break-words leading-7">
                       {post.body}
                     </p>
-                    {photoUrl(post.image_public_id) ? (
-                      <img
-                        src={photoUrl(post.image_public_id)!}
-                        alt={t("პოსტს დართული ფოტო", "Post attachment")}
-                        loading="lazy"
-                        className="mt-5 max-h-[520px] w-full rounded-2xl object-cover"
-                      />
+                    {post.image_public_id && session ? (
+                      <PostPhoto id={post.id} token={session.access_token} alt={t("პოსტს დართული ფოტო", "Post attachment")} />
                     ) : null}
                     <button
                       type="button"

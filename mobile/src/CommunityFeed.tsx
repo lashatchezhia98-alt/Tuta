@@ -14,7 +14,6 @@ import type { Session } from "@supabase/supabase-js";
 import { Icon } from "./Art";
 import { C, T, CTA, Chip, s } from "./ui";
 import {
-  communityPhotoUrl,
   canEditCommunityPost,
   memberDisplayName,
   normalizePost,
@@ -566,6 +565,7 @@ export function CommunityFeed({
         upload.append("timestamp", String(details.timestamp));
         upload.append("public_id", details.publicId);
         upload.append("signature", details.signature);
+        upload.append("type", "authenticated");
         const uploaded = await fetch(
           `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`,
           { method: "POST", body: upload },
@@ -622,6 +622,24 @@ export function CommunityFeed({
             "Thank you. The post was flagged for review.",
           ),
     );
+  };
+  const blockMember = (postId: string) => {
+    if (!session || !apiUrl) return;
+    Alert.alert(t("დაბლოკო ეს მომხმარებელი?", "Block this member?"), undefined, [
+      { text: t("გაუქმება", "Cancel"), style: "cancel" },
+      { text: t("დაბლოკვა", "Block"), style: "destructive", onPress: () => {
+        void fetch(`${apiUrl}/api/community/block`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ postId }),
+        }).then(response => {
+          if (!response.ok) throw new Error("Block failed");
+          setPosts([]);
+          void load();
+          Alert.alert(t("მომხმარებელი დაიბლოკა.", "Member blocked."));
+        }).catch(() => Alert.alert(t("დაბლოკვა ვერ მოხერხდა.", "Could not block this member.")));
+      } },
+    ]);
   };
   const reportMenu = (postId: string) =>
     Alert.alert(
@@ -967,8 +985,8 @@ export function CommunityFeed({
         </View>
       ) : null}
       {posts.map((post) => {
-        const uri = post.image_public_id
-          ? communityPhotoUrl(cloudName, post.image_public_id)
+        const uri = post.image_public_id && apiUrl && session
+          ? `${apiUrl}/api/community/photo?post=${encodeURIComponent(post.id)}`
           : null;
         const doctor = post.public_author_id
           ? doctors[post.public_author_id]
@@ -1033,9 +1051,15 @@ export function CommunityFeed({
               </Pressable>
             </View>
             <T style={{ lineHeight: 25 }}>{post.body}</T>
+            {!post.is_anonymous && post.public_author_id && post.public_author_id !== session?.user.id ? (
+              <Pressable accessibilityRole="button" onPress={() => blockMember(post.id)}
+                style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start" }}>
+                <T style={s.muted}>{t("ავტორის დაბლოკვა", "Block author")}</T>
+              </Pressable>
+            ) : null}
             {uri ? (
               <Image
-                source={{ uri }}
+                source={{ uri, headers: { Authorization: `Bearer ${session?.access_token}` }, cache: "reload" }}
                 resizeMode="cover"
                 style={{
                   width: "100%",
