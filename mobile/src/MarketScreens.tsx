@@ -455,16 +455,21 @@ export function CartScreen({
       </T>
       <ResourceStatus {...resource} lang={lang} />
       {lines.map((r) => {
+        const thumbnail = r.product?.image_urls?.[0] || r.product?.image_url;
         const canIncrease = Boolean(r.product) &&
           r.quantity < Math.min(20, r.product?.stock_quantity ?? 20);
         return (
         <View key={r.id} style={s.card}>
-          <T weight="bold">
+          <View style={[s.row, { gap: 12, alignItems: "center" }]}>
+          {thumbnail ? <Image source={{ uri: thumbnail }} resizeMode="contain"
+            style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: C.bg }} /> : null}
+          <T weight="bold" style={{ flex: 1 }}>
             {r.product?.name ||
               (resource.loading
                 ? (ka ? "პროდუქტი იტვირთება…" : "Loading product…")
                 : (ka ? "პროდუქტი მიუწვდომელია" : "Product unavailable"))}
           </T>
+          </View>
           <View
             style={[s.row, { justifyContent: "space-between", marginTop: 12 }]}
           >

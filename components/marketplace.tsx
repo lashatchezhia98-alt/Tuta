@@ -615,13 +615,18 @@ export default function Marketplace({ lang }: { lang: Lang }) {
               </span>
             </div>
             <div className="market-cart-lines">
-              {cart.map((row) => (
+              {cart.map((row) => {
+                const thumbnail = row.product.image_urls?.[0] || row.product.image_url;
+                return (
                 <article key={row.product.id}>
-                  <div>
+                  <div className="market-cart-item">
+                    {thumbnail ? <span className="market-cart-thumbnail" aria-hidden="true" style={{ backgroundImage: `url(${JSON.stringify(thumbnail)})` }} /> : null}
+                    <div>
                     <strong>{row.product.name}</strong>
                     <small>
                       {(row.product.price_tetri / 100).toFixed(2)} ₾
                     </small>
+                    </div>
                   </div>
                   <div className="market-quantity">
                     <button
@@ -652,7 +657,8 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                     ₾
                   </strong>
                 </article>
-              ))}
+                );
+              })}
             </div>
             {!pin && (
               <p>

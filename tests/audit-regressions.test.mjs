@@ -13,7 +13,7 @@ test('native cart opens with saved items before or without a matching catalog re
  const ui={C:{},s:{},T:'text',CTA:'cta',Chip:'chip',FieldLabel:'label'};
  const {CartScreen}=sourceModule('mobile/src/MarketScreens.tsx',{
   react:{createContext:()=>({}),useContext:()=>cart,useEffect(){},useState:value=>[value,()=>{}],useRef:value=>({current:value})},
-  'react-native':{View:'view',Pressable:'press',TextInput:'input'},
+  'react-native':{View:'view',Pressable:'press',TextInput:'input',Image:'image'},
   '@react-native-async-storage/async-storage':{},'expo-location':{},
   './ui':ui,'./api':{},'./open-payment-checkout':{},'./useResource':{useResource:()=>resource},'./ServiceScreens':{ResourceStatus:'status'}
  });
@@ -21,6 +21,7 @@ test('native cart opens with saved items before or without a matching catalog re
  const render=()=>CartScreen({lang:'en',session:{user:{id:'fixture'}},onNavigate(){},onPaymentReturn(){}});
  const increase=tree=>nodes(tree,'press').find(item=>item.props.accessibilityLabel==='Increase quantity');
  assert.equal(increase(render()).props.disabled,true);
+ assert.equal(nodes(render(),'image').length,0);
  resource={loading:false,data:{products:[]}};
  let tree=render();
  assert.equal(increase(tree).props.disabled,true);
@@ -28,9 +29,10 @@ test('native cart opens with saved items before or without a matching catalog re
  nodes(tree,'press').find(item=>item.props.accessibilityLabel===undefined).props.onPress();
  assert.deepEqual(changes,[['saved',-1]]);
  for(const stock of [0,1,2,null]){
-  resource={loading:false,data:{products:[{id:'saved',name:'Product',price_tetri:100,stock_quantity:stock}]}};
+  resource={loading:false,data:{products:[{id:'saved',name:'Product',price_tetri:100,stock_quantity:stock,image_url:'legacy.png',image_urls:stock===2?['primary.png']:[]}]}};
   tree=render();
   assert.equal(increase(tree).props.disabled,stock===0||stock===1);
+  assert.equal(nodes(tree,'image')[0].props.source.uri,stock===2?'primary.png':'legacy.png');
  }
 });
 test('period number fields can be cleared and replaced without saving a zero',async()=>{
