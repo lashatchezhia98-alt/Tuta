@@ -6,6 +6,33 @@ import {renderToStaticMarkup} from 'react-dom/server';
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve}};
+test('native cart opens with saved items before or without a matching catalog result',()=>{
+ const changes=[];
+ const cart={rows:[{id:'saved',quantity:1}],ready:true,change:(...args)=>changes.push(args)};
+ let resource={loading:true,data:null};
+ const ui={C:{},s:{},T:'text',CTA:'cta',Chip:'chip',FieldLabel:'label'};
+ const {CartScreen}=sourceModule('mobile/src/MarketScreens.tsx',{
+  react:{createContext:()=>({}),useContext:()=>cart,useEffect(){},useState:value=>[value,()=>{}],useRef:value=>({current:value})},
+  'react-native':{View:'view',Pressable:'press',TextInput:'input'},
+  '@react-native-async-storage/async-storage':{},'expo-location':{},
+  './ui':ui,'./api':{},'./open-payment-checkout':{},'./useResource':{useResource:()=>resource},'./ServiceScreens':{ResourceStatus:'status'}
+ });
+ const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
+ const render=()=>CartScreen({lang:'en',session:{user:{id:'fixture'}},onNavigate(){},onPaymentReturn(){}});
+ const increase=tree=>nodes(tree,'press').find(item=>item.props.accessibilityLabel==='Increase quantity');
+ assert.equal(increase(render()).props.disabled,true);
+ resource={loading:false,data:{products:[]}};
+ let tree=render();
+ assert.equal(increase(tree).props.disabled,true);
+ increase(tree).props.onPress();
+ nodes(tree,'press').find(item=>item.props.accessibilityLabel===undefined).props.onPress();
+ assert.deepEqual(changes,[['saved',-1]]);
+ for(const stock of [0,1,2,null]){
+  resource={loading:false,data:{products:[{id:'saved',name:'Product',price_tetri:100,stock_quantity:stock}]}};
+  tree=render();
+  assert.equal(increase(tree).props.disabled,stock===0||stock===1);
+ }
+});
 test('period number fields can be cleared and replaced without saving a zero',async()=>{
  const slots=[],writes=[];let cursor=0;
  const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=value}]},useRef:()=>({current:null}),useEffect(){}};

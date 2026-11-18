@@ -454,13 +454,16 @@ export function CartScreen({
         {ka ? "შენი კალათა" : "Your cart"}
       </T>
       <ResourceStatus {...resource} lang={lang} />
-      {lines.map((r) => (
+      {lines.map((r) => {
+        const canIncrease = Boolean(r.product) &&
+          r.quantity < Math.min(20, r.product?.stock_quantity ?? 20);
+        return (
         <View key={r.id} style={s.card}>
           <T weight="bold">
             {r.product?.name ||
-              (ka
-                ? "პროდუქტი აღარ არის ხელმისაწვდომი"
-                : "Product no longer available")}
+              (resource.loading
+                ? (ka ? "პროდუქტი იტვირთება…" : "Loading product…")
+                : (ka ? "პროდუქტი მიუწვდომელია" : "Product unavailable"))}
           </T>
           <View
             style={[s.row, { justifyContent: "space-between", marginTop: 12 }]}
@@ -476,9 +479,9 @@ export function CartScreen({
               accessibilityLabel={
                 ka ? "რაოდენობის გაზრდა" : "Increase quantity"
               }
-              disabled={r.quantity >= Math.min(20, r.product!.stock_quantity ?? 20)}
-              style={[s.chip, { opacity: r.quantity >= Math.min(20, r.product!.stock_quantity ?? 20) ? 0.4 : 1 }]}
-              onPress={() => cart.change(r.id, 1)}
+              disabled={!canIncrease}
+              style={[s.chip, { opacity: canIncrease ? 1 : 0.4 }]}
+              onPress={() => { if (canIncrease) cart.change(r.id, 1); }}
             >
               <T>＋</T>
             </Pressable>
@@ -491,7 +494,8 @@ export function CartScreen({
             <T style={{ color: "#92384B" }}>{ka ? "ამოღება" : "Remove"}</T>
           </Pressable>
         </View>
-      ))}
+        );
+      })}
       {!cart.rows.length ? (
         <CTA
           light
