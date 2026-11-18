@@ -349,6 +349,7 @@ type Slot = {
 type Care = {
   userId: string;
   doctors: Doctor[];
+  demoDoctors: { id: string; first_name: string; last_name: string; specialty: string; bio: string; photo_url: string }[];
   slots: Slot[];
   threads: {
     id: string;
@@ -514,6 +515,17 @@ export function CareScreen({
       )}
       {section === "doctors" && (
         <>
+          {resource.data?.demoDoctors?.map((d) => (
+            <View style={s.card} key={`demo-${d.id}`}>
+              <Image source={{ uri: apiRoot + d.photo_url }} accessibilityLabel="DEMO" style={{ width: 72, height: 72, borderRadius: 36, marginBottom: 12 }} />
+              <View style={{ alignSelf: "flex-start", backgroundColor: C.yellow, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 8 }}>
+                <T weight="bold" style={{ fontSize: 12 }}>DEMO · {ka ? "არა რეალური ექიმი" : "NOT A REAL DOCTOR"}</T>
+              </View>
+              <T weight="bold" style={{ fontSize: 20 }}>{d.first_name} {d.last_name} · DEMO</T>
+              <T style={{ marginVertical: 8 }}>{d.specialty}</T>
+              <T style={s.muted}>{ka ? "სატესტო პროფილი — კონსულტაცია, ჩატი და დაჯავშნა მიუწვდომელია." : "Demonstration profile — consultation, chat, and booking are unavailable."}</T>
+            </View>
+          ))}
           {resource.data?.doctors
             .filter((d) => d.user_id !== session.user.id)
             .map((d) => (

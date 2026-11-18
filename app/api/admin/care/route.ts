@@ -10,7 +10,7 @@ import { textField, uuid } from "@/lib/content-validation";
 export async function GET(request: Request) {
   try {
     const db = await requireAdmin(request);
-    const [doctors, slots, bookings] = await Promise.all([
+    const [doctors, slots, bookings, demoDoctors] = await Promise.all([
       db
         .from("verified_doctors")
         .select(
@@ -30,11 +30,13 @@ export async function GET(request: Request) {
         )
         .order("created_at", { ascending: false })
         .limit(100),
+      db.from("doctor_demo_profiles").select("id,first_name,last_name,specialty,bio,photo_url,active,created_at").order("created_at").limit(100),
     ]);
     return result({
       doctors: checked(doctors),
       slots: checked(slots),
       bookings: checked(bookings),
+      demoDoctors: checked(demoDoctors),
     });
   } catch (e) {
     return failure(e);
@@ -46,10 +48,32 @@ export async function POST(request: Request) {
     let body: Record<string, unknown>, id: string;
     try {
       body = await readAdminJson(request);
-      id = uuid(body.id);
+      id = typeof body.id === "string" ? uuid(body.id) : "";
     } catch {
       throw new ApiError(400, "შეამოწმე მონაცემები.");
     }
+    if (body.action === "create-demo-doctor") {
+      let first_name: string, last_name: string, specialty: string, bio: string, photo_url: string;
+      try {
+        first_name = textField(body.first_name, 80);
+        last_name = textField(body.last_name, 80);
+        specialty = textField(body.specialty, 120);
+        bio = textField(body.bio, 2000, false);
+        photo_url = textField(body.photo_url, 300);
+        if (!photo_url.startsWith("/demo-doctors/")) throw Error();
+      } catch {
+        throw new ApiError(400, "შეამოწმე დემო პროფილის ველები.");
+      }
+      checked(await db.from("doctor_demo_profiles").insert({ first_name, last_name, specialty, bio, photo_url, active: true }));
+      return result({ ok: true });
+    }
+    if (body.action === "delete-demo-doctor") {
+      if (!id) throw new ApiError(400, "არასწორი დემო პროფილი.");
+      const removed = checked(await db.from("doctor_demo_profiles").delete().eq("id", id).select("id").maybeSingle());
+      if (!removed) throw new ApiError(404, "დემო პროფილი ვერ მოიძებნა.");
+      return result({ ok: true });
+    }
+    if (!id) throw new ApiError(400, "არასწორი ჩანაწერი.");
     if (body.action === "remove-photo") {
       const saved = checked(
         await db

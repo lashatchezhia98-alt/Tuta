@@ -53,7 +53,7 @@ export async function GET(request: Request) {
         serverNow: new Date().toISOString(),
       });
     }
-    const [doctors, threads, membership, ownDoctor] = await Promise.all([
+    const [doctors, demoDoctors, threads, membership, ownDoctor] = await Promise.all([
       db
         .from("doctor_profiles")
         .select(
@@ -61,6 +61,7 @@ export async function GET(request: Request) {
         )
         .eq("active", true)
         .limit(100),
+      db.from("doctor_demo_profiles").select("id,first_name,last_name,specialty,bio,photo_url").eq("active", true).order("created_at").limit(50),
       db
         .from("consultation_threads")
         .select("id,doctor_id,patient_id,patient_label")
@@ -140,6 +141,7 @@ export async function GET(request: Request) {
           d.verified_doctors,
         ),
       })),
+      demoDoctors: checked(demoDoctors) || [],
       threads: checked(threads),
       premium: active,
       isDoctor,

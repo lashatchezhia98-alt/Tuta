@@ -20,6 +20,7 @@ type Booking = {
   status: string;
   consultation_slots: Slot;
 };
+type DemoDoctor = { id: string; first_name: string; last_name: string; specialty: string; bio: string; photo_url: string };
 export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
   const ka = lang === "ka";
   const [doctors, setDoctors] = useState<Doctor[]>([]),
@@ -33,7 +34,8 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]),
-    [moves, setMoves] = useState<Record<string, string>>({});
+    [moves, setMoves] = useState<Record<string, string>>({}),
+    [demoDoctors, setDemoDoctors] = useState<DemoDoctor[]>([]);
   const load = useCallback(async () => {
     try {
       const r = await fetch("/api/admin/care", { cache: "no-store" });
@@ -42,6 +44,7 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
       setDoctors(d.doctors);
       setSlots(d.slots);
       setBookings(d.bookings || []);
+      setDemoDoctors(d.demoDoctors || []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Error");
     }
@@ -288,6 +291,19 @@ export default function AdminCare({ lang }: { lang: "ka" | "en" }) {
             ))}
         </>
       )}
+      <section className="order-history">
+        <h2>{ka ? "სატესტო ექიმების პროფილები" : "Demo doctor profiles"}</h2>
+        <p>{ka ? "ეს პროფილები რეალურ საიტზე დემოდ არის მონიშნული; კონსულტაციას არ ატარებენ." : "These profiles are explicitly marked as demos on the live site and do not offer consultations."}</p>
+        {!demoDoctors.length && <p>{ka ? "დემო პროფილები არ არის." : "No demo profiles."}</p>}
+        {demoDoctors.map((d) => <article className="order-card" key={d.id}>
+          <img src={d.photo_url} alt="DEMO" width={72} height={72} className="doctor-avatar" />
+          <h3>{d.first_name} {d.last_name} · DEMO</h3><p>{d.specialty}</p><p>{d.bio}</p>
+          <button type="button" disabled={busy} onClick={() => {
+            if (confirm(ka ? "წაიშალოს ეს დემო პროფილი საიტიდან?" : "Delete this demo profile from the site?"))
+              void save({ action: "delete-demo-doctor", id: d.id });
+          }}>{ka ? "დემო პროფილის წაშლა" : "Delete demo profile"}</button>
+        </article>)}
+      </section>
       <section className="order-history">
         <h2>{ka ? "ვიზიტების მართვა" : "Appointment management"}</h2>
         <p>

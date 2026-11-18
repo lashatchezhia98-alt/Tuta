@@ -35,6 +35,7 @@ type Booking = {
 type State = {
   userId: string;
   doctors: Doctor[];
+  demoDoctors: { id: string; first_name: string; last_name: string; specialty: string; bio: string; photo_url: string }[];
   slots: Slot[];
   threads: Thread[];
   bookings: Booking[];
@@ -335,8 +336,17 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                     ))}
                 </article>
               ))}
+            {data.demoDoctors?.map((d) => (
+              <article className="workspace-card" key={`demo-${d.id}`}>
+                <img src={d.photo_url} alt="DEMO" width={72} height={72} className="doctor-avatar" />
+                <p><strong style={{ background: "#faedc7", borderRadius: 999, padding: "5px 10px" }}>DEMO · {ka ? "არა რეალური ექიმი" : "NOT A REAL DOCTOR"}</strong></p>
+                <h2>{d.first_name} {d.last_name} · DEMO</h2>
+                <strong>{d.specialty}</strong>
+                <p>{ka ? "სატესტო პროფილი — კონსულტაცია, ჩატი და დაჯავშნა მიუწვდომელია." : "Demonstration profile — consultation, chat, and booking are unavailable."}</p>
+              </article>
+            ))}
           </div>
-          {!data.doctors.length && (
+          {!data.doctors.length && !data.demoDoctors?.length && (
             <p>
               {ka
                 ? "ხელმისაწვდომი ექიმი ჯერ არ არის დამატებული."
