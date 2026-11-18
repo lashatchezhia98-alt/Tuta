@@ -245,15 +245,15 @@ function ProfileHealthActions({ data, save, error, lang, period, reminders, acco
   </section>;
 }
 
-function PeriodCalendar({ data, save, lang, birthDate }: Props) {
+export function PeriodCalendar({ data, save, lang, birthDate }: Props) {
   const ka = lang === "ka",
     calendar = periodCalendarModel(data),
     today = calendar.today,
     markers = periodDayMarkers(ka);
   const [month, setMonth] = useState(today.slice(0, 7)),
     [selected, setSelected] = useState(today),
-    [duration, setDuration] = useState(1),
-    [length, setLength] = useState(data.cycleLength),
+    [durationDraft, setDuration] = useState<number | string>(1),
+    [lengthDraft, setLength] = useState(String(data.cycleLength)),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[] | null>(null);
@@ -312,6 +312,8 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
         return;
       }
       if(data.pregnancy?.active){setMessage(ka?'პერიოდის ახალი ჩანაწერის დამატებამდე გამორთე ორსულობის რეჟიმი.':'Turn off pregnancy mode before adding a period entry.');return;}
+      const duration = Number(durationDraft);
+      const length = Number(lengthDraft);
       if (
         selected > today ||
         duration < 1 ||
@@ -502,8 +504,8 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                 min={1}
                 max={10}
                 required
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
+                value={durationDraft}
+                onChange={(e) => setDuration(e.target.value)}
               />
             </label>
             <label>
@@ -513,8 +515,8 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                 min={21}
                 max={45}
                 required
-                value={length}
-                onChange={(e) => setLength(Number(e.target.value))}
+                value={lengthDraft}
+                onChange={(e) => setLength(e.target.value)}
               />
             </label>
             <p><SiteCopyText id="tracker.initialNote" lang={lang}/></p>

@@ -6,6 +6,31 @@ import {renderToStaticMarkup} from 'react-dom/server';
 
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve}};
+test('period number fields can be cleared and replaced without saving a zero',async()=>{
+ const slots=[],writes=[];let cursor=0;
+ const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=value}]},useRef:()=>({current:null}),useEffect(){}};
+ const {PeriodCalendar}=sourceModule('components/health-workspace.tsx',{react});
+ const data={version:1,lang:'en',name:'',cycleLength:28,periods:[],logs:[]};
+ const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
+ const render=()=>{cursor=0;return PeriodCalendar({data,lang:'en',save:async next=>writes.push(next)})};
+ const fields=()=>nodes(render(),'input').filter(input=>input.props.type==='number');
+ const submit=()=>nodes(render(),'form')[0].props.onSubmit({preventDefault(){}});
+ assert.deepEqual(fields().map(field=>Number(field.props.value)),[1,28]);
+ fields().forEach(field=>field.props.onChange({target:{value:''}}));
+ assert.deepEqual(fields().map(field=>field.props.value),['','']);
+ submit();await tick();assert.equal(writes.length,0);
+ const [duration,length]=fields();
+ duration.props.onChange({target:{value:'2'}});
+ length.props.onChange({target:{value:'30'}});
+ const date=nodes(render(),'input').find(input=>input.props.type==='date');
+ // Two days of bleeding cannot be saved if the period starts today.
+ date.props.onChange({target:{value:'2020-01-01'}});
+ fields()[0].props.onChange({target:{value:'2'}});
+ submit();await tick();
+ assert.equal(writes.length,1);
+ assert.equal(writes[0].cycleLength,30);
+ assert.deepEqual(writes[0].periods,[{start:'2020-01-01',duration:2}]);
+});
 test('private sharing and pregnancy forms remount on account changes, not token refreshes',()=>{
  for(const file of ['partner-workspace','pregnancy-workspace']){
   let id='A',token='A1';
