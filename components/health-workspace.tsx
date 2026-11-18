@@ -249,7 +249,7 @@ export function PeriodCalendar({ data, save, lang, birthDate }: Props) {
   const ka = lang === "ka",
     calendar = periodCalendarModel(data),
     today = calendar.today,
-    markers = periodDayMarkers(ka);
+    markers = [...periodDayMarkers(ka), { key: "fertility" as const, symbol: "✦", label: ka ? "სავარაუდო ნაყოფიერი დღე" : "Estimated fertile day" }];
   const [month, setMonth] = useState(today.slice(0, 7)),
     [selected, setSelected] = useState(today),
     [durationDraft, setDuration] = useState<number | string>(1),
@@ -431,10 +431,14 @@ export function PeriodCalendar({ data, save, lang, birthDate }: Props) {
             {Array.from({ length: 42 }, (_, i) => {
               const date = addDays(start, i),
                 day = calendar.day(date);
+              const fertile = day.state === "fertile";
+              const visibleMarkers = markers.filter(marker =>
+                marker.key === "fertility" ? fertile : day[marker.key]
+              );
               return (
                 <button
                   key={date}
-                  className={`day ${day.state} ${selectedDays === null && date === selected ? "selected" : ""} ${selectedDays?.includes(date) ? "marked-bleeding-day" : ""}`}
+                  className={`day ${day.state} ${fertile ? "fertile" : ""} ${selectedDays === null && date === selected ? "selected" : ""} ${selectedDays?.includes(date) ? "marked-bleeding-day" : ""}`}
                   aria-label={periodDayLabel(day, date, ka)}
                   aria-pressed={selectedDays === null ? selected === date : selectedDays.includes(date)}
                   disabled={selectedDays !== null && (date > today || busy)}
@@ -451,7 +455,7 @@ export function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                   style={{ opacity: date.startsWith(month) ? 1 : 0.45 }}
                 >
                   {Number(date.slice(-2))}
-                  <span className="period-day-markers" aria-hidden="true">{markers.filter(marker => day[marker.key]).map(marker => marker.symbol).join("")}</span>
+                  <span className="period-day-markers" aria-hidden="true">{visibleMarkers.map(marker => marker.symbol).join("")}</span>
                 </button>
               );
             })}

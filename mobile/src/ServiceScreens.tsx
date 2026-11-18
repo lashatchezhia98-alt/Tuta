@@ -114,6 +114,7 @@ export function LibraryScreen({ lang, initialCategory = "" }: Nav & { initialCat
         body_ka: string;
         body_en: string;
         category: string;
+        verified_doctors?: { first_name: string; last_name: string } | null;
       }[];
     }>("/api/library");
   const [category, setCategory] = useState(initialCategory),
@@ -139,6 +140,7 @@ export function LibraryScreen({ lang, initialCategory = "" }: Nav & { initialCat
             <T weight="bold" style={{ fontSize: 23, marginBottom: 16 }}>
               {ka ? article.title_ka : article.title_en || article.title_ka}
             </T>
+            {article.verified_doctors && <T style={s.muted}>{ka ? "ავტორი: ექიმი " : "Author: Dr. "}{article.verified_doctors.first_name} {article.verified_doctors.last_name} ✓</T>}
             {!ka && !article.body_en && <T style={s.muted}>English translation is not available yet.</T>}
             <T selectable style={{ lineHeight: 28 }}>{ka ? article.body_ka : article.body_en || article.body_ka}</T>
           </View>
@@ -376,7 +378,10 @@ export function CareScreen({
     [thread, setThread] = useState(""),
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState(""),
+    [blogTitle, setBlogTitle] = useState(""),
+    [blogBody, setBlogBody] = useState(""),
+    [blogCategory, setBlogCategory] = useState("cycle");
   const loadMessages = useCallback(
     () =>
       api<ChatResponse>("/api/care?thread=" + thread, {
@@ -389,6 +394,7 @@ export function CareScreen({
     loadMessages,
   );
   const alive = useRef(true);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
       alive.current = false;
@@ -420,6 +426,7 @@ export function CareScreen({
       }
       if (body.action === "message") {
         setText("");
+        void api("/api/care", { body: { action: "typing", id: thread, typing: false }, userId: session.user.id }).catch(() => {});
         void messages.refresh();
       }
       await resource.refresh();
@@ -454,6 +461,19 @@ export function CareScreen({
       </T>
       <ResourceStatus {...resource} lang={lang} />
       {isDoctor && <CTA light title={ka ? "საზოგადოებაში გადასვლა" : "Go to community"} onPress={() => onNavigate("home")} />}
+      {isDoctor && <View style={s.card}>
+        <T weight="bold" style={{ fontSize: 20, marginBottom: 8 }}>{ka ? "ჯანმრთელობის ბლოგის წერა" : "Write a health article"}</T>
+        <T style={s.muted}>{ka ? "გამოქვეყნებისთანავე სტატია ბიბლიოთეკაში შენი სახელით გამოჩნდება." : "Published articles appear in the library under your name."}</T>
+        <TextInput accessibilityLabel={ka ? "სტატიის სათაური" : "Article title"} placeholder={ka ? "სათაური" : "Title"} value={blogTitle} onChangeText={setBlogTitle} maxLength={180} style={s.input} />
+        <View style={s.wrap}>{[["cycle", "ციკლი", "Cycle"], ["pregnancy", "ორსულობა", "Pregnancy"], ["nutrition", "კვება", "Nutrition"], ["mental-health", "ფსიქიკური ჯანმრთელობა", "Mental health"]].map(([id, kaLabel, enLabel]) => <Chip key={id} label={ka ? kaLabel : enLabel} selected={blogCategory === id} onPress={() => setBlogCategory(id)} />)}</View>
+        <TextInput accessibilityLabel={ka ? "სტატიის ტექსტი" : "Article text"} placeholder={ka ? "სტატიის ტექსტი" : "Article text"} value={blogBody} onChangeText={setBlogBody} maxLength={6000} multiline textAlignVertical="top" style={[s.input, { minHeight: 150 }]} />
+        <CTA disabled={busy || !blogTitle.trim() || !blogBody.trim()} title={ka ? "გამოქვეყნება" : "Publish"} onPress={() => void (async () => {
+          setBusy(true); setMessage("");
+          try { await api("/api/library", { body: { title: blogTitle, body: blogBody, category: blogCategory }, userId: session.user.id }); setBlogTitle(""); setBlogBody(""); setMessage(ka ? "სტატია გამოქვეყნდა." : "Article published."); }
+          catch (e) { setMessage(e instanceof Error ? e.message : "Could not publish."); }
+          finally { setBusy(false); }
+        })()} />
+      </View>}
       <View style={[s.wrap, { marginBottom: 18 }]}>
         {[
           ["doctors", "ექიმები", "Doctors"],
@@ -667,6 +687,7 @@ export function CareScreen({
           {activeConversation && (
             <>
               <ResourceStatus {...messages} lang={lang} />
+              {messages.data?.typing && <T>{isDoctor ? (ka ? "პაციენტი წერს…" : "Patient is typing…") : (ka ? "ექიმი წერს…" : "Doctor is typing…")}</T>}
               <T style={s.muted}>
                 {ka
                   ? "შეტყობინებები გაგზავნიდან 48 საათში ავტომატურად იშლება. ჩატის არქივი არ ინახება."
@@ -700,6 +721,7 @@ export function CareScreen({
                     {m.body}
                   </T>
                   <T style={s.muted}>{date(m.created_at)}</T>
+                  {m.sender_id === session.user.id && <T style={s.muted}>{m.read_at ? (ka ? "წაკითხულია" : "Read") : m.delivered_at ? (ka ? "მივიდა" : "Delivered") : (ka ? "გაგზავნილია" : "Sent")}</T>}
                 </View>
               ))}
             </>
@@ -717,7 +739,13 @@ export function CareScreen({
                   multiline
                   maxLength={2000}
                   value={text}
-                  onChangeText={setText}
+                  onChangeText={(value) => {
+                    setText(value);
+                    if (typingTimer.current) clearTimeout(typingTimer.current);
+                    typingTimer.current = setTimeout(() => {
+                      void api("/api/care", { body: { action: "typing", id: thread, typing: Boolean(value.trim()) }, userId: session.user.id }).catch(() => {});
+                    }, 250);
+                  }}
                 />
                 <Pressable
                   accessibilityRole="button"

@@ -5,8 +5,10 @@ export type ChatMessage = {
   sender_id: string;
   body: string;
   created_at: string;
+  delivered_at?: string | null;
+  read_at?: string | null;
 };
-export type ChatResponse = { messages: ChatMessage[]; serverNow: string };
+export type ChatResponse = { messages: ChatMessage[]; serverNow: string; typing?: boolean };
 type Page = ChatResponse & { receivedAt: number; scope: string };
 // Memory only: no localStorage, AsyncStorage, export, or offline chat archive.
 export function useChatMessages(
@@ -49,7 +51,7 @@ export function useChatMessages(
       () => setPage((current) => pruneChatPage(current, performance.now())),
       1000,
     );
-    const poll = setInterval(() => void refresh(), 15000);
+    const poll = setInterval(() => void refresh(), 2500);
     return () => {
       requests.current++;
       clearTimeout(initial);

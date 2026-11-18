@@ -33,12 +33,13 @@ const groups: Group[] = [
   ] },
 ];
 
-export function burgerMenuGroups(features: Partial<Record<Feature, boolean>>, signedIn: boolean) {
+export function burgerMenuGroups(features: Partial<Record<Feature, boolean>>, signedIn: boolean, doctor = false) {
+  const allowed = doctor ? new Set(["blog", "care", "home", "profile", "about", "privacy", "terms"]) : null;
   return groups.map(group => ({
     ...group,
-    entries: group.entries.filter(item =>
+    entries: group.entries.filter(item => (!allowed || allowed.has(item.tab)) &&
       (!item.feature || features[item.feature] === true) && (!item.membersOnly || signedIn),
-    ),
+    ).map(item => item.tab === "care" && doctor ? { ...item, href: "/consultation/doctor", label: { ka: "ექიმის კაბინეტი", en: "Doctor workspace" } } : item),
   })).filter(group => group.entries.length > 0);
 }
 

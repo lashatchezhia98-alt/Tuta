@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useSiteFeatures } from '@/lib/site-features';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
+import type { Session } from "@supabase/supabase-js";
 
 import { SiteCopyText } from "@/components/site-copy-provider";
 import { burgerLanguage, burgerMenuGroups } from "@/mobile/src/burger-menu";
@@ -27,9 +28,11 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
   const features=useSiteFeatures();
   const language=burgerLanguage[lang];
   const [signedIn,setSignedIn]=useState(false);
+  const [doctorAccount,setDoctorAccount]=useState(false);
+  const authSequence=useRef(0);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
-  useEffect(()=>{let alive=true,observed=false;try{const client=getSupabaseBrowserClient();const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{observed=true;if(alive)setSignedIn(Boolean(session&&!session.user.is_anonymous))});void client.auth.getSession().then(({data:{session}})=>{if(alive&&!observed)setSignedIn(Boolean(session&&!session.user.is_anonymous))}).catch(()=>{});return()=>{alive=false;subscription.unsubscribe()}}catch{return()=>{alive=false}}},[]);
+  useEffect(()=>{let alive=true,observed=false;const apply=async(session:Session|null)=>{const turn=++authSequence.current;const member=Boolean(session&&!session.user.is_anonymous);if(alive){setSignedIn(member);setDoctorAccount(false)}if(!member||!session)return;try{const response=await fetch("/api/care",{headers:{Authorization:`Bearer ${session.access_token}`},cache:"no-store"});const value=await response.json();if(alive&&turn===authSequence.current)setDoctorAccount(Boolean(response.ok&&value.isDoctor))}catch{if(alive&&turn===authSequence.current)setDoctorAccount(false)}};try{const client=getSupabaseBrowserClient();const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{observed=true;void apply(session)});void client.auth.getSession().then(({data:{session}})=>{if(alive&&!observed)void apply(session)}).catch(()=>{});return()=>{alive=false;authSequence.current++;subscription.unsubscribe()}}catch{return()=>{alive=false;authSequence.current++}}},[]);
   async function signOut() {
     if (signingOut) return;
     setSigningOut(true);
@@ -47,7 +50,7 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
   }
   return <div className="header-actions">
     {signedIn && <nav className="desktop-member-nav" aria-label={ka ? "მთავარი ნავიგაცია" : "Main navigation"}>
-      {desktopLinks.filter(([, , feature]) => !feature || features[feature]).map(([href, copy]) => {
+      {(doctorAccount ? [["/community", null, "community"], ["/consultation/doctor", null, null], ["/app/settings", "nav.profile", null]] as const : desktopLinks).filter(([, , feature]) => !feature || features[feature]).map(([href, copy]) => {
         const active = href === "/app/dashboard"
           ? ["/app/dashboard", "/app/log", "/app/insights", "/app/reminders", "/app/report"].includes(pathname)
           : pathname === href || pathname.startsWith(href + "/");
@@ -85,7 +88,7 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
           <SheetClose asChild><button type="button" className="header-burger" aria-label={ka ? "მენიუს დახურვა" : "Close menu"}><X size={22}/></button></SheetClose>
         </SheetHeader>
         <nav aria-label={ka?'მთავარი მენიუ':'Main menu'}>
-          {burgerMenuGroups(features, signedIn).map(group => (
+          {burgerMenuGroups(features, signedIn, doctorAccount).map(group => (
             <section className="tuta-menu-group" key={group.id} aria-labelledby={`tuta-menu-${group.id}`}>
               <h2 id={`tuta-menu-${group.id}`}>{group.label[lang]}</h2>
               <ul>

@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       const thread = checked(
         await db
           .from("consultation_threads")
-          .select("id,patient_id,doctor_id")
+          .select("id,patient_id,doctor_id,typing_user_id,typing_at")
           .eq("id", threadId)
           .or(`patient_id.eq.${user.id},doctor_id.eq.${user.id}`)
           .maybeSingle(),
@@ -34,14 +34,21 @@ export async function GET(request: Request) {
       const messages = checked(
         await db
           .from("consultation_messages")
-          .select("id,sender_id,body,created_at")
+          .select("id,sender_id,body,created_at,delivered_at,read_at")
           .eq("thread_id", thread.id)
           .gt("created_at", chatCutoff())
           .order("created_at", { ascending: false })
           .limit(100),
       );
+      const now = new Date().toISOString();
+      const incoming = (messages || []).filter((message) => message.sender_id !== user.id);
+      for (const message of incoming) {
+        if (!message.delivered_at) checked(await db.from("consultation_messages").update({ delivered_at: now }).eq("id", message.id).is("delivered_at", null));
+        else if (!message.read_at) checked(await db.from("consultation_messages").update({ read_at: now }).eq("id", message.id).is("read_at", null));
+      }
       return result({
-        messages: (messages || []).reverse(),
+        messages: (messages || []).map(message => message.sender_id !== user.id && !message.delivered_at ? { ...message, delivered_at: now } : message).reverse(),
+        typing: thread.typing_user_id !== user.id && Boolean(thread.typing_at && Date.now() - Date.parse(thread.typing_at) < 5000),
         userId: user.id,
         serverNow: new Date().toISOString(),
       });
@@ -194,6 +201,16 @@ export async function POST(request: Request) {
           .maybeSingle(),
       );
       if (!booking) throw new ApiError(404, "ჯავშანი ვერ მოიძებნა.");
+      return result({ ok: true });
+    }
+    if (body.action === "typing") {
+      const thread = checked(await db.from("consultation_threads").select("id")
+        .eq("id", id).or(`patient_id.eq.${user.id},doctor_id.eq.${user.id}`).maybeSingle());
+      if (!thread) throw new ApiError(404, "ჩატი ვერ მოიძებნა.");
+      checked(await db.from("consultation_threads").update({
+        typing_user_id: body.typing === true ? user.id : null,
+        typing_at: body.typing === true ? new Date().toISOString() : null,
+      }).eq("id", id));
       return result({ ok: true });
     }
     await requireFeature(db, "doctorConsultation");

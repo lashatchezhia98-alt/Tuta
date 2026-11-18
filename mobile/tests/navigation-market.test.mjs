@@ -32,10 +32,13 @@ test("web and mobile use the same burger destinations, with blogs first and acco
   }
   assert.deepEqual(burgerMenuGroups({}, false).flatMap(group => group.entries.map(entry => entry.tab)), ["services", "about", "privacy", "terms"]);
   assert.ok(burgerMenuGroups({}, true).some(group => group.entries.some(entry => entry.tab === "orders")));
+  const doctorEntries = burgerMenuGroups(features, true, true).flatMap(group => group.entries);
+  assert.deepEqual(doctorEntries.map(entry => entry.tab), ["blog", "care", "home", "profile", "about", "privacy", "terms"]);
+  assert.equal(doctorEntries.find(entry => entry.tab === "care").href, "/consultation/doctor");
   assert.equal(burgerLanguage.ka.code, "en");
   assert.equal(burgerLanguage.en.code, "ka");
-  for (const path of ["../../components/header-actions.tsx", "../src/MenuPages.tsx"])
-    assert.match(readFileSync(new URL(path, import.meta.url), "utf8"), /burgerMenuGroups\(features, signedIn\)/);
+  assert.match(readFileSync(new URL("../../components/header-actions.tsx", import.meta.url), "utf8"), /burgerMenuGroups\(features, signedIn, doctorAccount\)/);
+  assert.match(readFileSync(new URL("../src/MenuPages.tsx", import.meta.url), "utf8"), /burgerMenuGroups\(features, signedIn, doctor\)/);
 });
 
 test("every shared services entry opens a real native destination", () => {

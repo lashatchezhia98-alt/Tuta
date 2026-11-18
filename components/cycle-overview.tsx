@@ -59,10 +59,11 @@ export default function CycleOverview({ periods, cycleLength, lang, pregnancyAct
             const date = addDays(today, index - 3);
             const day = model.day(date);
             const weekday = (ka ? ["კვ", "ორ", "სა", "ოთ", "ხუ", "პა", "შა"] : ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"])[new Date(`${date}T12:00:00Z`).getUTCDay()];
+            const fertile = day.state === "fertile";
             const markers = periodDayMarkers(ka).filter(marker => day[marker.key]);
-            return <button key={date} type="button" className={day.state} aria-current={date === today ? "date" : undefined} aria-label={periodDayLabel(day, date, ka)} onClick={() => onCalendar(date)}>
+            return <button key={date} type="button" className={`${day.state}${fertile ? " fertile" : ""}`} aria-current={date === today ? "date" : undefined} aria-label={periodDayLabel(day, date, ka)} onClick={() => onCalendar(date)}>
               <small>{weekday}</small><strong>{Number(date.slice(-2))}</strong>
-              {markers.length > 0 && <span aria-hidden="true">{markers.map(marker => marker.symbol).join("")}</span>}
+              {(markers.length > 0 || fertile) && <span aria-hidden="true">{fertile ? "✦" : markers.map(marker => marker.symbol).join("")}</span>}
             </button>;
           })}
         </div>

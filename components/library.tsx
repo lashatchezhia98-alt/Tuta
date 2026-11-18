@@ -14,6 +14,7 @@ type Article = {
   category: string;
   status?: string;
   publish_at: string | null;
+  verified_doctors?: { first_name: string; last_name: string } | null;
 };
 const categories: Record<string, [string, string]> = libraryCategories;
 const blank = {
@@ -261,6 +262,7 @@ export default function Library({
               {admin ? ` · ${a.status}` : ""}
             </p>
             <h2>{ka ? a.title_ka : a.title_en || a.title_ka}</h2>
+            {a.verified_doctors && <p>{ka ? "ავტორი: ექიმი " : "Author: Dr. "}{a.verified_doctors.first_name} {a.verified_doctors.last_name} ✓</p>}
             {!ka && !a.body_en && (
               <p>English translation is not available yet.</p>
             )}

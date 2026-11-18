@@ -98,7 +98,7 @@ import {
   OrdersScreen,
 } from "./src/MarketScreens";
 import { useMembership } from "./src/useMembership";
-import { apiRoot } from "./src/api";
+import { api, apiRoot } from "./src/api";
 import { parsePaymentReturn } from "./src/payment-return.mjs";
 import { authCallback, MOBILE_AUTH_CALLBACK, recoveryError, WEB_PASSWORD_RECOVERY } from "./src/password-recovery.mjs";
 import { useFormKeyboard } from "./src/use-form-keyboard";
@@ -173,6 +173,15 @@ function Shell() {
   const [activityRevision, setActivityRevision] = useState(0);
   const [activityTarget, setActivityTarget] = useState<(ActivityPost & { userId: string }) | null>(null);
   const memberId = session?.user.is_anonymous ? undefined : session?.user.id;
+  const [doctorAccount, setDoctorAccount] = useState(false);
+  useEffect(() => {
+    let active = true;
+    if (!memberId) { setDoctorAccount(false); return () => { active = false; }; }
+    void api<{ isDoctor?: boolean }>("/api/care", { userId: memberId })
+      .then(value => { if (active) setDoctorAccount(Boolean(value.isDoctor)); })
+      .catch(() => { if (active) setDoctorAccount(false); });
+    return () => { active = false; };
+  }, [memberId]);
   const hasUnread = useActivityBadge(memberId, `${tab}:${activityRevision}`);
   const openPushInbox = useEffectEvent(() => {
     setMenuOpen(false);
@@ -185,6 +194,9 @@ function Shell() {
     return () => controller.abort();
   }, [memberId]);
   const features = useAppFeatures();
+  const navigationTabs: [Tab, string, string][] = doctorAccount
+    ? [...tabs.filter(([id]) => id === "home"), ["care", "ექიმის კაბინეტი", "Doctor"], ...tabs.filter(([id]) => id === "profile")]
+    : tabs;
   const [trail, setTrail] = useState<Tab[]>([]);
   const insets = useSafeAreaInsets();
   const { width, fontScale } = useWindowDimensions();
@@ -947,7 +959,7 @@ function Shell() {
             <View
               style={[s.nav, { paddingBottom: Math.max(insets.bottom, 8) }]}
             >
-              {tabs
+              {navigationTabs
                 .filter(([id]) =>
                   id === "cycle"
                     ? visibleDestinations("cycle", features.features).length > 0
@@ -1000,6 +1012,7 @@ function Shell() {
             visible={menuOpen}
             lang={data.lang}
             signedIn={!!memberId}
+            doctor={doctorAccount}
             features={features.features}
             current={tab}
             onClose={() => setMenuOpen(false)}

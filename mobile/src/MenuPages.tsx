@@ -7,12 +7,13 @@ import { burgerLanguage, burgerMenuGroups } from "./burger-menu";
 import { ChangePassword } from "./ChangePassword";
 
 export function AppMenu({
-  visible, lang, features, signedIn, current, onClose, onNavigate, onLanguage,
+  visible, lang, features, signedIn, doctor = false, current, onClose, onNavigate, onLanguage,
 }: {
   visible: boolean;
   lang: Lang;
   features: Parameters<typeof burgerMenuGroups>[0];
   signedIn: boolean;
+  doctor?: boolean;
   current: Tab;
   onClose: () => void;
   onNavigate: (page: Tab) => void;
@@ -31,7 +32,7 @@ export function AppMenu({
                 <Icon name="close" size={22} />
               </Pressable>
             </View>
-            {burgerMenuGroups(features, signedIn).map(group => (
+            {burgerMenuGroups(features, signedIn, doctor).map(group => (
               <View key={group.id} style={{ marginBottom: 16 }}>
                 <T accessibilityRole="header" weight="bold" style={[s.muted, { marginBottom: 8 }]}>{group.label[lang]}</T>
                 <View style={{ borderWidth: 1, borderColor: C.line, borderRadius: 20, backgroundColor: C.white, padding: 4 }}>

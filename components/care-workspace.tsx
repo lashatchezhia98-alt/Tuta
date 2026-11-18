@@ -46,7 +46,7 @@ async function careRequest(path = "", body?: unknown) {
     data: { session },
   } = await getSupabaseBrowserClient().auth.getSession();
   if (!session) throw Error("ავტორიზაცია საჭიროა / Sign in required");
-  const r = await fetch("/api/care" + path, {
+  const r = await fetch(path.startsWith("/api/") ? path : "/api/care" + path, {
     method: body ? "POST" : "GET",
     headers: {
       Authorization: `Bearer ${session.access_token}`,
@@ -68,8 +68,12 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [blogTitle, setBlogTitle] = useState(""),
+    [blogBody, setBlogBody] = useState(""),
+    [blogCategory, setBlogCategory] = useState("cycle");
   const composer = useRef<HTMLFormElement>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const viewport = window.visualViewport;
@@ -170,6 +174,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
       if (epoch !== authEpoch.current) return;
       if (body.action === "message") {
         setText("");
+        void careRequest("", { action: "typing", id: body.id, typing: false }).catch(() => {});
         await chat.refresh();
       } else {
         await load();
@@ -248,6 +253,27 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
       </section>
       {data && (!doctorWorkspace || data.isDoctor) && (
         <>
+          {professionalView && <section className="workspace-card workspace-form">
+            <h2>{ka ? "ჯანმრთელობის ბლოგის ახალი ჩანაწერი" : "Write a health article"}</h2>
+            <p>{ka ? "გამოქვეყნებისთანავე სტატია საჯარო ბიბლიოთეკაში გამოჩნდება შენივე სახელით." : "Your article will be published in the public library under your name."}</p>
+            <form onSubmit={async (event) => {
+              event.preventDefault();
+              setBusy(true); setNotice("");
+              try {
+                await careRequest("/api/library", { title: blogTitle, body: blogBody, category: blogCategory });
+                setBlogTitle(""); setBlogBody("");
+                setNotice(ka ? "სტატია გამოქვეყნდა." : "Article published.");
+              } catch (e) { setNotice(e instanceof Error ? e.message : "Could not publish."); }
+              finally { setBusy(false); }
+            }}>
+              <label>{ka ? "სათაური" : "Title"}<input required maxLength={180} value={blogTitle} onChange={e => setBlogTitle(e.target.value)} /></label>
+              <label>{ka ? "თემა" : "Topic"}<select value={blogCategory} onChange={e => setBlogCategory(e.target.value)}>
+                <option value="cycle">{ka ? "ციკლი" : "Cycle"}</option><option value="pregnancy">{ka ? "ორსულობა" : "Pregnancy"}</option><option value="nutrition">{ka ? "კვება" : "Nutrition"}</option><option value="mental-health">{ka ? "ფსიქიკური ჯანმრთელობა" : "Mental health"}</option>
+              </select></label>
+              <label>{ka ? "სტატიის ტექსტი" : "Article"}<textarea required maxLength={6000} rows={8} value={blogBody} onChange={e => setBlogBody(e.target.value)} /></label>
+              <button disabled={busy}>{ka ? "გამოქვეყნება" : "Publish"}</button>
+            </form>
+          </section>}
           {!professionalView && <><div className="workspace-grid">
             {data.doctors
               .filter((d) => d.user_id !== data.userId)
@@ -384,6 +410,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                   <SiteCopyText id="care.retention" lang={lang}/>
                 </p>
                 {chat.error && <p role="alert">{chat.error}</p>}
+                {chat.data?.typing && <p role="status">{professionalView ? (ka ? "პაციენტი წერს…" : "Patient is typing…") : (ka ? "ექიმი წერს…" : "Doctor is typing…")}</p>}
                 <div className="care-messages" aria-live="polite">
                   {chat.messages.map((m) => (
                     <article
@@ -402,7 +429,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                                 ?.patient_label}
                       </strong>
                       <p>{m.body}</p>
-                      <small>{date(m.created_at)}</small>
+                      <small>{date(m.created_at)}{m.sender_id === data.userId ? ` · ${m.read_at ? (ka ? "წაკითხულია" : "Read") : m.delivered_at ? (ka ? "მივიდა" : "Delivered") : (ka ? "გაგზავნილია" : "Sent")}` : ""}</small>
                     </article>
                   ))}
                 </div>
@@ -421,7 +448,14 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                       maxLength={2000}
                       rows={3}
                       value={text}
-                      onChange={(e) => setText(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setText(value);
+                        if (typingTimer.current) clearTimeout(typingTimer.current);
+                        typingTimer.current = setTimeout(() => {
+                          void careRequest("", { action: "typing", id: thread, typing: Boolean(value.trim()) }).catch(() => {});
+                        }, 250);
+                      }}
                     />
                   </label>
                   <button
