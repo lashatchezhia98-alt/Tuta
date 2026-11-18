@@ -1,5 +1,6 @@
 import { requireAdmin, checked, result, failure, ApiError } from "@/lib/platform-server";
 import { readAdminJson } from "@/lib/admin-request";
+import { marketDeliveryFee, maxDeliveryFeeTetri } from "@/lib/market-delivery-fee";
 
 export const dynamic = "force-dynamic";
 const categories = new Set(["period-care", "body-care", "nutrition", "accessories"]);
@@ -34,15 +35,22 @@ function parseProduct(body: Record<string, unknown>) {
     : legacyImage ? [legacyImage] : [];
   const imageUrl = imageUrls[0] || null;
   const active = body.is_active !== false;
+  const stock = body.stockQuantity;
+  if (stock !== undefined && stock !== null && (typeof stock !== "number" || !Number.isInteger(stock) || stock < 0 || stock > 1_000_000))
+    throw new ApiError(400, "მარაგი მთელი რიცხვი უნდა იყოს.");
   if (name.length < 2 || name.length > 100 || description.length < 1 || description.length > 500 || typeof category !== "string" || !categories.has(category) || !Number.isFinite(price) || price <= 0 || price > 100000 || imageUrls.length > 8 || imageUrls.some(url => !/^https:\/\//i.test(url) || url.length > 2000 || !/^https:\/\/res\.cloudinary\.com\//i.test(url)) || typeof active !== "boolean") throw new ApiError(400, "შეამოწმე პროდუქტის სახელი, აღწერა, კატეგორია და ფასი. დასაშვებია მაქსიმუმ 8 Cloudinary ფოტო.");
-  return { name, description, category, price_tetri: Math.round(price * 100), image_url: imageUrls.length ? imageUrl : null, image_urls: imageUrls, is_active: active, updated_at: new Date().toISOString() };
+  return { name, description, category, price_tetri: Math.round(price * 100), image_url: imageUrls.length ? imageUrl : null, image_urls: imageUrls, is_active: active, ...(stock !== undefined ? {stock_quantity: stock} : {}), updated_at: new Date().toISOString() };
 }
 
 async function saveProduct(db: Awaited<ReturnType<typeof requireAdmin>>, body: Record<string, unknown>, product: ReturnType<typeof parseProduct>) {
   const isUpdate = body.id !== undefined;
-  const write = (values: Record<string, unknown>) => isUpdate
-    ? db.from("market_products").update(values).eq("id", body.id as string).select("*").single()
-    : db.from("market_products").insert(values).select("*").single();
+  const write = (values: Record<string, unknown>) => {
+    if (!isUpdate) return db.from("market_products").insert(values).select("*").single();
+    const update = db.from("market_products").update(values).eq("id", body.id as string);
+    if (body.expectedStock === null) return update.is("stock_quantity", null).select("*").maybeSingle();
+    if (typeof body.expectedStock === "number") return update.eq("stock_quantity", body.expectedStock).select("*").maybeSingle();
+    return update.select("*").single();
+  };
   let response = await write(product);
   if (response.error && /image_urls/i.test(response.error.message)) {
     // Older production schemas may not have the gallery column yet. Keep the
@@ -51,21 +59,39 @@ async function saveProduct(db: Awaited<ReturnType<typeof requireAdmin>>, body: R
     delete (legacyProduct as { image_urls?: string[] }).image_urls;
     response = await write(legacyProduct);
   }
-  return checked(response);
+  const saved = checked(response);
+  if (!saved) throw new ApiError(409, "მარაგი შეიცვალა. განაახლე პროდუქტი და სცადე ხელახლა.");
+  return saved;
 }
 
 export async function GET(request: Request) {
   try {
-    const db = await requireAdmin(request);
+    const db = await requireAdmin(request, false, "market");
     const products = checked(await db.from("market_products").select("*").order("sort_order").order("created_at", { ascending: false }).limit(200)) ?? [];
-    return result({ products: products.map(normalizedProduct) });
+    const settings = checked(await db.from("site_settings").select("features").eq("id", "global").single());
+    if (!settings) throw new ApiError(503, "პარამეტრები ვერ ჩაიტვირთა.");
+    return result({ products: products.map(normalizedProduct), deliveryFeeTetri: marketDeliveryFee(settings.features) });
   } catch (error) { return failure(error); }
 }
 
 export async function POST(request: Request) {
   try {
-    const db = await requireAdmin(request);
+    const db = await requireAdmin(request, false, "market");
     const body = await readAdminJson(request, 16_384);
+    if (body.action === "delivery-fee") {
+      const fee = body.deliveryFeeTetri;
+      if (typeof fee !== "number" || !Number.isInteger(fee) || fee < 0 || fee > maxDeliveryFeeTetri)
+        throw new ApiError(400, "მიტანის საკომისიო 0–1000 ₾ უნდა იყოს.");
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const old = checked(await db.from("site_settings").select("features").eq("id", "global").single());
+        if (!old) throw new ApiError(503, "პარამეტრები ვერ ჩაიტვირთა.");
+        const features = { ...old.features, marketDeliveryFeeTetri: fee };
+        const saved = checked(await db.from("site_settings").update({ features, updated_at: new Date().toISOString() })
+          .eq("id", "global").filter("features", "eq", JSON.stringify(old.features)).select("features").maybeSingle());
+        if (saved) return result({ deliveryFeeTetri: marketDeliveryFee(saved.features) });
+      }
+      throw new ApiError(409, "პარამეტრები შეიცვალა. სცადე ხელახლა.");
+    }
     if (body.action === "delete") {
       if (!isUuid(body.id)) throw new ApiError(400, "პროდუქტის ნომერი არასწორია.");
       const deleted = checked(await db.from("market_products").delete().eq("id", body.id).select("id").maybeSingle());

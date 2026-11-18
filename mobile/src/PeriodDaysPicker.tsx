@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Icon } from "./Art";
-import { dateKey, monthLabel } from "./cycle.mjs";
+import { dateKey, monthLabel, selectPeriodDay } from "./cycle.mjs";
 import { C, T, s } from "./ui";
 
 export function PeriodDaysPicker({
@@ -9,11 +9,13 @@ export function PeriodDaysPicker({
   initialDate,
   days,
   onToggle,
+  onChangeDays,
 }: {
   ka: boolean;
   initialDate: string;
   days: string[];
   onToggle: (date: string) => void;
+  onChangeDays?: (days: string[]) => void;
 }) {
   const [month, setMonth] = useState(
     () => new Date(Number(initialDate.slice(0, 4)), Number(initialDate.slice(5, 7)) - 1, 1),
@@ -26,6 +28,13 @@ export function PeriodDaysPicker({
   const weekdays = ka ? ["ორ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ", "კვი"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const atCurrentMonth = dateKey(month).slice(0, 7) >= today.slice(0, 7);
   const chosen = new Set(days);
+  const [anchor, setAnchor] = useState<string | null>(null);
+  function selectDay(date: string) {
+    if (!onChangeDays) { onToggle(date); return; }
+    const next = selectPeriodDay(days, anchor, date, today);
+    onChangeDays(next.days);
+    setAnchor(next.anchor);
+  }
 
   return (
     <View style={[s.card, { paddingHorizontal: 6 }]}>
@@ -59,7 +68,7 @@ export function PeriodDaysPicker({
                 accessibilityLabel={date}
                 accessibilityState={{ selected: marked, disabled }}
                 disabled={disabled}
-                onPress={() => onToggle(date)}
+                onPress={() => selectDay(date)}
                 style={[s.day, { backgroundColor: marked ? C.lav : C.white, borderColor: marked ? C.ink : C.line, borderWidth: marked ? 1.5 : 1, opacity: disabled ? 0.4 : 1 }]}
               >
                 <T weight={marked ? "bold" : "regular"}>{day}</T>

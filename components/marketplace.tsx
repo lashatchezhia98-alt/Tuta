@@ -14,6 +14,7 @@ type Product = {
   description: string;
   category: Category;
   price_tetri: number;
+  stock_quantity?: number | null;
   image_url: string | null;
   image_urls?: string[] | null;
 };
@@ -137,13 +138,16 @@ function ProductGallery({ product, lang }: { product: Product; lang: Lang }) {
 function PinMap({
   lang,
   pin,
+  hasPin,
   onChange,
 }: {
   lang: Lang;
   pin: { latitude: number; longitude: number };
+  hasPin: boolean;
   onChange: (value: { latitude: number; longitude: number }) => void;
 }) {
   const [error, setError] = useState("");
+  const [locating, setLocating] = useState(false);
   const centerPx = project(pin.latitude, pin.longitude);
   const centerTileX = Math.floor(centerPx.x / 256),
     centerTileY = Math.floor(centerPx.y / 256);
@@ -188,20 +192,25 @@ function PinMap({
       return;
     }
     setError("");
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        setLocating(false);
         const next = {
           latitude: Number(position.coords.latitude.toFixed(6)),
           longitude: Number(position.coords.longitude.toFixed(6)),
         };
         onChange(next);
       },
-      () =>
+      () => {
+        setLocating(false);
         setError(
           lang === "ka"
             ? "მდებარეობა ვერ განისაზღვრა. აირჩიე პინი რუკაზე."
             : "Could not locate you. Choose a pin on the map.",
-        ),
+        );
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   }
   return (
@@ -229,9 +238,9 @@ function PinMap({
             }}
           />
         ))}
-        <span className="market-map-pin" aria-hidden="true">
+        {hasPin && <span className="market-map-pin" aria-hidden="true">
           ●
-        </span>
+        </span>}
         <span className="market-map-help">
           {lang === "ka"
             ? "რუკაზე დააჭირე პინის დასასმელად"
@@ -240,10 +249,10 @@ function PinMap({
       </div>
       <div className="market-map-meta">
         <span>
-          {pin.latitude.toFixed(5)}, {pin.longitude.toFixed(5)}
+          {hasPin ? (lang === "ka" ? "პინი მონიშნულია" : "Pin selected") : ""}
         </span>
-        <button type="button" onClick={locate}>
-          {lang === "ka" ? "ჩემი მდებარეობა" : "Use my location"}
+        <button type="button" disabled={locating} onClick={locate}>
+          {locating ? (lang === "ka" ? "მდებარეობა იძებნება…" : "Locating…") : (lang === "ka" ? "ჩემი მდებარეობა" : "Use my location")}
         </button>
       </div>
       {error && <p role="alert">{error}</p>}
@@ -268,6 +277,8 @@ export default function Marketplace({ lang }: { lang: Lang }) {
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [deliveryFeeTetri, setDeliveryFeeTetri] = useState(0);
+  const [recipientPhone, setRecipientPhone] = useState("");
   const authVersion = useRef(0),
     pendingCheckout = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -291,6 +302,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
           setBusy(false);
           setNotice("");
           setRecipientName("");
+          setRecipientPhone("");
           setAddress("");
           setPin(null);
         }
@@ -304,12 +316,14 @@ export default function Marketplace({ lang }: { lang: Lang }) {
       .then(async (response) => {
         const data = (await response.json()) as {
           products?: Product[];
+          deliveryFeeTetri?: number;
           error?: string;
         };
         if (!response.ok)
           throw new Error(data.error || "პროდუქტები ვერ ჩაიტვირთა.");
         if (active) {
           setProducts(data.products || []);
+          setDeliveryFeeTetri(data.deliveryFeeTetri ?? 0);
           setCart(restoreCart(data.products || []));
         }
       })
@@ -357,8 +371,11 @@ export default function Marketplace({ lang }: { lang: Lang }) {
     (sum, row) => sum + row.product.price_tetri * row.quantity,
     0,
   );
+  const cartCount = cart.reduce((sum, row) => sum + row.quantity, 0);
+  const quantities = new Map(cart.map(row => [row.product.id, row.quantity]));
   function add(product: Product) {
     const existing = cart.find((row) => row.product.id === product.id);
+    if ((existing?.quantity ?? 0) >= Math.min(20, product.stock_quantity ?? 20)) return;
     if (!existing && cart.length >= 20) {
       setNotice(
         ka
@@ -372,7 +389,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
         existing
           ? cart.map((row) =>
               row.product.id === product.id
-                ? { ...row, quantity: Math.min(row.quantity + 1, 20) }
+                ? { ...row, quantity: Math.min(row.quantity + 1, 20, product.stock_quantity ?? 20) }
                 : row,
             )
           : [...cart, { product, quantity: 1 }],
@@ -388,7 +405,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
             ? [row]
             : row.quantity + delta < 1
               ? []
-              : [{ ...row, quantity: Math.min(20, row.quantity + delta) }],
+              : [{ ...row, quantity: delta > 0 ? Math.min(20, row.product.stock_quantity ?? 20, row.quantity + delta) : row.quantity + delta }],
         ),
       ),
     );
@@ -427,9 +444,11 @@ export default function Marketplace({ lang }: { lang: Lang }) {
         },
         body: JSON.stringify({
           recipientName,
+          recipientPhone,
           address,
           latitude: pin?.latitude ?? null,
           longitude: pin?.longitude ?? null,
+          deliveryFeeTetri,
           items: cart.map((row) => ({
             productId: row.product.id,
             quantity: row.quantity,
@@ -440,6 +459,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
         checkoutUrl?: string;
         error?: string;
         testMode?: boolean;
+        deliveryFeeTetri?: number;
       };
       const current = (await getSupabaseBrowserClient().auth.getSession()).data
         .session;
@@ -449,6 +469,8 @@ export default function Marketplace({ lang }: { lang: Lang }) {
         current?.user.id !== session.user.id
       )
         return;
+      if (response.status === 409 && typeof data.deliveryFeeTetri === "number")
+        setDeliveryFeeTetri(data.deliveryFeeTetri);
       if (!response.ok || !data.checkoutUrl)
         throw new Error(
           data.error ||
@@ -551,9 +573,11 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                     <button
                       type="button"
                       onClick={() => add(product)}
-                      aria-label={`${addLabel}: ${product.name}`}
+                      disabled={(quantities.get(product.id) ?? 0) >= Math.min(20, product.stock_quantity ?? 20)}
+                      aria-label={product.stock_quantity === 0 ? (ka ? "მარაგში არ არის" : "Out of stock") : `${addLabel}: ${product.name}`}
                     >
-                      <SiteCopyText id="market.add" lang={lang}/>
+                      {product.stock_quantity === 0 ? (ka ? "მარაგში არ არის" : "Out of stock") : <SiteCopyText id="market.add" lang={lang}/>}
+                      {quantities.has(product.id) && <span className="market-cart-count">{quantities.get(product.id)}</span>}
                     </button>
                   </div>
                 </div>
@@ -573,8 +597,13 @@ export default function Marketplace({ lang }: { lang: Lang }) {
             </p>
           </div>
         )}
-        {cart.length > 0 && (
-          <section className="market-checkout" id="cart">
+        {cartCount > 0 && (
+          <>
+          <a className="market-cart-dock" href="#cart">
+            <SiteCopyText id="market.cart" lang={lang}/>
+            <span className="market-cart-count" aria-live="polite">{cartCount}</span>
+          </a>
+          <section className="market-checkout" id="cart" tabIndex={-1}>
             <div className="market-checkout-heading">
               <div>
                 <span className="inner-kicker">TUTA · CART</span>
@@ -606,7 +635,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                     </button>
                     <span>{row.quantity}</span>
                     <button
-                      disabled={row.quantity >= 20}
+                      disabled={row.quantity >= Math.min(20, row.product.stock_quantity ?? 20)}
                       type="button"
                       aria-label={
                         ka ? "რაოდენობის გაზრდა" : "Increase quantity"
@@ -634,8 +663,9 @@ export default function Marketplace({ lang }: { lang: Lang }) {
             )}
             <div className="market-total">
               <span><SiteCopyText id="market.total" lang={lang}/></span>
-              <strong>{(total / 100).toFixed(2)} ₾</strong>
+              <strong>{((total + deliveryFeeTetri) / 100).toFixed(2)} ₾</strong>
             </div>
+            <div className="market-total"><span>{ka ? "მიტანის საკომისიო" : "Delivery fee"}</span><strong>{(deliveryFeeTetri / 100).toFixed(2)} ₾</strong></div>
             <div className="market-delivery">
               <div>
                 <span className="inner-kicker">
@@ -656,6 +686,10 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                   onChange={(event) => setRecipientName(event.target.value)}
                   autoComplete="name"
                 />
+              </label>
+              <label>
+                {ka ? "ტელეფონის ნომერი" : "Phone number"}
+                <input required type="tel" autoComplete="tel" maxLength={32} value={recipientPhone} onChange={event => setRecipientPhone(event.target.value)} />
               </label>
               <label>
                 <SiteCopyText id="market.address" lang={lang}/>
@@ -681,7 +715,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                   <SiteCopyText id="market.pinNote" lang={lang}/>
                 </span>
               </div>
-              <PinMap lang={lang} pin={pin || initialPin} onChange={setPin} />
+              <PinMap lang={lang} pin={pin || initialPin} hasPin={Boolean(pin)} onChange={setPin} />
             </div>
             {!signedIn && (
               <p className="market-signin-note">
@@ -703,7 +737,9 @@ export default function Marketplace({ lang }: { lang: Lang }) {
               type="button"
               className="market-pay-button"
               disabled={
-                busy || !recipientName.trim() || address.trim().length < 5
+                busy || !recipientName.trim() || address.trim().length < 5 ||
+                !/^\+?[0-9]{7,15}$/.test(recipientPhone.replace(/[\s()-]/g, "")) ||
+                cart.some(row => row.quantity > (row.product.stock_quantity ?? 20))
               }
               onClick={() => void checkout()}
             >
@@ -717,6 +753,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
               <SiteCopyText id="market.testPaymentNote" lang={lang}/>
             </p>
           </section>
+          </>
         )}
       </main>
     </>

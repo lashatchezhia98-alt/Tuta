@@ -142,6 +142,12 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .market-checkout-heading h2{margin:0;font-size:25px}
 .market-checkout-heading>span{color:var(--text-muted);font-size:12px}
 .market-cart-lines{margin:22px 0;border-top:1px solid var(--line)}
+.market-cart-dock{position:fixed;z-index:95;bottom:24px;right:max(24px,calc((100vw - 1160px)/2));display:flex;align-items:center;justify-content:center;gap:12px;min-height:54px;padding:8px 18px;background:var(--ink);color:#fff;border-radius:17px;font-weight:800;box-shadow:0 7px 24px #1e1b2e44;text-decoration:none}
+.market-cart-count{display:inline-grid;place-items:center;min-width:28px;min-height:28px;padding:0 6px;margin-inline-start:6px;border-radius:999px;background:var(--yellow);color:var(--ink);font-weight:800}
+.market-checkout{scroll-margin-top:88px}
+.marketplace:has(.market-checkout:focus-within) .market-cart-dock{display:none}
+.market-product-info button:disabled{opacity:.65;cursor:default}
+@media(max-width:767px){.market-cart-dock{bottom:calc(82px + env(safe-area-inset-bottom));inset-inline:14px}}
 .market-cart-lines article{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:18px;padding:14px 0;border-bottom:1px solid var(--line)}
 .market-cart-lines article>div:first-child{display:grid;gap:5px}
 .market-cart-lines small{color:var(--text-muted);font-size:11px}
@@ -276,5 +282,9 @@ footer{background:var(--ink);color:white}.footer-grid{display:grid;grid-template
 .admin-social-actions p.is-error{color:#a23243}
 .inner-footer-brand{display:grid;gap:12px}
 .inner-footer-brand p{margin:0}
+.care-chat-composer[data-keyboard-docked]{position:fixed;z-index:1000;bottom:calc(var(--care-keyboard-inset,0px) + 8px);left:50%;transform:translateX(-50%);width:min(640px,calc(100% - 20px));display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;padding:10px;background:var(--off);border:1px solid var(--line);border-radius:16px;box-shadow:0 4px 22px rgba(30,27,46,.18)}
+.care-chat-composer[data-keyboard-docked] textarea{font-size:16px;min-height:46px;max-height:80px;resize:none}
+.care-chat-composer[data-keyboard-docked] button{min-height:46px;padding-inline:12px}
+.care-chat-composer[data-keyboard-docked] .care-chat-label{font-size:12px}
 @media(min-width:701px){.admin-sidebar{max-height:calc(100dvh - 108px)}.admin-sidebar nav{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}
 @media(max-width:600px){.ops-tool-links{grid-template-columns:minmax(0,1fr)}.ops-stack .ops-filters label{flex-basis:100%}.admin-social-field{grid-template-columns:minmax(0,1fr);gap:10px;padding:15px}.inner-footer .inner-container{align-items:flex-start;flex-direction:column;gap:20px}}

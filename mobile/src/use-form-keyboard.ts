@@ -3,18 +3,18 @@ import { Keyboard, Platform, type View } from "react-native";
 
 // Android usually resizes the window. Edge-to-edge devices can instead leave
 // some of the form behind the IME; only reserve the space it actually covers.
-export function useFormKeyboard(viewport: RefObject<View | null>) {
+export function useFormKeyboard(viewport: RefObject<View | null>, measureOnIOS = false) {
   const [keyboard, setKeyboard] = useState(() => Keyboard.metrics());
   const [overlap, setOverlap] = useState(0);
 
   const measure = useCallback((screenY: number) => {
     const view = viewport.current;
     view?.measureInWindow((_x, y, _width, height) => {
-      if (viewport.current === view && Keyboard.isVisible()) {
+      if (viewport.current === view && (measureOnIOS || Keyboard.isVisible())) {
         setOverlap(Math.max(0, Math.ceil(y + height - screenY)));
       }
     });
-  }, [viewport]);
+  }, [viewport, measureOnIOS]);
 
   useEffect(() => {
     const show = Keyboard.addListener(
@@ -28,7 +28,7 @@ export function useFormKeyboard(viewport: RefObject<View | null>) {
     return () => { show.remove(); hide.remove(); };
   }, []);
 
-  const screenY = Platform.OS === "android" ? keyboard?.screenY : undefined;
+  const screenY = Platform.OS === "android" || measureOnIOS ? keyboard?.screenY : undefined;
   useEffect(() => {
     if (screenY !== undefined) {
       const frame = requestAnimationFrame(() => measure(screenY));

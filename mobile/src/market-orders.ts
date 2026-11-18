@@ -37,6 +37,9 @@ export const paymentLabels: Record<string, [string, string]> = {
 };
 export type MarketOrder = {
   order_id: string;
+  order_number?: number;
+  recipient_phone?: string | null;
+  delivery_fee_tetri?: number;
   created_at: string;
   total_tetri: number;
   status: string;

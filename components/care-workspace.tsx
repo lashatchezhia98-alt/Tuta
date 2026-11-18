@@ -69,6 +69,26 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [notice, setNotice] = useState("");
+  const composer = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const align = () => {
+      const form = composer.current;
+      if (!form) return;
+      const shrink = document.documentElement.clientHeight - viewport.height;
+      const hidden = Math.max(0, shrink - viewport.offsetTop);
+      const typing = form.contains(document.activeElement);
+      const dock = typing && viewport.scale <= 1.01 && shrink > 80;
+      form.toggleAttribute("data-keyboard-docked", dock);
+      if (dock) form.style.setProperty("--care-keyboard-inset", `${Math.ceil(hidden)}px`);
+      else form.style.removeProperty("--care-keyboard-inset");
+    };
+    viewport.addEventListener("resize", align);
+    viewport.addEventListener("scroll", align);
+    return () => { viewport.removeEventListener("resize", align); viewport.removeEventListener("scroll", align); };
+  }, []);
   const selected = useRef("");
   const generation = useRef(0);
   const authEpoch = useRef(0);
@@ -387,14 +407,15 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                   ))}
                 </div>
                 <form
-                  className="workspace-form"
+                  ref={composer}
+                  className="workspace-form care-chat-composer"
                   onSubmit={(e) => {
                     e.preventDefault();
                     void action({ action: "message", id: thread, body: text });
                   }}
                 >
                   <label>
-                    <SiteCopyText id="care.message" lang={lang}/>
+                    <span className="care-chat-label"><SiteCopyText id="care.message" lang={lang}/></span>
                     <textarea
                       required
                       maxLength={2000}
@@ -404,6 +425,9 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                     />
                   </label>
                   <button
+                    onPointerDown={(event) => {
+                      if (composer.current?.hasAttribute("data-keyboard-docked")) event.preventDefault();
+                    }}
                     disabled={
                       busy ||
                       !enabled ||

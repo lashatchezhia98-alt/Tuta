@@ -125,7 +125,8 @@ test("doctor onboarding has a return route and scopes both workspaces to their o
   const { authDestination } = sourceModule("lib/auth-destination.ts");
   assert.match(html, /ექიმის კაბინეტი/);
   assert.equal(authDestination("?next=%2Fconsultation%2Fdoctor"), "/consultation/doctor");
-  assert.match(auth, /doctorInvitation&&!onAuthenticated\)router\.replace\("\/consultation\/doctor"\)/);
+  assert.match(auth, /doctorInvitation&&!onAuthenticated\)/);
+  assert.match(auth, /"\/consultation\/doctor\/setup"/);
   assert.match(workspace, /data && \(!doctorWorkspace \|\| data\.isDoctor\)/);
   assert.match(workspace, /t\.doctor_id === data\.userId/);
   assert.match(workspace, /b\.consultation_slots\?\.doctor_id === data\.userId/);

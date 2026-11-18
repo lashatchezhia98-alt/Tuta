@@ -56,6 +56,64 @@ export function periodFromSelectedDays(days, today = dateKey()) {
     return null;
   }
 }
+export function periodDaysBetween(a, b, today = dateKey()) {
+  const [start, end] = [a, b].sort();
+  try {
+    const span = distance(start, end);
+    if (span < 0 || span > 9 || end > today) return null;
+    return Array.from({ length: span + 1 }, (_, i) => addDays(start, i));
+  } catch { return null; }
+}
+export function selectPeriodDay(days, anchor, day, today = dateKey()) {
+  if (!periodDaysBetween(day, day, today)) return { days, anchor };
+  if (days.includes(day)) return { days: days.filter(value => value !== day), anchor: null };
+  const span = anchor && days.includes(anchor) ? periodDaysBetween(anchor, day, today) : null;
+  if (span) return { days: [...new Set([...days, ...span])], anchor: null };
+  return { days: [...days, day], anchor: day };
+}
+// The history picker can collect separate bleeding runs across months.
+export function periodsFromHistorySelection(days, existing, editingStart, today = dateKey()) {
+  const selected = [...new Set(days)].sort();
+  const runs = [];
+  if (!selected.length) return { error: 'selection' };
+  try {
+    for (const day of selected) {
+      stamp(day);
+      if (day > today) return { error: 'selection' };
+      const last = runs.at(-1);
+      if (last && day === addDays(last.start, last.duration)) {
+        if (++last.duration > 10) return { error: 'selection' };
+      } else runs.push({ start: day, duration: 1 });
+    }
+    const edited = existing.find(p => p.start === editingStart);
+    const intersects = (a, b) => a.start < addDays(b.start, b.duration) && b.start < addDays(a.start, a.duration);
+    const periods = edited && runs.some(run => intersects(run, edited))
+      ? existing.filter(p => p.start !== editingStart) : [...existing];
+    let start;
+    for (const run of runs) {
+      let merged = run;
+      // Importing history is additive: keep dates already saved, and combine
+      // only intersecting entries. An explicitly edited entry was removed above.
+      for (let index = 0; index < periods.length;) {
+        const saved = periods[index];
+        if (!intersects(merged, saved)) { index++; continue; }
+        const first = saved.start < merged.start ? saved.start : merged.start;
+        const savedEnd = addDays(saved.start, saved.duration);
+        const mergedEnd = addDays(merged.start, merged.duration);
+        const duration = distance(first, savedEnd > mergedEnd ? savedEnd : mergedEnd);
+        if (duration > 10) return { error: 'selection' };
+        merged = { start: first, duration };
+        periods.splice(index, 1);
+        index = 0;
+      }
+      periods.push(merged);
+      start = merged.start;
+    }
+    return { periods: ordered(periods), start };
+  } catch {
+    return { error: 'selection' };
+  }
+}
 export function ordered(periods) {
   const sorted = [...periods].sort((a,b)=>a.start.localeCompare(b.start));
   sorted.forEach((p,i)=>{

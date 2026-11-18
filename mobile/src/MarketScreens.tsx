@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import type { Session } from "@supabase/supabase-js";
 import { C, T, CTA, Chip, FieldLabel, s } from "./ui";
 import { api } from "./api";
@@ -30,6 +31,7 @@ type Product = {
   description: string;
   category: string;
   price_tetri: number;
+  stock_quantity?: number | null;
   image_url?: string;
   image_urls?: string[];
 };
@@ -85,6 +87,17 @@ export function useCart() {
   if (!value) throw Error("Cart provider missing");
   return value;
 }
+export function MarketCartDock({lang, onOpen}: {lang: Lang; onOpen: () => void}) {
+  const { rows } = useCart();
+  const count = rows.reduce((sum, row) => sum + row.quantity, 0);
+  if (!count) return null;
+  return <View style={{padding: 10, backgroundColor: C.bg, borderTopWidth: 1, borderColor: C.line}}>
+    <Pressable accessibilityRole="button" onPress={onOpen} style={s.cta}>
+      <T weight="bold" style={{color:C.white,flex:1}}>{lang === "ka" ? "კალათის ნახვა" : "View cart"}</T>
+      <T accessibilityLiveRegion="polite" weight="bold" style={{backgroundColor:C.yellow,borderRadius:16,paddingHorizontal:10,paddingVertical:4}}>{count}</T>
+    </Pressable>
+  </View>;
+}
 const categories = [
   ["period-care", "პერიოდის მოვლა", "Period care"],
   ["body-care", "სხეულის მოვლა", "Body care"],
@@ -138,22 +151,18 @@ function Gallery({ product }: { product: Product }) {
     </View>
   );
 }
-export function MarketScreen({ lang, onNavigate }: Nav) {
+export function MarketScreen({ lang }: Nav) {
   const ka = lang === "ka",
     resource = useResource<{ products: Product[] }>("/api/market/products"),
     cart = useCart();
   const [filter, setFilter] = useState(""),
     [notice, setNotice] = useState("");
+  const quantities = new Map(cart.rows.map(row => [row.id, row.quantity]));
   return (
     <View style={s.content}>
       <T weight="display" style={s.title}>
         {ka ? "მარკეტი" : "Market"}
       </T>
-      <CTA
-        light
-        title={`${ka ? "კალათა" : "Cart"} · ${cart.rows.reduce((sum, r) => sum + r.quantity, 0)}`}
-        onPress={() => onNavigate("cart")}
-      />
       <ResourceStatus {...resource} lang={lang} />
       <View style={[s.wrap, { marginBottom: 18 }]}>
         <Chip
@@ -186,11 +195,11 @@ export function MarketScreen({ lang, onNavigate }: Nav) {
             <CTA
               disabled={
                 !cart.ready ||
-                cart.rows.some((r) => r.id === p.id && r.quantity >= 20) ||
+                (quantities.get(p.id) ?? 0) >= Math.min(20, p.stock_quantity ?? 20) ||
                 (!cart.rows.some((r) => r.id === p.id) &&
                   cart.rows.length >= 20)
               }
-              title={ka ? "კალათაში დამატება" : "Add to cart"}
+              title={p.stock_quantity === 0 ? (ka ? "მარაგში არ არის" : "Out of stock") : `${ka ? "კალათაში დამატება" : "Add to cart"}${quantities.has(p.id) ? ` · ${quantities.get(p.id)}` : ""}`}
               onPress={() => {
                 cart.change(p.id, 1);
                 setNotice(ka ? "დაემატა კალათაში" : "Added to cart");
@@ -226,23 +235,33 @@ function DeliveryMap({
       longitude: 44.8271,
     }),
     [width, setWidth] = useState(300),
-    [latitude, setLatitude] = useState(""),
-    [longitude, setLongitude] = useState("");
+    [locating, setLocating] = useState(false),
+    [locationError, setLocationError] = useState("");
+  const request = useRef(0);
+  useEffect(() => () => { request.current++; }, []);
   const px = project(center.latitude, center.longitude),
     tx = Math.floor(px.x / 256),
     ty = Math.floor(px.y / 256);
-  const valid =
-    Number.isFinite(Number(latitude)) &&
-    Number.isFinite(Number(longitude)) &&
-    latitude.trim() !== "" &&
-    longitude.trim() !== "" &&
-    Math.abs(Number(latitude)) <= 85 &&
-    Math.abs(Number(longitude)) <= 180;
   function choose(value: Pin) {
+    request.current++;
+    setLocating(false);
+    setLocationError("");
     onChange(value);
     setCenter(value);
-    setLatitude(String(value.latitude));
-    setLongitude(String(value.longitude));
+  }
+  async function locate() {
+    const current = ++request.current;
+    setLocating(true);
+    setLocationError("");
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (current !== request.current) return;
+      if (!permission.granted) throw Error("permission");
+      const { coords } = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.High});
+      if (current === request.current) choose({latitude: coords.latitude, longitude: coords.longitude});
+    } catch {
+      if (current === request.current) setLocationError(ka ? "მდებარეობა ვერ განისაზღვრა. მონიშნე პინი რუკაზე." : "Could not locate you. Select a pin on the map.");
+    } finally { if (current === request.current) setLocating(false); }
   }
   return (
     <View style={{ gap: 12 }}>
@@ -340,34 +359,17 @@ function DeliveryMap({
           />
         ))}
       </View>
-      <TextInput
-        accessibilityLabel={ka ? "განედი" : "Latitude"}
-        placeholder={ka ? "განედი" : "Latitude"}
-        style={s.input}
-        value={latitude}
-        keyboardType="numbers-and-punctuation"
-        onChangeText={setLatitude}
-      />
-      <TextInput
-        accessibilityLabel={ka ? "გრძედი" : "Longitude"}
-        placeholder={ka ? "გრძედი" : "Longitude"}
-        style={s.input}
-        value={longitude}
-        keyboardType="numbers-and-punctuation"
-        onChangeText={setLongitude}
-      />
       <CTA
         light
-        disabled={!valid}
-        title={ka ? "კოორდინატების გამოყენება" : "Use coordinates"}
-        onPress={() =>
-          choose({ latitude: Number(latitude), longitude: Number(longitude) })
-        }
+        disabled={locating}
+        title={locating ? (ka ? "მდებარეობა იძებნება…" : "Locating…") : (ka ? "ჩემი მდებარეობა" : "Use my location")}
+        onPress={() => void locate()}
       />
+      {locationError && <T accessibilityRole="alert">{locationError}</T>}
       {pin && (
         <>
           <T>
-            {pin.latitude.toFixed(5)}, {pin.longitude.toFixed(5)}
+            {ka ? "პინი მონიშნულია" : "Pin selected"}
           </T>
           <CTA
             light
@@ -387,9 +389,10 @@ export function CartScreen({
 }: Nav & { session: Session | null; onPaymentReturn: (url: string) => void }) {
   const ka = lang === "ka",
     cart = useCart(),
-    resource = useResource<{ products: Product[] }>("/api/market/products");
+    resource = useResource<{ products: Product[]; deliveryFeeTetri?: number }>("/api/market/products");
   const [recipientName, setRecipientName] = useState(""),
     [address, setAddress] = useState(""),
+    [phone, setPhone] = useState(""),
     [pin, setPin] = useState<Pin | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -409,6 +412,7 @@ export function CartScreen({
       (sum, r) => sum + r.product!.price_tetri * r.quantity,
       0,
     );
+  const deliveryFeeTetri = resource.data?.deliveryFeeTetri ?? 0;
   async function checkout() {
     if (!session) return;
     setBusy(true);
@@ -419,9 +423,11 @@ export function CartScreen({
         body: {
           ...(checkoutInApp ? { returnTo: "app" } : {}),
           recipientName: recipientName.trim(),
+          recipientPhone: phone,
           address: address.trim(),
           latitude: pin?.latitude ?? null,
           longitude: pin?.longitude ?? null,
+          deliveryFeeTetri,
           items: cart.rows.map((row) => ({
             productId: row.id,
             quantity: row.quantity,
@@ -434,8 +440,10 @@ export function CartScreen({
       if (returned) onPaymentReturn(returned);
       else if (!checkoutInApp) onNavigate("orders");
     } catch (e) {
-      if (alive.current)
+      if (alive.current) {
         setMessage(e instanceof Error ? e.message : "Connection unavailable");
+        void resource.refresh();
+      }
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -468,8 +476,8 @@ export function CartScreen({
               accessibilityLabel={
                 ka ? "რაოდენობის გაზრდა" : "Increase quantity"
               }
-              disabled={r.quantity >= 20}
-              style={[s.chip, { opacity: r.quantity >= 20 ? 0.4 : 1 }]}
+              disabled={r.quantity >= Math.min(20, r.product!.stock_quantity ?? 20)}
+              style={[s.chip, { opacity: r.quantity >= Math.min(20, r.product!.stock_quantity ?? 20) ? 0.4 : 1 }]}
               onPress={() => cart.change(r.id, 1)}
             >
               <T>＋</T>
@@ -494,8 +502,9 @@ export function CartScreen({
         <View style={[s.card, { gap: 16 }]}>
           <T weight="bold" style={{ fontSize: 23 }}>
             {ka ? "ჯამი: " : "Total: "}
-            {(total / 100).toFixed(2)} ₾
+            {((total + deliveryFeeTetri) / 100).toFixed(2)} ₾
           </T>
+          <T>{ka ? "მიტანის საკომისიო: " : "Delivery fee: "}{(deliveryFeeTetri / 100).toFixed(2)} ₾</T>
           {!session && (
             <T>
               {ka
@@ -512,6 +521,8 @@ export function CartScreen({
             value={recipientName}
             onChangeText={setRecipientName}
           />
+          <FieldLabel>{ka ? "ტელეფონის ნომერი" : "Phone number"}</FieldLabel>
+          <TextInput accessibilityLabel={ka ? "ტელეფონის ნომერი" : "Phone number"} style={s.input} keyboardType="phone-pad" autoComplete="tel" maxLength={32} value={phone} onChangeText={setPhone}/>
           <FieldLabel>
             {ka ? "სრული მისამართი" : "Full delivery address"}
           </FieldLabel>
@@ -536,9 +547,11 @@ export function CartScreen({
               busy ||
               !session ||
               !recipientName.trim() ||
+              !/^\+?[0-9]{7,15}$/.test(phone.replace(/[\s()-]/g, "")) ||
               address.trim().length < 5 ||
               resource.loading ||
-              validLines.length !== cart.rows.length
+              validLines.length !== cart.rows.length ||
+              validLines.some(row => row.quantity > (row.product!.stock_quantity ?? 20))
             }
             title={ka ? "სატესტო გადახდა" : "Test checkout"}
             onPress={() => void checkout()}

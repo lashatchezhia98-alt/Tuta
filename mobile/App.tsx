@@ -41,6 +41,7 @@ import {
   addDays,
   validSetup,
   periodFromSelectedDays,
+  periodsFromHistorySelection,
   validBirthDate,
   cycleAt,
   periodCalendarModel,
@@ -91,6 +92,7 @@ import {
 } from "./src/ServiceScreens";
 import {
   CartProvider,
+  MarketCartDock,
   MarketScreen,
   CartScreen,
   OrdersScreen,
@@ -165,7 +167,8 @@ function Shell() {
     [authBusy, setAuthBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const formViewport = useRef<View>(null);
-  const keyboard = useFormKeyboard(formViewport);
+  const dockedCare = tab === "care" && Boolean(session) && !authMode;
+  const keyboard = useFormKeyboard(formViewport, dockedCare);
   const [recoveryLinkIssue, setRecoveryLinkIssue] = useState<"expired" | "invalid" | "network" | null>(null);
   const [activityRevision, setActivityRevision] = useState(0);
   const [activityTarget, setActivityTarget] = useState<(ActivityPost & { userId: string }) | null>(null);
@@ -838,7 +841,12 @@ function Shell() {
             onLayout={keyboard.onLayout}
             style={{ flex: 1 }}
           >
-            <ScrollView
+            {dockedCare ? (
+              <View key={session?.user.id} style={{ flex: 1, paddingBottom: keyboard.overlap }}>
+                <PageHeading lang={data.lang} page={tab} onBack={back} />
+                {renderPage()}
+              </View>
+            ) : <ScrollView
               ref={scroll}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
@@ -932,8 +940,9 @@ function Shell() {
                   <View key={tab}>{renderPage()}</View>
                 </View>
               )}
-            </ScrollView>
+            </ScrollView>}
           </View>
+          {!authMode && tab === "market" && pageAllowed(tab, features.features) && <MarketCartDock lang={data.lang} onOpen={() => nav("cart")} />}
           {!authMode && !keyboard.visible && (
             <View
               style={[s.nav, { paddingBottom: Math.max(insets.bottom, 8) }]}
@@ -1827,23 +1836,17 @@ function Calendar({
       );
       return;
     }
-    const period = periodFromSelectedDays(periodDays, today);
-    if (!period || !validSetup(period.start, data.cycleLength, period.duration, today)) {
+    const result = periodsFromHistorySelection(periodDays, data.periods, recorded?.start, today);
+    if (result.error === "selection") {
       setPeriodMessage(
         t(
-          "მონიშნე მხოლოდ გასული, ზედიზედ დღეები (1–10).",
-          "Select only past, consecutive bleeding days (1–10).",
+          "მონიშნე სისხლდენის დღეები. თითო პერიოდი მაქსიმუმ 10 ზედიზედ დღეა.",
+          "Select bleeding days. Each period can have at most 10 consecutive days.",
         ),
       );
       return;
     }
-    if (
-      overlapsPeriod(
-        data.periods,
-        period,
-        recorded?.start ?? "",
-      )
-    ) {
+    if (result.error === "overlap") {
       setPeriodMessage(
         t(
           "სისხლდენის დღეები სხვა ჩანაწერს ემთხვევა.",
@@ -1852,14 +1855,13 @@ function Calendar({
       );
       return;
     }
-    const periods = [
-      ...data.periods.filter((p) => p.start !== recorded?.start),
-      period,
-    ].sort((a, b) => a.start.localeCompare(b.start));
-    if (await save({ ...data, periods })) {
+    if (!result.periods || !result.start) return;
+    if (await save({ ...data, periods: result.periods })) {
+      setSelected(result.start);
+      setMonth(new Date(Number(result.start.slice(0,4)), Number(result.start.slice(5,7)) - 1, 1));
       setEditing(false);
       setPeriodMessage(t("პერიოდი შენახულია ✓", "Period saved ✓"));
-    }
+    } else setPeriodMessage(t("შენახვა ვერ მოხერხდა. მონიშნული დღეები დარჩა — სცადე ხელახლა.", "Could not save. Your selected days are preserved; please retry."));
   };
   const deletePeriod = async () => {
     if (!recorded) return;
@@ -2081,22 +2083,28 @@ function Calendar({
           </T>
           <T style={[s.muted, { marginVertical: 10 }]}>
             {t(
-              "მონიშნე გასული სისხლდენის დღეები. პერიოდის დღეები ზედიზედ უნდა იყოს.",
-              "Tap the days bleeding occurred. Period days must be consecutive.",
+              "შეეხე პირველ და ბოლო დღეს. დღის მოსახსნელად შეეხე ისევ. წინა თვეებისთვის გამოიყენე ისარი.",
+              "Tap the first and last day. Tap again to unmark a day. Use the arrow for previous months.",
             )}
           </T>
           <PeriodDaysPicker
             ka={ka}
             initialDate={recorded?.start ?? (selected <= today ? selected : today)}
             days={periodDays}
+            onChangeDays={days => {
+              setPeriodDays(days);
+              setPeriodMessage("");
+            }}
             onToggle={(date) => {
               setPeriodDays((current) => current.includes(date) ? current.filter((day) => day !== date) : [...current, date]);
               setPeriodMessage("");
             }}
           />
           <View style={{ marginTop: 14 }}>
+            {periodMessage ? <T accessibilityRole="alert" style={{ marginBottom: 8 }}>{periodMessage}</T> : null}
             <CTA
-              title={t("პერიოდის შენახვა", "Save period")}
+              disabled={!periodDays.length}
+              title={t(`შენახვა · ${periodDays.length} დღე`, `Save · ${periodDays.length} days`)}
               onPress={() => void savePeriod()}
             />
           </View>
@@ -2138,7 +2146,7 @@ function Calendar({
           )}
         </View>
       )}
-      {periodMessage ? (
+      {!editing && periodMessage ? (
         <T
           accessibilityLiveRegion="polite"
           style={[s.muted, { marginTop: 12 }]}

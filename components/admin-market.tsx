@@ -4,31 +4,36 @@ import { useCallback, useEffect, useState } from "react";
 
 type Lang = "ka" | "en";
 type Category = "period-care" | "body-care" | "nutrition" | "accessories";
-type Product = { id: string; name: string; description: string; category: Category; price_tetri: number; image_url: string | null; image_urls?: string[]; is_active: boolean };
+type Product = { id: string; name: string; description: string; category: Category; price_tetri: number; stock_quantity?: number | null; image_url: string | null; image_urls?: string[]; is_active: boolean };
 const categories: { id: Category; ka: string; en: string }[] = [
   { id: "period-care", ka: "პერიოდის მოვლა", en: "Period care" },
   { id: "body-care", ka: "სხეულის მოვლა", en: "Body care" },
   { id: "nutrition", ka: "კვება", en: "Nutrition" },
   { id: "accessories", ka: "აქსესუარები", en: "Accessories" },
 ];
-const empty = { name: "", description: "", category: "period-care" as Category, priceGEL: "", imageUrl: "", imageUrls: [] as string[], is_active: true };
+const empty = { name: "", description: "", category: "period-care" as Category, priceGEL: "", stock: "", imageUrl: "", imageUrls: [] as string[], is_active: true };
 
 export default function AdminMarket({ lang }: { lang: Lang }) {
   const ka = lang === "ka";
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
+  const [originalStock, setOriginalStock] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState("");
+  const [deliveryFee, setDeliveryFee] = useState("");
+  const [feeNotice, setFeeNotice] = useState("");
+  const [feeBusy, setFeeBusy] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/admin/market", { cache: "no-store" });
-      const data = await response.json() as { products?: Product[]; error?: string };
+      const data = await response.json() as { products?: Product[]; error?: string; deliveryFeeTetri?: number };
       if (!response.ok) throw new Error(data.error || "პროდუქტები ვერ ჩაიტვირთა.");
       setProducts(data.products || []);
+      setDeliveryFee((Number(data.deliveryFeeTetri ?? 0) / 100).toFixed(2));
     } catch (error) { setNotice(error instanceof Error ? error.message : "პროდუქტები ვერ ჩაიტვირთა."); }
     finally { setLoading(false); }
   }, []);
@@ -38,7 +43,8 @@ export default function AdminMarket({ lang }: { lang: Lang }) {
 
   function edit(product: Product) {
     setEditing(product.id);
-    setForm({ name: product.name, description: product.description, category: product.category, priceGEL: (product.price_tetri / 100).toFixed(2), imageUrl: "", imageUrls: product.image_urls?.length ? product.image_urls : product.image_url ? [product.image_url] : [], is_active: product.is_active });
+    setOriginalStock(product.stock_quantity ?? null);
+    setForm({ name: product.name, description: product.description, category: product.category, priceGEL: (product.price_tetri / 100).toFixed(2), stock: product.stock_quantity == null ? "" : String(product.stock_quantity), imageUrl: "", imageUrls: product.image_urls?.length ? product.image_urls : product.image_url ? [product.image_url] : [], is_active: product.is_active });
     setNotice("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -73,7 +79,9 @@ export default function AdminMarket({ lang }: { lang: Lang }) {
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setNotice("");
     try {
-      const response = await fetch("/api/admin/market", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, priceGEL: Number(form.priceGEL), ...(editing ? { id: editing } : {}) }) });
+      const stockQuantity = form.stock === "" ? null : Number(form.stock);
+      const stock = !editing ? {stockQuantity} : stockQuantity !== originalStock ? {stockQuantity, expectedStock: originalStock} : {};
+      const response = await fetch("/api/admin/market", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, ...stock, priceGEL: Number(form.priceGEL), ...(editing ? { id: editing } : {}) }) });
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error || "შენახვა ვერ მოხერხდა.");
       setNotice(ka ? "პროდუქტი შენახულია." : "Product saved."); setEditing(null); setForm(empty); await load();
@@ -94,11 +102,31 @@ export default function AdminMarket({ lang }: { lang: Lang }) {
     finally { setBusy(false); }
   }
 
+  async function saveDeliveryFee(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFeeBusy(true); setFeeNotice("");
+    try {
+      if (!/^\d+(?:[.]\d{1,2})?$/.test(deliveryFee)) throw Error(ka ? "შეიყვანე თანხა თეთრების სიზუსტით." : "Enter an amount with up to two decimal places.");
+      const response = await fetch("/api/admin/market", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"delivery-fee",deliveryFeeTetri:Math.round(Number(deliveryFee)*100)})});
+      const data = await response.json();
+      if (!response.ok) throw Error(data.error);
+      setDeliveryFee((data.deliveryFeeTetri/100).toFixed(2));
+      setFeeNotice(ka ? "მიტანის საკომისიო შენახულია." : "Delivery fee saved.");
+    } catch (error) { setFeeNotice(error instanceof Error ? error.message : "Error"); }
+    finally { setFeeBusy(false); }
+  }
   return <div className="admin-market">
+    <form className="admin-market-form" onSubmit={saveDeliveryFee} style={{gridColumn:"1 / -1"}}>
+      <h2>{ka ? "მიტანის საკომისიო" : "Delivery fee"}</h2>
+      <label>{ka ? "თანხა შეკვეთაზე (₾)" : "Fee per order (GEL)"}<input required type="number" min="0" max="1000" step="0.01" value={deliveryFee} onChange={event=>setDeliveryFee(event.target.value)}/></label>
+      <div className="admin-market-actions"><button type="submit" disabled={feeBusy || loading || deliveryFee===""}>{ka ? "საკომისიოს შენახვა" : "Save delivery fee"}</button></div>
+      {feeNotice && <p role="status">{feeNotice}</p>}
+    </form>
     <form className="admin-market-form" onSubmit={save}>
       <h2>{ka ? (editing ? "პროდუქტის შეცვლა" : "ახალი პროდუქტი") : (editing ? "Edit product" : "Add a product")}</h2>
       <label>{ka ? "პროდუქტის სახელი" : "Product name"}<input required minLength={2} maxLength={100} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}/></label>
       <label>{ka ? "მოკლე აღწერა" : "Short description"}<textarea required maxLength={500} rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}/></label>
+      <label>{ka ? "მარაგი (ცალი)" : "Stock (units)"}<input type="number" min="0" max="1000000" step="1" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })}/><small>{ka ? "0 — ამოწურულია; ცარიელი — მარაგი არ აღირიცხება." : "0 means out of stock; leave blank to disable stock tracking."}</small></label>
       <div className="admin-market-fields"><label>{ka ? "კატეგორია" : "Category"}<select value={form.category} onChange={e => setForm({ ...form, category: e.target.value as Category })}>{categories.map(item => <option key={item.id} value={item.id}>{item[lang]}</option>)}</select></label><label>{ka ? "ფასი (₾)" : "Price (GEL)"}<input required type="number" min="0.01" max="100000" step="0.01" value={form.priceGEL} onChange={e => setForm({ ...form, priceGEL: e.target.value })}/></label></div>
       <label>{ka ? "პროდუქტის ფოტოები (მაქსიმუმ 8)" : "Product photos (up to 8)"}<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={uploading || form.imageUrls.length >= 8} onChange={event => { void uploadPhotos(event.target.files); event.currentTarget.value = ""; }}/><small>{ka ? "JPG, PNG ან WebP · თითოეული მაქსიმუმ 8 მბ. ფოტოს ატვირთვა Cloudinary-ში ხდება." : "JPG, PNG or WebP · max 8 MB each. Photos are uploaded to Cloudinary."}</small></label>
       {form.imageUrls.length > 0 && <div className="admin-market-image-list">{form.imageUrls.map((url, index) => <div className="admin-market-image-item" key={`${url}-${index}`}><img src={url} alt={`${ka ? "პროდუქტის ფოტო" : "Product photo"} ${index + 1}`}/><button type="button" disabled={busy || uploading} aria-label={ka ? `ფოტო ${index + 1}-ის ამოშლა` : `Remove photo ${index + 1}`} onClick={() => setForm(current => ({ ...current, imageUrls: current.imageUrls.filter((_, photoIndex) => photoIndex !== index) }))}>×</button></div>)}</div>}

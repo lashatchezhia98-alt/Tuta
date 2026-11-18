@@ -16,7 +16,8 @@ import {
   symptomPatterns,
   distance,
   overlapsPeriod,
-  periodFromSelectedDays,
+  selectPeriodDay,
+  periodsFromHistorySelection,
 } from "../mobile/src/cycle.mjs";
 import { symptoms } from "../mobile/src/symptoms.mjs";
 import { healthReport, reminderCalendar } from "@/lib/health-report";
@@ -256,6 +257,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[] | null>(null);
+  const [rangeStart, setRangeStart] = useState<string | null>(null);
   const [replacing, setReplacing] = useState<string | undefined>();
   const calendarSection = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -274,24 +276,27 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
     setDuration(data.periods.find(p => p.start === date)?.duration ?? 1);
     setMonth(date.slice(0, 7));
     setReplacing(period?.start);
+    setRangeStart(null);
     setSelectedDays(marking ? (period ? Array.from({ length: period.duration }, (_, i) => addDays(period.start, i)).filter(day => day <= today) : []) : null);
     setMessage("");
     calendarSection.current?.focus();
   }
   async function saveDays() {
     if (busy || data.pregnancy?.active || !selectedDays) return;
-    const period = periodFromSelectedDays(selectedDays, today);
-    if (!period || overlapsPeriod(data.periods, period, replacing ?? "")) {
-      setMessage(ka ? "მონიშნე ზედიზედ 1–10 დღე, რომლებიც სხვა პერიოდს არ ემთხვევა." : "Select 1–10 consecutive days that do not overlap another period.");
+    const result = periodsFromHistorySelection(selectedDays, data.periods, replacing, today);
+    if (!result.periods || !result.start) {
+      setMessage(result.error === "overlap" ? (ka ? "მონიშვნა უკვე შენახულ პერიოდს ემთხვევა." : "The selection overlaps a recorded period.") : (ka ? "თითო პერიოდი მაქსიმუმ 10 ზედიზედ დღეა." : "Each period can have up to 10 consecutive days."));
       return;
     }
     setBusy(true);
     setMessage("");
     try {
-      await save({ ...data, periods: [...data.periods.filter(p => p.start !== replacing), period].sort((a,b) => a.start.localeCompare(b.start)) });
-      setSelected(period.start);
-      setDuration(period.duration);
+      await save({ ...data, periods: result.periods });
+      setSelected(result.start);
+      setMonth(result.start.slice(0, 7));
+      setDuration(result.periods.find(p => p.start === result.start)?.duration ?? 1);
       setSelectedDays(null);
+      setRangeStart(null);
       setMessage(ka ? "პერიოდი შენახულია" : "Period saved");
     } catch {
       setMessage(ka ? "შენახვა ვერ მოხერხდა. სცადე ხელახლა." : "Could not save. Please retry.");
@@ -359,6 +364,12 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
     d.setUTCMonth(d.getUTCMonth() + delta);
     setMonth(d.toISOString().slice(0, 7));
   }
+  function markDay(date: string) {
+    setMessage("");
+    const next = selectPeriodDay(selectedDays ?? [], rangeStart, date, today);
+    setSelectedDays(next.days);
+    setRangeStart(next.anchor);
+  }
   return (
     <>
       <div className="period-mobile-heading">
@@ -383,13 +394,9 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
       {data.pregnancy?.active&&<button type="button" disabled={busy} onClick={()=>{if(confirm(ka?'გამორთო ორსულობის რეჟიმი? ისტორია შენარჩუნდება.':'Turn off pregnancy mode? History will be preserved.'))void save({...data,pregnancy:{...data.pregnancy!,active:false,updatedAt:new Date().toISOString()}}).catch(()=>setMessage(ka?'შენახვა ვერ მოხერხდა.':'Could not save.'))}}>{ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'}</button>}
       <div className="workspace-grid">
         <section ref={calendarSection} id="period-calendar" className="workspace-card" tabIndex={-1} aria-label={ka ? "კალენდარი" : "Calendar"}>
-          <div className="mobile-period-controls">
-            {selectedDays === null ? <button type="button" disabled={busy || data.pregnancy?.active} onClick={() => {
-              setReplacing(recorded?.start);
-              setSelectedDays(recorded ? Array.from({ length: recorded.duration }, (_, i) => addDays(recorded.start, i)).filter(day => day <= today) : []);
-              setMessage("");
-            }}>{ka ? "პერიოდის დღეების მონიშვნა" : "Mark period days"}</button>
-              : <p>{ka ? "მონიშნე სისხლდენის დღეები და შეინახე ერთდროულად." : "Select the bleeding days and save them together."}</p>}
+          <div>
+            {selectedDays === null ? <button type="button" disabled={busy || data.pregnancy?.active} onClick={() => viewCalendar(selected > today ? today : selected, true)}>{ka ? "პერიოდის დღეების მონიშვნა" : "Mark period days"}</button>
+              : <p>{ka ? "მონიშნე პირველი და ბოლო დღე. დღის მოსახსნელად დააჭირე ხელახლა." : "Select the first and last day. Tap a marked day again to remove it."}</p>}
           </div>
           <div className="workspace-row">
             <button
@@ -431,7 +438,7 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
                   disabled={selectedDays !== null && (date > today || busy)}
                   onClick={() => {
                     if (selectedDays !== null) {
-                      setSelectedDays(days => days?.includes(date) ? days.filter(day => day !== date) : [...(days ?? []), date]);
+                      markDay(date);
                       return;
                     }
                     setSelected(date);
@@ -453,9 +460,9 @@ function PeriodCalendar({ data, save, lang, birthDate }: Props) {
             <ul>{markers.map(({key, symbol, label}) => <li key={key}>{symbol} {label}</li>)}</ul>
           </details>
           <p className="period-selected-status" aria-live="polite">{periodDayLabel(calendar.day(selected), selected, ka)}</p>
-          <div className="mobile-period-controls">
+          <div>
             {selectedDays !== null && <div className="workspace-row">
-              <button type="button" disabled={busy || !selectedDays.length} onClick={() => void saveDays()}><SiteCopyText id="tracker.save" lang={lang}/></button>
+              <button type="button" disabled={busy || !selectedDays.length} onClick={() => void saveDays()}>{ka ? `შენახვა · ${selectedDays.length} დღე` : `Save · ${selectedDays.length} days`}</button>
               <button type="button" disabled={busy} onClick={() => { setSelectedDays(null); setMessage(""); }}>{ka ? "გაუქმება" : "Cancel"}</button>
             </div>}
             <p role="status">{message}</p>

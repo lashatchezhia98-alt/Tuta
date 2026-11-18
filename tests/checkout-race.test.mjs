@@ -12,7 +12,7 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     from(table) {
       if (table === "market_products") {
         return { select: () => ({ in: async () => ({
-          data: [{ id: productId, name: "Test product", price_tetri: 499, is_active: true }],
+          data: [{ id: productId, name: "Test product", price_tetri: 499, is_active: true, stock_quantity: 1 }],
         }) }) };
       }
       const updated = { eq: () => updated, in: () => updated, select: () => updated, maybeSingle: async () => ({ data: { order_id: orders.at(-1).order_id } }) };
@@ -26,7 +26,7 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     },
     "@/lib/platform-server": {
       requireUser: async () => ({ user }),
-      requireFeature: async () => {},
+      requireFeature: async () => ({marketDeliveryFeeTetri: 350}),
       checked: ({ data }) => data,
       failure: (error) => { throw error; },
     },
@@ -39,17 +39,18 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     assert.equal(init.redirect, "error");
     const { request } = JSON.parse(init.body);
     assert.equal(request.signature, flitt.flittSignature(request));
-    assert.equal(request.amount, 499);
+    assert.equal(request.amount, returns.length ? 849 : 499);
     assert.equal(request.currency, "GEL");
     assert.equal(request.sender_email, undefined);
     assert.equal(request.address, undefined);
+    assert.equal(request.sender_phone, undefined);
     returns.push(new URL(request.response_url));
     return Response.json({ response: { checkout_url: checkoutUrl, payment_id: "12345", response_status: "success" } });
   };
   try {
     for (const [path, body] of [
       ["api/payments/flitt/checkout", { plan: "monthly", returnTo: "app" }],
-      ["api/market/checkout", { recipientName: "Test Recipient", address: "Test address", items: [{ productId, quantity: 1 }] }],
+      ["api/market/checkout", { recipientName: "Test Recipient", recipientPhone: "+995 555 010 101", deliveryFeeTetri:350, address: "Test address", items: [{ productId, quantity: 1 }] }],
     ]) {
       const route = sourceModule(`app/${path}/route.ts`, dependencies);
       const response = await route.POST(new Request(`https://tutahealth.ge/${path}`, {
@@ -66,9 +67,33 @@ test("Premium and Market return the unsigned Flitt checkout URL without marking 
     assert.equal(returns[0].searchParams.get("order"), orders[0].order_id);
     assert.equal(returns[1].searchParams.get("client"), null);
     assert.equal(returns[1].searchParams.get("order"), orders[1].order_id);
+    assert.equal(orders[1].recipient_phone, "+995555010101");
+    assert.equal(orders[1].delivery_fee_tetri, 350);
+    assert.equal(orders[1].total_tetri, 849);
   } finally {
     globalThis.fetch = savedFetch;
   }
+});
+
+test("market checkout rejects missing phone, stale fees and insufficient stock before creating an order", async () => {
+  const id = "12345678-1234-4234-8234-123456789abc";
+  class ApiError extends Error { constructor(status, message) { super(message); this.status = status; } }
+  let stock = 0;
+  const admin = {from(table) {
+    assert.equal(table, "market_products", "an invalid request must not create an order");
+    return {select:()=>({in:async()=>({data:[{id,name:"Fixture",is_active:true,price_tetri:100,stock_quantity:stock}]})})};
+  }};
+  const route = sourceModule("app/api/market/checkout/route.ts",{
+    "@/lib/platform-server": {ApiError, requireUser:async()=>({user:{id:"fixture"}}), requireFeature:async()=>({marketDeliveryFeeTetri:325}), checked:r=>r.data, failure:e=>Response.json({error:e.message},{status:e.status})},
+    "@/lib/flitt": {flittEnvironment:()=>({admin}), bearerToken:()=>"test"},
+  });
+  const checkout = extra => route.POST(new Request("https://tutahealth.ge/api/market/checkout", {method:"POST",body:JSON.stringify({recipientName:"Fixture",address:"Test address",items:[{productId:id,quantity:1}],...extra})}));
+  assert.equal((await checkout({})).status,400);
+  assert.equal((await checkout({recipientPhone:"555010101",deliveryFeeTetri:325})).status,409);
+  stock = 1;
+  const stale = await checkout({recipientPhone:"555010101",deliveryFeeTetri:0});
+  assert.equal(stale.status,409);
+  assert.equal((await stale.json()).deliveryFeeTetri,325);
 });
 
 test("Flitt's mobile return uses POST-to-GET, opens the correct screen, and ignores payment data", async () => {

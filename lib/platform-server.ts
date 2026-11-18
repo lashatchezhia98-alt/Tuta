@@ -76,6 +76,7 @@ export async function requireFeature(
   if (error || !data) throw new ApiError(503, "პარამეტრები ვერ ჩაიტვირთა.");
   if (data.features[key] === false)
     throw new ApiError(403, "ეს ფუნქცია დროებით გამორთულია.");
+  return data.features as Record<string, unknown>;
 }
 export function result(data: unknown, status = 200) {
   return NextResponse.json(data, {

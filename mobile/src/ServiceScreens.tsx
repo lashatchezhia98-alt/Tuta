@@ -3,6 +3,7 @@ import {
   Alert,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -437,8 +438,12 @@ export function CareScreen({
     ? "messages" : selectedSection || "doctors";
   const threads = resource.data?.threads.filter(t => !isDoctor || t.doctor_id === session.user.id) ?? [];
   const bookings = resource.data?.bookings.filter(b => !isDoctor || b.consultation_slots?.doctor_id === session.user.id) ?? [];
+  const sendDisabled = busy || !text.trim() || feature.status !== "enabled" ||
+    (!resource.data?.premium && !isDoctor);
+  const activeConversation = section === "messages" && threads.some(t => t.id === thread);
   return (
-    <View style={s.content}>
+    <View style={{ flex: 1, minHeight: 0 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       <T weight="display" style={s.title}>
         {isDoctor ? (ka ? "ექიმის კაბინეტი" : "Doctor workspace") : (ka ? "ექიმები და კონსულტაცია" : "Doctors & care")}
       </T>
@@ -659,7 +664,7 @@ export function CareScreen({
                 : "No conversations yet. Choose a doctor."}
             </T>
           )}
-          {threads.some(t => t.id === thread) && (
+          {activeConversation && (
             <>
               <ResourceStatus {...messages} lang={lang} />
               <T style={s.muted}>
@@ -697,36 +702,35 @@ export function CareScreen({
                   <T style={s.muted}>{date(m.created_at)}</T>
                 </View>
               ))}
-              <TextInput
-                style={[s.input, { minHeight: 100, marginVertical: 12 }]}
-                accessibilityLabel={
-                  ka ? "ექიმისთვის შეტყობინება" : "Message your doctor"
-                }
-                multiline
-                maxLength={2000}
-                value={text}
-                onChangeText={setText}
-              />
-              <CTA
-                disabled={
-                  busy ||
-                  !text.trim() ||
-                  feature.status !== "enabled" ||
-                  (!resource.data?.premium && !resource.data?.isDoctor)
-                }
-                title={ka ? "გაგზავნა" : "Send"}
-                onPress={() =>
-                  void action({
-                    action: "message",
-                    id: thread,
-                    body: text.trim(),
-                  })
-                }
-              />
             </>
           )}
         </>
       )}
+    </ScrollView>
+    {activeConversation ? (
+              <View testID="care-chat-composer" style={{ flexDirection: "row", alignItems: "flex-end", gap: 8,
+                padding: 12, borderTopWidth: 1, borderColor: C.line, backgroundColor: C.bg }}>
+                <TextInput
+                  style={[s.input, { flex: 1, minWidth: 0, minHeight: 48, maxHeight: 96, paddingVertical: 10 }]}
+                  accessibilityLabel={ka ? "შეტყობინება" : "Message"}
+                  placeholder={ka ? "შეტყობინება" : "Message"}
+                  multiline
+                  maxLength={2000}
+                  value={text}
+                  onChangeText={setText}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: sendDisabled }}
+                  disabled={sendDisabled}
+                  style={({ pressed }) => [s.cta, { minHeight: 48, paddingHorizontal: 12, paddingVertical: 10,
+                    opacity: sendDisabled || pressed ? 0.6 : 1 }]}
+                  onPress={() => void action({ action: "message", id: thread, body: text.trim() })}
+                >
+                  <T weight="bold" style={{ color: C.white }}>{ka ? "გაგზავნა" : "Send"}</T>
+                </Pressable>
+              </View>
+    ) : null}
     </View>
   );
 }

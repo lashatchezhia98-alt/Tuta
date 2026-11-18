@@ -139,7 +139,10 @@ export function AuthPage({kind,lang,onAuthenticated}:{kind:"login"|"register"|"f
         setNotice(ka?"პაროლი შეიცვალა. ანგარიშში შედიხარ…":"Password updated. Opening your account…");
         setPassword("");setConfirmPassword("");
         setRecoveryUser(null);
-        if(doctorInvitation&&!onAuthenticated)router.replace("/consultation/doctor");else finish();
+        if(doctorInvitation&&!onAuthenticated){
+          const setup=await fetch("/api/doctor/setup",{headers:{Authorization:`Bearer ${session.access_token}`}}).catch(()=>null);
+          router.replace(setup?.status===403?"/consultation/doctor":"/consultation/doctor/setup");
+        }else finish();
       }else{
         const result=login
           ? await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password})

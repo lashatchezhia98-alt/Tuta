@@ -23,11 +23,38 @@ test('late consultation actions cannot restore an old account conversation or dr
  const Component=sourceModule('components/care-workspace.tsx',{react,'@/lib/supabase-browser':{getSupabaseBrowserClient:()=>client},'@/lib/site-features':{useSiteFeatures:()=>({doctorConsultation:true})}}).default;
  const render=()=>{cursor=0;effects.length=0;return Component({lang:'en'})};
  const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
- let cleanup;
+ let cleanups=[];
  try{
-  render();cleanup=effects[0]();slots[0]={userId:'A',doctors:[{user_id:'doctor',verified_doctors:{first_name:'Test',last_name:'Doctor'}}],slots:[],threads:[],bookings:[],premium:true};slots[3]='private A draft';
+  render();cleanups=effects.map(effect=>effect());slots[0]={userId:'A',doctors:[{user_id:'doctor',verified_doctors:{first_name:'Test',last_name:'Doctor'}}],slots:[],threads:[],bookings:[],premium:true};slots[3]='private A draft';
   nodes(render(),'button').find(b=>b.props.children?.props?.id==='care.startChat').props.onClick();await tick();user='B';authCallback('SIGNED_IN',{user:{id:'B'}});assert.equal(slots[3],'');request.resolve({ok:true,json:async()=>({thread:{id:'A-private-thread'}})});await tick();assert.equal(slots[2],'');assert.equal(slots[6],'');
- }finally{cleanup?.();globalThis.fetch=oldFetch}
+ }finally{for(const cleanup of cleanups)cleanup?.();globalThis.fetch=oldFetch}
+});
+test('patient and doctor web chats dock their composer above a shrunken viewport',()=>{
+ const savedWindow=globalThis.window,savedDocument=globalThis.document;
+ const viewport={height:840,offsetTop:0,scale:1,addEventListener(name,fn){this[name]=fn},removeEventListener(name){delete this[name]}};
+ globalThis.window={visualViewport:viewport};
+ globalThis.document={documentElement:{clientHeight:840},activeElement:{}};
+ try{
+  for(const doctorWorkspace of [false,true]){
+   const data={userId:doctorWorkspace?'doctor':'patient',doctors:[],slots:[],threads:[{id:'test',doctor_id:'doctor',patient_id:'patient',patient_label:'Test'}],bookings:[],premium:!doctorWorkspace,isDoctor:doctorWorkspace};
+   let state=0;
+   const effects=[];
+   const values=[data,'','test','draft',false,false,''];
+   const react={useState(value){return [values[state++]??value,()=>{}]},useRef(value){return {current:value}},useEffect(fn){effects.push(fn)},useCallback(fn){return fn}};
+   const Component=sourceModule('components/care-workspace.tsx',{react,'@/mobile/src/useChatMessages':{useChatMessages:()=>({messages:[]})},'@/lib/site-features':{useSiteFeatures:()=>({doctorConsultation:true})}}).default;
+   const find=(node)=>!node||typeof node!=='object'?null:node.props?.className?.includes('care-chat-composer')?node:[node.props?.children].flat(Infinity).map(find).find(Boolean);
+   const form=find(Component({lang:'en',doctorWorkspace}));
+   assert.ok(form);
+   let docked=false,inset;
+   form.props.ref.current={contains:()=>true,toggleAttribute(_name,value){docked=value},style:{setProperty(_name,value){inset=value},removeProperty(){inset=undefined}}};
+   const cleanup=effects[0]();
+   viewport.height=530;viewport.offsetTop=30;viewport.resize();
+   assert.equal(docked,true);assert.equal(inset,'280px');
+   viewport.height=840;viewport.offsetTop=0;viewport.resize();
+   assert.equal(docked,false);assert.equal(inset,undefined);
+   cleanup();
+  }
+ }finally{globalThis.window=savedWindow;globalThis.document=savedDocument}
 });
 function hookHarness({readDelay=false}={}){
  const slots=[],effects=[];let cursor=0,authCallback,currentUser='A',pendingWrite;

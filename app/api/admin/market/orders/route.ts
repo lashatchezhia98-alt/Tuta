@@ -4,15 +4,15 @@ import {canFulfill} from '@/lib/market-orders';
 export const dynamic='force-dynamic';
 export async function GET(request:Request){
   try{
-    const db=await requireAdmin(request),params=new URL(request.url).searchParams,page=Number(params.get('page')||0);
+    const db=await requireAdmin(request,false,"orders"),params=new URL(request.url).searchParams,page=Number(params.get('page')||0);
     if(!Number.isSafeInteger(page)||page<0||page>10000)throw new ApiError(400,'არასწორი გვერდი.');
-    const rows=checked(await db.from('market_orders').select('order_id,created_at,total_tetri,status,fulfillment_status,mode,recipient_name,address,latitude,longitude,items').order('created_at',{ascending:false}).order('id',{ascending:false}).range(page*20,page*20+20))||[];
+    const rows=checked(await db.from('market_orders').select('order_id,order_number,created_at,total_tetri,delivery_fee_tetri,status,fulfillment_status,mode,recipient_name,recipient_phone,address,latitude,longitude,items').order('order_number',{ascending:false}).range(page*20,page*20+20))||[];
     return result({orders:rows.slice(0,20),hasMore:rows.length>20});
   }catch(error){return failure(error)}
 }
 export async function PATCH(request:Request){
   try{
-    const db=await requireAdmin(request),body=await readAdminJson(request);
+    const db=await requireAdmin(request,false,"orders"),body=await readAdminJson(request);
     if(typeof body.orderId!=='string'||!/^tuta-market-[0-9a-f-]{36}$/i.test(body.orderId)||typeof body.next!=='string')throw new ApiError(400,'არასწორი შეკვეთა.');
     const order=checked(await db.from('market_orders').select('status,fulfillment_status').eq('order_id',body.orderId).maybeSingle());
     if(!order)throw new ApiError(404,'შეკვეთა ვერ მოიძებნა.');
