@@ -64,6 +64,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
   const ka = lang === "ka";
   const enabled = useSiteFeatures().doctorConsultation;
   const [data, setData] = useState<State | null>(null),
+    [publicDemos, setPublicDemos] = useState<State["demoDoctors"]>([]),
     [error, setError] = useState(""),
     [thread, setThread] = useState(""),
     [text, setText] = useState(""),
@@ -93,6 +94,14 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
     viewport.addEventListener("resize", align);
     viewport.addEventListener("scroll", align);
     return () => { viewport.removeEventListener("resize", align); viewport.removeEventListener("scroll", align); };
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/doctor-demos", { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((v) => { if (alive) setPublicDemos(v.doctors || []); })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []);
   const selected = useRef("");
   const generation = useRef(0);
@@ -239,6 +248,14 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
             {doctorWorkspace ? (ka ? "ექიმის ანგარიშით შესვლა" : "Sign in to your doctor account") : (ka ? "შესვლა / რეგისტრაცია" : "Sign in / register")}
           </Link>
         )}
+        {!data && publicDemos.length > 0 && <div className="workspace-grid" aria-label={ka ? "სატესტო ექიმები" : "Demo doctors"}>
+          {publicDemos.map((d) => <article className="workspace-card" key={`public-demo-${d.id}`}>
+            <img src={d.photo_url} alt="DEMO" width={72} height={72} className="doctor-avatar" />
+            <p><strong style={{ background: "#faedc7", borderRadius: 999, padding: "5px 10px" }}>DEMO · {ka ? "არა რეალური ექიმი" : "NOT A REAL DOCTOR"}</strong></p>
+            <h2>{d.first_name} {d.last_name} · DEMO</h2><strong>{d.specialty}</strong>
+            <p>{ka ? "სატესტო პროფილი — კონსულტაცია, ჩატი და დაჯავშნა მიუწვდომელია." : "Demonstration profile — consultation, chat, and booking are unavailable."}</p>
+          </article>)}
+        </div>}
         {doctorWorkspace && data && !data.isDoctor && <p role="status">
           {ka ? "ექიმის პროფილი ამ ანგარიშზე ჯერ არ არის აქტიური. გადაამოწმე ელფოსტა და დაუკავშირდი თუთას ადმინისტრაციას." : "An active doctor profile is not available for this account. Check your email address and contact Tuta administration."}
         </p>}
