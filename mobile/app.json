@@ -3,12 +3,12 @@
     "name": "თუთა • Tuta",
     "slug": "tuta-moon-mood",
     "scheme": "com.tutahealth.app",
-    "version": "1.1.28",
+    "version": "1.1.29",
     "icon": "./assets/app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "buildNumber": "33",
+      "buildNumber": "34",
       "appleTeamId": "D88588H2DS",
       "supportsTablet": true,
       "deploymentTarget": "26.6",
@@ -16,7 +16,7 @@
     },
     "android": {
       "package": "com.tutahealth.app",
-      "versionCode": 33,
+      "versionCode": 34,
       "icon": "./assets/app-icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon.png",
