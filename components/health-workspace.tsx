@@ -20,7 +20,7 @@ import {
   periodSelectionReview,
 } from "../mobile/src/cycle.mjs";
 import { symptoms } from "../mobile/src/symptoms.mjs";
-import { healthReport, reminderCalendar } from "@/lib/health-report";
+import { healthReport, reminderCalendar, reminderLead, reminderRepeat } from "@/lib/health-report";
 import { sexualActivityOptions } from "@/mobile/src/sexual-activity";
 import { Check, ChevronDown, Heart, LockKeyhole, MoreHorizontal, ShieldCheck } from "lucide-react";
 import CycleOverview, { CalendarKeyMark } from "./cycle-overview";
@@ -168,10 +168,21 @@ export default function HealthWorkspace({
 
 function CalendarReminders({ data, lang }: Pick<Props, "data" | "lang">) {
   const ka = lang === "ka";
+  const [repeat, setRepeat] = useState<(typeof reminderRepeat)[number][0]>("next");
+  const [lead, setLead] = useState<(typeof reminderLead)[number][0]>("12h");
   const { starts } = periodCalendarModel(data);
   return <section className="workspace-card">
     <p>{ka ? "გადაიტანე სავარაუდო დღეები პირად კალენდარში. მოვლენის სათაური ჯანმრთელობის დეტალებს არ შეიცავს." : "Export estimated dates to your personal calendar. Event titles contain no health details."}</p>
-    <button type="button" disabled={!starts.length} onClick={() => download(reminderCalendar(starts), "tuta-reminders.ics", "text/calendar")}>
+    <div className="workspace-form">
+      <label>{ka ? "რომელი თარიღები გადავიტანო?" : "Which dates should be exported?"}
+        <select value={repeat} onChange={event => setRepeat(event.currentTarget.value as typeof repeat)}>{reminderRepeat.map(([value, ge, en]) => <option value={value} key={value}>{ka ? ge : en}</option>)}</select>
+      </label>
+      <label>{ka ? "როდის გამახსენოს?" : "When should it remind me?"}
+        <select value={lead} onChange={event => setLead(event.currentTarget.value as typeof lead)}>{reminderLead.map(([value, ge, en]) => <option value={value} key={value}>{ka ? ge : en}</option>)}</select>
+      </label>
+    </div>
+    <p>{ka ? "შეხსენება იმუშავებს ფაილის პირად კალენდარში შეტანის შემდეგ." : "Reminders work after importing the file into your personal calendar."}</p>
+    <button type="button" disabled={!starts.length} onClick={() => download(reminderCalendar(starts, { repeat, lead }), "tuta-reminders.ics", "text/calendar")}>
       <SiteCopyText id="tracker.download" lang={lang}/>
     </button>
     {!starts.length && <p>{ka ? "ჯერ საჭიროა მიმდინარე პერიოდის ისტორია. ორსულობისა და დაგვიანების დროს პროგნოზები შეჩერებულია." : "Current period history is needed. Estimates are paused during pregnancy or an overdue cycle."}</p>}

@@ -3,3 +3,24 @@ export function cleanCart(value){if(!Array.isArray(value))return [];const rows=n
 export function changeCart(rows,id,delta){const existing=rows.find(r=>r.id===id);if(!existing&&rows.length>=20)return rows;return cleanCart(existing?rows.flatMap(r=>r.id!==id?[r]:r.quantity+delta>0?[{id,quantity:Math.min(20,r.quantity+delta)}]:[]):delta>0?[...rows,{id,quantity:delta}]:rows);}
 export function project(latitude,longitude,zoom=14){const scale=256*2**zoom;const lat=Math.max(-85.0511,Math.min(85.0511,latitude))*Math.PI/180;return {x:(longitude+180)/360*scale,y:(1-Math.asinh(Math.tan(lat))/Math.PI)/2*scale};}
 export function unproject(x,y,zoom=14){const scale=256*2**zoom;return {latitude:Number((Math.atan(Math.sinh(Math.PI*(1-2*y/scale)))*180/Math.PI).toFixed(6)),longitude:Number(((x/scale*360-180+540)%360-180).toFixed(6))};}
+
+export function deliveryFieldErrors(recipient, phone, address) {
+  return {
+    recipient: recipient.trim().length < 2,
+    phone: !/^\+?[0-9]{7,15}$/.test(phone.replace(/[\s()-]/g, "")),
+    address: address.trim().length < 5,
+  };
+}
+export const deliveryFieldCopy = {
+  recipient: ["მიუთითე მიმღების სახელი.", "Enter the recipient’s name."],
+  phone: ["მიუთითე სწორი ტელეფონის ნომერი კურიერისთვის.", "Enter a valid phone number for the courier."],
+  address: ["მიუთითე მიტანის სრული მისამართი.", "Enter the full delivery address."],
+};
+export function cartStockIssue(product, quantity) {
+  if (!product || product.stock_quantity === 0) return "unavailable";
+  return quantity > Math.min(20, product.stock_quantity ?? 20) ? "quantity" : null;
+}
+export const cartStockCopy = {
+  unavailable: ["მარაგში აღარ არის. ამოიღე კალათიდან.", "No longer in stock. Remove it from the cart."],
+  quantity: ["მარაგში ნაკლებია. შეამცირე რაოდენობა.", "Not enough stock. Reduce the quantity."],
+};

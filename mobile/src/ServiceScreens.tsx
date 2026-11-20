@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   Alert,
+  AppState,
   Image,
   Pressable,
   ScrollView,
@@ -8,7 +9,9 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useChatMessages, type ChatResponse } from "./useChatMessages";
+import { useChatMessages, useChatReceipts, type ChatResponse } from "./useChatMessages";
+import { careOverview } from "./care-presentation.mjs";
+import { activityTones } from "./activity.mjs";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
@@ -19,10 +22,10 @@ import { api, apiRoot } from "./api";
 import { checkoutInApp, openPaymentCheckout } from "./open-payment-checkout";
 import { useResource } from "./useResource";
 import { useMembership } from "./useMembership";
-import { useFeatureEnabled } from "./useJourneyEnabled";
+import { useAppFeatures, useFeatureEnabled } from "./useJourneyEnabled";
 import { forecast } from "./cycle.mjs";
 import { calculateCycleEstimate, calculatorMessages, formatCalculatorDate } from "./cycle-calculator.mjs";
-import { healthReport, reminderCalendar } from "./health-report";
+import { healthReport, reminderCalendar, reminderLead, reminderRepeat } from "./health-report";
 import { sexualActivityOptions } from "./sexual-activity";
 import { symptoms } from "./symptoms.mjs";
 import { filterLibrary, libraryCategories } from "../../lib/library-search";
@@ -40,6 +43,7 @@ const comparisonStyles = StyleSheet.create({
 
 function PremiumComparison({ lang }: { lang: Lang }) {
   const ka = lang === "ka";
+  const availability = useAppFeatures();
   const copy = (key: keyof typeof premiumComparisonCopy) => premiumComparisonCopy[key][ka ? 0 : 1];
   const freeLabel = copy("premium.compare.free");
   const paidLabel = copy("premium.compare.paid");
@@ -54,8 +58,13 @@ function PremiumComparison({ lang }: { lang: Lang }) {
         <View style={comparisonStyles.plan}><T weight="bold" style={comparisonStyles.heading}>{freeLabel}</T></View>
         <View style={[comparisonStyles.plan, { backgroundColor: C.lav }]}><T weight="bold" style={comparisonStyles.heading}>{paidLabel}</T></View>
       </View>
-      {premiumComparisonFeatures.map(({ id, free }) => {
+      {premiumComparisonFeatures.map(({ id, free, feature: flag }) => {
         const feature = copy(`premium.compare.${id}`);
+        if (availability.status === "ready" && availability.features[flag] === false)
+          return <View key={id} accessibilityLabel={`${feature}. ${copy("premium.compare.unavailable")}`} accessible style={comparisonStyles.row}>
+            <View style={comparisonStyles.feature}><T style={{ fontSize: 14 }}>{feature}</T></View>
+            <View style={[comparisonStyles.plan, { flex: 2.3, backgroundColor: "#F2ECFA" }]}><T style={{ fontSize: 12, textAlign: "center" }}>{copy("premium.compare.unavailable")}</T></View>
+          </View>;
         return <View key={id} accessible accessibilityLabel={`${feature}. ${freeLabel}: ${free ? included : excluded}. ${paidLabel}: ${included}.`} style={comparisonStyles.row}>
           <View style={comparisonStyles.feature}><T style={{ fontSize: 14 }}>{feature}</T></View>
           <View style={comparisonStyles.plan}>{free
@@ -356,6 +365,7 @@ type Care = {
     doctor_id: string;
     patient_id: string;
     patient_label: string;
+    has_unread?: boolean;
   }[];
   bookings: {
     id: string;
@@ -366,6 +376,10 @@ type Care = {
   premium: boolean;
   isDoctor: boolean;
 };
+function subscribeToCareAppState(notify: () => void) {
+  const subscription = AppState.addEventListener("change", notify);
+  return () => subscription.remove();
+}
 export function CareScreen({
   lang,
   session,
@@ -382,7 +396,15 @@ export function CareScreen({
     [message, setMessage] = useState(""),
     [blogTitle, setBlogTitle] = useState(""),
     [blogBody, setBlogBody] = useState(""),
-    [blogCategory, setBlogCategory] = useState("cycle");
+    [blogCategory, setBlogCategory] = useState("cycle"),
+    [showBlog, setShowBlog] = useState(false),
+    [showSchedule, setShowSchedule] = useState(false);
+  const isDoctor = Boolean(resource.data?.isDoctor);
+  const section = isDoctor && (!selectedSection || selectedSection === "doctors") ? "messages" : selectedSection || "doctors";
+  const threads = resource.data?.threads.filter(t => !isDoctor || t.doctor_id === session.user.id) ?? [];
+  const bookings = resource.data?.bookings.filter(b => !isDoctor || b.consultation_slots?.doctor_id === session.user.id) ?? [];
+  const activeConversation = section === "messages" && threads.some(t => t.id === thread);
+  const chatScope = activeConversation ? `${session.user.id}:${thread}` : "";
   const loadMessages = useCallback(
     () =>
       api<ChatResponse>("/api/care?thread=" + thread, {
@@ -391,11 +413,19 @@ export function CareScreen({
     [thread, session.user.id],
   );
   const messages = useChatMessages(
-    thread ? `${session.user.id}:${thread}` : "",
+    chatScope,
     loadMessages,
   );
+  const foreground = useSyncExternalStore(subscribeToCareAppState, () => AppState.currentState === "active", () => false);
+  const refreshCare = resource.refresh;
+  const confirmReceipts = useCallback(async (messageIds: string[], visible: boolean) => {
+    await api("/api/care", { body: { action: "receipts", id: thread, messageIds, visible }, userId: session.user.id });
+    if (visible) void refreshCare();
+  }, [thread, session.user.id, refreshCare]);
+  useChatReceipts(chatScope, session.user.id, messages.messages, foreground, confirmReceipts);
   const alive = useRef(true);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (typingTimer.current) clearTimeout(typingTimer.current); }, [chatScope]);
   useEffect(
     () => () => {
       alive.current = false;
@@ -426,6 +456,7 @@ export function CareScreen({
         setSection("messages");
       }
       if (body.action === "message") {
+        if (typingTimer.current) clearTimeout(typingTimer.current);
         setText("");
         void api("/api/care", { body: { action: "typing", id: thread, typing: false }, userId: session.user.id }).catch(() => {});
         void messages.refresh();
@@ -441,14 +472,9 @@ export function CareScreen({
   }
   const allowed =
     feature.status === "enabled" && Boolean(resource.data?.premium);
-  const isDoctor = Boolean(resource.data?.isDoctor);
-  const section = isDoctor && (!selectedSection || selectedSection === "doctors")
-    ? "messages" : selectedSection || "doctors";
-  const threads = resource.data?.threads.filter(t => !isDoctor || t.doctor_id === session.user.id) ?? [];
-  const bookings = resource.data?.bookings.filter(b => !isDoctor || b.consultation_slots?.doctor_id === session.user.id) ?? [];
+  const overview = isDoctor && resource.data ? careOverview(threads, bookings, resource.data.slots.filter(slot => slot.doctor_id === session.user.id)) : null;
   const sendDisabled = busy || !text.trim() || feature.status !== "enabled" ||
     (!resource.data?.premium && !isDoctor);
-  const activeConversation = section === "messages" && threads.some(t => t.id === thread);
   return (
     <View style={{ flex: 1, minHeight: 0 }}>
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
@@ -461,8 +487,20 @@ export function CareScreen({
           : "Not an emergency service. Doctors cannot automatically view your journal."}
       </T>
       <ResourceStatus {...resource} lang={lang} />
+      {overview && <View style={[s.card, { gap: 8 }]}>
+        <T weight="bold" style={{ fontSize: 20 }}>{ka ? "სამუშაო მიმოხილვა" : "Work overview"}</T>
+        <CTA light title={ka ? `წაუკითხავი საუბრები · ${overview.unread}` : `Unread conversations · ${overview.unread}`} onPress={() => setSection("messages")}/>
+        <T weight="bold">{ka ? "უახლოესი ვიზიტი" : "Next appointment"}</T>
+        <T>{overview.nextVisit?.consultation_slots ? date(overview.nextVisit.consultation_slots.starts_at) : (ka ? "დაგეგმილი არ არის" : "None scheduled")}</T>
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: showSchedule }}
+          style={{ minHeight: 44, justifyContent: "center" }} onPress={() => setShowSchedule(value => !value)}>
+          <T weight="bold">{ka ? `თავისუფალი დროები · ${overview.openSlots.length}` : `Open appointment times · ${overview.openSlots.length}`}</T>
+        </Pressable>
+        {showSchedule && overview.openSlots.map((slot, i) => <T key={`${slot.starts_at}:${i}`}>{date(slot.starts_at)}</T>)}
+      </View>}
       {isDoctor && <CTA light title={ka ? "საზოგადოებაში გადასვლა" : "Go to community"} onPress={() => onNavigate("home")} />}
-      {isDoctor && <View style={s.card}>
+      {isDoctor && <CTA light title={showBlog ? (ka ? "სტატიის ფორმის დამალვა" : "Hide article editor") : (ka ? "ჯანმრთელობის ბლოგის წერა" : "Write a health article")} onPress={() => setShowBlog(value => !value)} />}
+      {isDoctor && showBlog && <View style={s.card}>
         <T weight="bold" style={{ fontSize: 20, marginBottom: 8 }}>{ka ? "ჯანმრთელობის ბლოგის წერა" : "Write a health article"}</T>
         <T style={s.muted}>{ka ? "გამოქვეყნებისთანავე სტატია ბიბლიოთეკაში შენი სახელით გამოჩნდება." : "Published articles appear in the library under your name."}</T>
         <TextInput accessibilityLabel={ka ? "სტატიის სათაური" : "Article title"} placeholder={ka ? "სათაური" : "Title"} value={blogTitle} onChangeText={setBlogTitle} maxLength={180} style={s.input} />
@@ -678,9 +716,8 @@ export function CareScreen({
                 key={t.id}
                 selected={thread === t.id}
                 label={
-                  t.doctor_id === session.user.id
-                    ? t.patient_label
-                    : name(t.doctor_id)
+                  (t.doctor_id === session.user.id ? t.patient_label : name(t.doctor_id)) +
+                  (t.has_unread ? (ka ? " · წაუკითხავი" : " · Unread") : "")
                 }
                 onPress={() => {
                   setThread(t.id);
@@ -755,6 +792,7 @@ export function CareScreen({
                     setText(value);
                     if (typingTimer.current) clearTimeout(typingTimer.current);
                     typingTimer.current = setTimeout(() => {
+                      if (AppState.currentState !== "active") return;
                       void api("/api/care", { body: { action: "typing", id: thread, typing: Boolean(value.trim()) }, userId: session.user.id }).catch(() => {});
                     }, 250);
                   }}
@@ -991,6 +1029,8 @@ export function CalculatorScreen({
   );
 }
 export function RemindersScreen({ data }: { data: Data }) {
+  const [repeat, setRepeat] = useState<(typeof reminderRepeat)[number][0]>("next");
+  const [lead, setLead] = useState<(typeof reminderLead)[number][0]>("12h");
   const ka = data.lang === "ka",
     model = forecast(
       data.periods,
@@ -1002,7 +1042,7 @@ export function RemindersScreen({ data }: { data: Data }) {
   async function share() {
     const file = new File(Paths.cache, "tuta-reminders.ics");
     try {
-      file.write(reminderCalendar(model.starts));
+      file.write(reminderCalendar(model.starts, { repeat, lead }));
       if (!(await Sharing.isAvailableAsync())) throw Error();
       await Sharing.shareAsync(file.uri, {
         mimeType: "text/calendar",
@@ -1028,6 +1068,11 @@ export function RemindersScreen({ data }: { data: Data }) {
           ? "გადაიტანე სავარაუდო თარიღები პირად კალენდარში. მოვლენის სათაური ჯანმრთელობის დეტალებს არ შეიცავს."
           : "Export estimated dates to your personal calendar. Event titles contain no health details."}
       </T>
+      <FieldLabel>{ka ? "რომელი თარიღები გადავიტანო?" : "Which dates should be exported?"}</FieldLabel>
+      <View style={s.wrap}>{reminderRepeat.map(([value, ge, en]) => <Chip key={value} label={ka ? ge : en} selected={repeat === value} onPress={() => setRepeat(value)}/>)}</View>
+      <FieldLabel>{ka ? "როდის გამახსენოს?" : "When should it remind me?"}</FieldLabel>
+      <View style={s.wrap}>{reminderLead.map(([value, ge, en]) => <Chip key={value} label={ka ? ge : en} selected={lead === value} onPress={() => setLead(value)}/>)}</View>
+      <T style={s.muted}>{ka ? "შეხსენება იმუშავებს ფაილის პირად კალენდარში შეტანის შემდეგ." : "Reminders work after importing the file into your personal calendar."}</T>
       <CTA
         title={ka ? "კალენდრის ფაილის გაზიარება" : "Share calendar file"}
         disabled={model.status !== "active"}
@@ -1068,8 +1113,12 @@ export function AnnouncementsScreen({ lang, userId }: { lang: Lang; userId: stri
     {loading && !data ? <T>{ka ? "იტვირთება…" : "Loading…"}</T> : null}
     {error || writeFailed ? <View style={s.card}><T accessibilityRole="alert">{ka ? "განცხადებების განახლება ვერ მოხერხდა." : "Could not update announcements."}</T><CTA title={ka ? "ხელახლა ცდა" : "Retry"} onPress={() => { setWriteFailed(false); void refresh(); }}/></View> : null}
     {data?.rows.length === 0 ? <T>{ka ? "ჯერ განცხადებები არ არის." : "No announcements yet."}</T> : null}
-    {data?.rows.map(row => <View key={row.id} style={s.card}>
-      <T weight="bold">{row.title}</T>
+    {data?.rows.map(row => <View key={row.id} style={[s.card, { backgroundColor: activityTones.info.background }]}>
+      <View style={[s.row, { gap: 8 }]}>
+        <T style={{ color: activityTones.info.color }} weight="bold" accessible={false}>i</T>
+        <T weight={row.read_at ? undefined : "bold"} style={{ flex: 1 }}>{row.title}</T>
+        {!row.read_at && <View accessibilityRole="image" accessibilityLabel={ka ? "წაუკითხავი" : "Unread"} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activityTones.info.color }}/>}
+      </View>
       <T style={s.muted}>{new Intl.DateTimeFormat(ka ? "ka-GE" : "en-GB", { dateStyle: "medium", timeZone: "Asia/Tbilisi" }).format(new Date(row.scheduled_at))}</T>
       <T>{row.body}</T>
       {row.read_at ? <T style={s.muted}>{ka ? "წაკითხულია" : "Read"}</T> : <CTA light disabled={busy} title={ka ? "წაკითხულად მონიშვნა" : "Mark as read"} onPress={() => void read(row.id)}/>}

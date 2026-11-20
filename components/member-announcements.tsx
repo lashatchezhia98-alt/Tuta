@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { activityTones } from "@/mobile/src/activity.mjs";
 
 type Notice = { id: string; title: string; body: string; scheduled_at: string; read_at: string | null };
 type State = { token: string | null; rows: Notice[]; status: "loading" | "signed-out" | "ready" | "error" };
@@ -74,8 +75,11 @@ export default function MemberAnnouncements() {
     {state.status === "error" && <p role="alert">{ka ? "შეტყობინებები ვერ ჩაიტვირთა." : "Could not load announcements."} <button type="button" onClick={() => setRevision(value => value + 1)}>{ka ? "ხელახლა ცდა" : "Retry"}</button></p>}
     {error && <p role="alert">{ka ? "წაკითხვის სტატუსი ვერ შეინახა." : "Could not mark as read."}</p>}
     {state.status === "ready" && (!state.rows.length ? <p className="admin-empty-state">{ka ? "შეტყობინებები ჯერ არ არის." : "No announcements yet."}</p> : state.rows.map(row => (
-      <article className="ops-entry ops-stack" key={row.id}>
-        <h2>{row.title}</h2>
+      <article className="ops-entry ops-stack activity-card" key={row.id} data-unread={!row.read_at} style={{ background: activityTones.info.background }}>
+        <div className="activity-card-heading">
+          <span className="activity-status-icon" style={{ color: activityTones.info.color }} aria-hidden="true">{activityTones.info.icon}</span>
+          <h2>{row.title}</h2>{!row.read_at && <span className="activity-dot" role="img" aria-label={ka ? "წაუკითხავი" : "Unread"}/>}
+        </div>
         <time dateTime={row.scheduled_at}>{new Intl.DateTimeFormat(ka ? "ka-GE" : "en-GB", { dateStyle: "medium", timeZone: "Asia/Tbilisi" }).format(new Date(row.scheduled_at))}</time>
         <p className="ops-message">{row.body}</p>
         {row.read_at ? <small>{ka ? "წაკითხულია" : "Read"}</small> : <button type="button" disabled={working !== null} onClick={() => void markRead(row.id)}>{ka ? "წაკითხულად მონიშვნა" : "Mark as read"}</button>}

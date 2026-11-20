@@ -50,6 +50,7 @@ import type { Session } from "@supabase/supabase-js";
 import { CommunityFeed, type CommunityFeedHandle } from "./src/CommunityFeed";
 import { AppMenu, MenuPage } from "./src/MenuPages";
 import { ActivityScreen, useActivityBadge, type ActivityPost } from "./src/ActivityScreen";
+import { activityBadgeText, activityTones } from "./src/activity.mjs";
 import { watchPushTaps } from "./src/push-device";
 import { AccountDeletion, SymptomReview } from "./src/ServiceAccessScreens";
 import { PregnancyScreen, PartnerScreen } from "./src/HealthFeatureScreens";
@@ -165,12 +166,12 @@ function Shell() {
   useEffect(() => {
     let active = true;
     if (!memberId) { setDoctorAccount(false); return () => { active = false; }; }
-    void api<{ isDoctor?: boolean }>("/api/care", { userId: memberId })
+    void api<{ isDoctor?: boolean }>("/api/care?role=1", { userId: memberId })
       .then(value => { if (active) setDoctorAccount(Boolean(value.isDoctor)); })
       .catch(() => { if (active) setDoctorAccount(false); });
     return () => { active = false; };
   }, [memberId]);
-  const hasUnread = useActivityBadge(memberId, `${tab}:${activityRevision}`);
+  const unread = useActivityBadge(memberId, `${tab}:${activityRevision}`);
   const openPushInbox = useEffectEvent(() => {
     setMenuOpen(false);
     nav("activity");
@@ -803,15 +804,16 @@ function Shell() {
                 )}
                 {memberId ? (
                   <Pressable accessibilityRole="button"
-                    accessibilityLabel={hasUnread
-                      ? t("შეტყობინებები, ახალი შეტყობინებები გაქვს", "Notifications, unread activity")
+                    accessibilityLabel={unread
+                      ? t(`შეტყობინებები, ${unread} წაუკითხავი`, `Notifications, ${unread} unread`)
                       : t("შეტყობინებები", "Notifications")}
                     onPress={() => nav("activity")} style={s.round}>
                     <Icon name="bell" />
-                    {hasUnread ? <View pointerEvents="none" style={{
-                      position: "absolute", top: 5, right: 6, width: 9, height: 9,
-                      borderRadius: 5, backgroundColor: "#7046a3",
-                    }} /> : null}
+                    {unread > 0 && <View pointerEvents="none" accessible={false} style={{
+                      position: "absolute", top: -3, right: -5, minWidth: 19, height: 19, paddingHorizontal: 3,
+                      borderRadius: 12, borderWidth: 1, borderColor: C.white, backgroundColor: activityTones.info.color,
+                      alignItems: "center", justifyContent: "center",
+                    }}><T allowFontScaling={false} weight="bold" style={{ color: C.white, fontSize: 10, lineHeight: 14 }}>{activityBadgeText(unread)}</T></View>}
                   </Pressable>
                 ) : null}
                 <Pressable

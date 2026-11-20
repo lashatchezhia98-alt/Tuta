@@ -13,6 +13,12 @@ export function validPost(text) {
 }
 
 export const POST_TOPICS = ['cycle', 'symptoms', 'wellbeing', 'nutrition', 'pregnancy', 'questions'];
+export const communityVisibilityCopy = {
+  members: ["პოსტს მხოლოდ შესული წევრები ნახავენ.", "Only signed-in members can see this post."],
+  anonymous: ["წევრებს შენი სახელი არ გამოუჩნდებათ.", "Your name will be hidden from other members."],
+  named: ["წევრები შენს პროფილზე გამოჩენილ სახელს ნახავენ.", "Members will see your display name."],
+  verified: ["დადასტურებული ექიმი", "Verified doctor"],
+};
 
 export const POST_EDIT_WINDOW_MS = 30 * 60 * 1000;
 

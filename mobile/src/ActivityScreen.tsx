@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Pressable, Switch, View } from "react-native";
-import { activityGroups, activityKinds } from "./activity.mjs";
+import { activityGroups, activityKinds, activityTone, activityTones } from "./activity.mjs";
 import { supabase } from "./supabase";
 import { C, Chip, T, s } from "./ui";
 import { changePushDevice, pushAvailable, pushDeviceEnabled } from "./push-device";
@@ -18,7 +18,7 @@ type Preferences = Record<string, boolean>;
 export type ActivityPost = { postId: string; commentId: string | null };
 
 export function useActivityBadge(userId: string | undefined, refreshKey: string) {
-  const [snapshot, setSnapshot] = useState({ userId, unread: false });
+  const [snapshot, setSnapshot] = useState({ userId, count: 0 });
   useEffect(() => {
     const client = supabase;
     if (!client || !userId) return;
@@ -28,13 +28,12 @@ export function useActivityBadge(userId: string | undefined, refreshKey: string)
       if (pending || AppState.currentState === "background") return;
       pending = true;
       try {
-        const { data, error } = await client!
+        const { count, error } = await client!
           .from("activity_notifications")
-          .select("id")
+          .select("id", { count: "exact", head: true })
           .eq("user_id", userId!)
-          .is("read_at", null)
-          .limit(1);
-        if (live && !error) setSnapshot({ userId, unread: !!data?.length });
+          .is("read_at", null);
+        if (live && !error) setSnapshot({ userId, count: count ?? 0 });
       } catch {
         // Keep the last known badge during a temporary connection failure.
       } finally {
@@ -52,7 +51,20 @@ export function useActivityBadge(userId: string | undefined, refreshKey: string)
       sub.remove();
     };
   }, [userId, refreshKey]);
-  return !!userId && snapshot.userId === userId && snapshot.unread;
+  return userId && snapshot.userId === userId ? snapshot.count : 0;
+}
+
+export function ActivityIcon({ tone, lang }: { tone: keyof typeof activityTones; lang: Lang }) {
+  const { color, icon, label } = activityTones[tone];
+  return <View accessibilityRole="image" accessibilityLabel={label[lang === "ka" ? 0 : 1]}
+    style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.white, alignItems: "center", justifyContent: "center" }}>
+    <T weight="bold" style={{ color, fontSize: 15 }}>{icon}</T>
+  </View>;
+}
+
+export function ActivityUnreadMark({ lang }: { lang: Lang }) {
+  return <View accessibilityRole="image" accessibilityLabel={lang === "ka" ? "წაუკითხავი" : "Unread"}
+    style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activityTones.info.color }} />;
 }
 
 export function ActivityScreen({
@@ -202,9 +214,12 @@ export function ActivityScreen({
                   else setPush(value);
                 })} />
             </View>
-            {permissionDenied ? <T accessibilityRole="alert">{t("თუთას შეტყობინებები ტელეფონის პარამეტრებში დაუშვი.", "Allow Tuta notifications in your phone settings.")}</T> : null}
+            {permissionDenied ? <View style={[s.row, { gap: 8, padding: 8, borderRadius: 8, backgroundColor: activityTones.action.background }]}>
+              <ActivityIcon tone="action" lang={lang}/><T accessibilityRole="alert" style={{ flex: 1 }}>{t("თუთას შეტყობინებები ტელეფონის პარამეტრებში დაუშვი.", "Allow Tuta notifications in your phone settings.")}</T>
+            </View> : null}
           </> : null}
           <T style={s.muted}>{t("აირჩიე, რა შეტყობინებები გამოჩნდეს აქ მომავალში.", "Choose which new notifications appear here.")}</T>
+          <T style={s.muted}>{t("ტელეფონის ჩაკეტილ ეკრანზე პირადი დეტალები არ ჩანს.", "Phone alerts hide private details on the lock screen.")}</T>
           {activityGroups.map(([key, ge, en]) => (
             <View key={key} style={[s.row, { minHeight: 54, justifyContent: "space-between" }]}>
               <T style={{ flex: 1 }}>{t(ge, en)}</T>
@@ -226,14 +241,20 @@ export function ActivityScreen({
       {items.map((item) => {
         const event = activityKinds[item.kind];
         if (!event) return null;
+        const tone = activityTone(item.kind);
         return (
           <Pressable key={item.id} accessibilityRole="button" disabled={busy}
-            style={[s.card, !item.read_at && { backgroundColor: C.yellow }]}
+            accessibilityLabel={`${t(event[0], event[1])}, ${activityTones[tone].label[ka ? 0 : 1]}${item.read_at ? "" : `, ${t("წაუკითხავი", "Unread")}`}`}
+            style={[s.card, { backgroundColor: activityTones[tone].background, gap: 6 }]}
             onPress={() => void write(async () => {
               if (!item.read_at) await markRead(item.id);
               onOpen(event[2] as Tab, item.post_id ? { postId: item.post_id, commentId: item.comment_id } : undefined);
             })}>
-            <T weight={item.read_at ? undefined : "bold"}>{t(event[0], event[1])}</T>
+            <View style={[s.row, { gap: 8 }]}>
+              <ActivityIcon tone={tone} lang={lang}/>
+              <T weight={item.read_at ? undefined : "bold"} style={{ flex: 1 }}>{t(event[0], event[1])}</T>
+              {!item.read_at && <ActivityUnreadMark lang={lang}/>}
+            </View>
             <T style={s.muted}>{new Date(item.created_at).toLocaleString(ka ? "ka-GE" : "en", { dateStyle: "medium", timeStyle: "short" })}</T>
           </Pressable>
         );

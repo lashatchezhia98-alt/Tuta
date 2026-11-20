@@ -9,6 +9,7 @@ export type ChatMessage = {
   read_at?: string | null;
 };
 export type ChatResponse = { messages: ChatMessage[]; serverNow: string; typing?: boolean };
+export type ConfirmReceipts = (ids: string[], visible: boolean) => Promise<unknown>;
 type Page = ChatResponse & { receivedAt: number; scope: string };
 // Memory only: no localStorage, AsyncStorage, export, or offline chat archive.
 export function useChatMessages(
@@ -67,4 +68,22 @@ export function useChatMessages(
     loading,
     refresh,
   };
+}
+
+export function useChatReceipts(scope: string, userId: string | undefined, messages: ChatMessage[], visible: boolean, confirm: ConfirmReceipts) {
+  const sent = useRef("");
+  const pending = useRef("");
+  useEffect(() => {
+    if (!scope || !userId) return;
+    const ids = messages.filter(message => message.sender_id !== userId && !(visible ? message.read_at : message.delivered_at)).map(message => message.id);
+    if (!ids.length) { sent.current = ""; return; }
+    const key = JSON.stringify([scope, userId, visible, ids]);
+    if (key === sent.current || key === pending.current) return;
+    pending.current = key;
+    void confirm(ids, visible).then(() => {
+      if (pending.current === key) sent.current = key;
+    }).catch(() => {
+      // Retry on the next successful poll; don't invent a receipt on failure.
+    }).finally(() => { if (pending.current === key) pending.current = ""; });
+  }, [scope, userId, messages, visible, confirm]);
 }

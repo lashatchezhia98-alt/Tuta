@@ -138,7 +138,7 @@ test('private sharing and pregnancy forms remount on account changes, not token 
 });
 test('late consultation actions cannot restore an old account conversation or draft',async()=>{
  const slots=[],effects=[];let cursor=0,authCallback,user='A';const request=deferred(),oldFetch=globalThis.fetch;
- const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}]},useRef(initial){return slots[cursor++]??={current:initial}},useCallback(fn){cursor++;return fn},useEffect(fn){cursor++;effects.push(fn)}};
+ const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}]},useRef(initial){return slots[cursor++]??={current:initial}},useCallback(fn){cursor++;return fn},useEffect(fn){cursor++;effects.push(fn)},useSyncExternalStore:()=>false};
  const client={auth:{getSession:async()=>({data:{session:{user:{id:user},access_token:user}}}),onAuthStateChange(cb){authCallback=cb;return {data:{subscription:{unsubscribe(){}}}}}}};
  globalThis.fetch=async(_url,options)=>options.method==='POST'?request.promise:{ok:true,json:async()=>({userId:user,doctors:[],slots:[],threads:[],bookings:[],premium:true})};
  const Component=sourceModule('components/care-workspace.tsx',{react,'@/lib/supabase-browser':{getSupabaseBrowserClient:()=>client},'@/lib/site-features':{useSiteFeatures:()=>({doctorConsultation:true})}}).default;
@@ -161,8 +161,8 @@ test('patient and doctor web chats dock their composer above a shrunken viewport
    let state=0;
    const effects=[];
    const values=[data,[], '', 'test','draft',false,false,''];
-   const react={useState(value){return [values[state++]??value,()=>{}]},useRef(value){return {current:value}},useEffect(fn){effects.push(fn)},useCallback(fn){return fn}};
-   const Component=sourceModule('components/care-workspace.tsx',{react,'@/mobile/src/useChatMessages':{useChatMessages:()=>({messages:[]})},'@/lib/site-features':{useSiteFeatures:()=>({doctorConsultation:true})}}).default;
+   const react={useState(value){return [values[state++]??value,()=>{}]},useRef(value){return {current:value}},useEffect(fn){effects.push(fn)},useCallback(fn){return fn},useSyncExternalStore:()=>false};
+   const Component=sourceModule('components/care-workspace.tsx',{react,'@/mobile/src/useChatMessages':{useChatMessages:()=>({messages:[]}),useChatReceipts(){}},'@/lib/site-features':{useSiteFeatures:()=>({doctorConsultation:true})}}).default;
    const find=(node)=>!node||typeof node!=='object'?null:node.props?.className?.includes('care-chat-composer')?node:[node.props?.children].flat(Infinity).map(find).find(Boolean);
    const form=find(Component({lang:'en',doctorWorkspace}));
    assert.ok(form);

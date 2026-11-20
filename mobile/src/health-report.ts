@@ -60,8 +60,22 @@ export function healthReport(data: HealthData, today = dateKey(), includeSexualA
   };
 }
 
-export function reminderCalendar(dates: string[]) {
+export const reminderRepeat = [
+  ["next", "მხოლოდ შემდეგი თარიღი", "Next date only"],
+  ["all", "ყველა სავარაუდო თარიღი", "All estimated dates"],
+] as const;
+export const reminderLead = [
+  ["none", "მხოლოდ მოვლენა, შეხსენების გარეშე", "Event only, no alert"],
+  ["12h", "12 საათით ადრე", "12 hours before"],
+  ["24h", "ერთი დღით ადრე", "One day before"],
+] as const;
+
+export function reminderCalendar(dates: string[], options: {
+  repeat?: (typeof reminderRepeat)[number][0];
+  lead?: (typeof reminderLead)[number][0];
+} = {}) {
   // All-day events deliberately contain no health details in their title.
+  const trigger = options.lead === "none" ? null : options.lead === "24h" ? "-P1D" : "-PT12H";
   const stamp = new Date()
     .toISOString()
     .replace(/[-:]/g, "")
@@ -72,17 +86,14 @@ export function reminderCalendar(dates: string[]) {
       "VERSION:2.0",
       "PRODID:-//TutaHealth//Reminders//EN",
       "CALSCALE:GREGORIAN",
-      ...dates.flatMap((date) => [
+      ...(options.repeat === "next" ? dates.slice(0, 1) : dates).flatMap((date) => [
         "BEGIN:VEVENT",
         `UID:tuta-checkin-${date}@tutahealth.ge`,
         `DTSTAMP:${stamp}`,
         `DTSTART;VALUE=DATE:${date.replaceAll("-", "")}`,
         "SUMMARY:Tuta check-in",
-        "BEGIN:VALARM",
-        "TRIGGER:-PT12H",
-        "ACTION:DISPLAY",
-        "DESCRIPTION:Tuta check-in",
-        "END:VALARM",
+        "CLASS:PRIVATE",
+        ...(trigger ? ["BEGIN:VALARM", `TRIGGER:${trigger}`, "ACTION:DISPLAY", "DESCRIPTION:Tuta check-in", "END:VALARM"] : []),
         "END:VEVENT",
       ]),
       "END:VCALENDAR",

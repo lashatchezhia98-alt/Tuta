@@ -348,6 +348,21 @@
 .community-mobile-heading { display: none; }
 .mobile-app-tabbar { display: none; }
 .period-mobile-heading, .header-activity { display: none; }
+.header-activity { position: relative; }
+.activity-badge { position: absolute; top: -3px; right: -5px; min-width: 19px; height: 19px; display: grid; place-items: center; border-radius: 999px; border: 1px solid white; padding: 0 4px; color: white; background: #624386; font: 700 10px/1 system-ui, sans-serif; }
+.activity-card-heading { display: flex; align-items: center; gap: 9px; }
+.activity-card[data-unread="true"] .activity-card-heading a, .activity-card[data-unread="true"] .activity-card-heading h2 { font-weight: 750; }
+.activity-card-heading h2 { margin: 0; }
+.activity-card-heading a { padding-block: 10px; min-height: 44px; display: inline-flex; align-items: center; }
+.activity-status-icon { display: inline-grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; background: white; font-size: 16px; font-weight: 800; }
+.activity-dot { display: inline-block; width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #624386; }
+.checkout-field-error, .market-cart-item .checkout-field-error { color: #A12D47; display: block; margin-top: 4px; }
+.market-delivery [aria-invalid="true"] { border-color: #A12D47; }
+.care-dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 10px; }
+.care-dashboard-grid > div { display: grid; align-content: start; gap: 7px; background: #F2ECFA; border-radius: 12px; padding: 12px; }
+.care-dashboard-grid a { text-decoration: underline; text-underline-offset: 4px; }
+#care-inbox, #care-visits { scroll-margin-top: 7rem; }
+.community-doctor-badge { display: inline-block; margin-inline-start: 6px; padding: 2px 7px; border-radius: 9px; background: #F2ECFA; color: #624386; font-size: .75rem; font-weight: 700; }
 .header-actions .desktop-member-nav { display: none; }
 .tuta-menu-sign-out { border-top: 1px solid #e6e2ec; margin-top: 10px; padding-top: 8px; }
 .tuta-menu-sign-out .tuta-menu-row { color: #92384b; }

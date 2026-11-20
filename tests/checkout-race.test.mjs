@@ -94,6 +94,9 @@ test("market checkout rejects missing phone, stale fees and insufficient stock b
   const stale = await checkout({recipientPhone:"555010101",deliveryFeeTetri:0});
   assert.equal(stale.status,409);
   assert.equal((await stale.json()).deliveryFeeTetri,325);
+  const changedTotal = await checkout({recipientPhone:"555010101",deliveryFeeTetri:325,expectedTotalTetri:400});
+  assert.equal(changedTotal.status,409);
+  assert.match((await changedTotal.json()).error,/total changed/);
 });
 
 test("Flitt's mobile return uses POST-to-GET, opens the correct screen, and ignores payment data", async () => {
@@ -325,6 +328,7 @@ test("web checkout discards an old account response, including A → B → A", a
     states[4] = "Recipient A";
     states[5] = "Address A";
     states[7] = true;
+    states[11] = "555010101";
     function pay(node) {
       if (!node || typeof node !== "object") return null;
       if (node.props?.className === "market-pay-button") return node;

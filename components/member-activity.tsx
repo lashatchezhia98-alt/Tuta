@@ -5,7 +5,7 @@ import Link from "next/link";
 import HeaderActions from "@/components/header-actions";
 import BrandMark from "@/components/brand-mark";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { activityGroups, activityKinds } from "@/mobile/src/activity.mjs";
+import { activityGroups, activityKinds, activityReadEvent, activityTone, activityTones } from "@/mobile/src/activity.mjs";
 
 type Lang = "ka" | "en";
 type Item = {
@@ -105,6 +105,7 @@ function ActivityInbox({ owner, lang }: { owner: string; lang: Lang }) {
         const result = await query;
         if (result.error) throw result.error;
         setData(current => current && ({ ...current, items: current.items.map(item => !item.read_at && (!id || id === item.id) ? { ...item, read_at: at } : item) }));
+        window.dispatchEvent(new Event(activityReadEvent));
       }
     } catch {
       setWriteFailed(true);
@@ -121,6 +122,7 @@ function ActivityInbox({ owner, lang }: { owner: string; lang: Lang }) {
     {data && <>
       <details className="workspace-card">
         <summary>{ka ? "შეტყობინებების პარამეტრები" : "Notification preferences"}</summary>
+        <p>{ka ? "აირჩიე, რა ტიპის ახალი შეტყობინებები გინდა მიიღო. ტელეფონის ჩაკეტილ ეკრანზე პირადი დეტალები არ ჩანს." : "Choose which new notifications to receive. Phone alerts hide private details on the lock screen."}</p>
         {activityGroups.map(([key, geo, en]) => <label key={key} className="workspace-row">
           <span>{ka ? geo : en}</span>
           <input type="checkbox" disabled={busy} checked={data.preferences[key] !== false} onChange={event => void update(key, event.target.checked)}/>
@@ -134,10 +136,13 @@ function ActivityInbox({ owner, lang }: { owner: string; lang: Lang }) {
         const href = destination === "home" && item.post_id
           ? `/community?${new URLSearchParams({ post: item.post_id, ...(item.comment_id ? { comment: item.comment_id } : {}) })}`
           : paths[destination];
-        return <article className="workspace-card" key={item.id}>
-          <p><Link href={href} onClick={() => { if (!item.read_at) void update(undefined, undefined, item.id); }}>{ka ? geo : en}</Link></p>
+        const tone = activityTones[activityTone(item.kind)];
+        return <article className="workspace-card activity-card" data-unread={!item.read_at} key={item.id} style={{ background: tone.background }}>
+          <div className="activity-card-heading"><span className="activity-status-icon" style={{ color: tone.color }} role="img" aria-label={tone.label[ka ? 0 : 1]}>{tone.icon}</span>
+            <Link href={href} onClick={() => { if (!item.read_at) void update(undefined, undefined, item.id); }}>{ka ? geo : en}</Link>
+            {!item.read_at && <span className="activity-dot" role="img" aria-label={ka ? "წაუკითხავი" : "Unread"}/>}
+          </div>
           <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString(ka ? "ka-GE" : "en-GB")}</time>
-          {!item.read_at && <span> · {ka ? "ახალი" : "New"}</span>}
         </article>;
       })}
     </>}

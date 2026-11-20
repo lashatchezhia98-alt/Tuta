@@ -5,6 +5,7 @@ import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import Link from "next/link";
+import { cartStockCopy, cartStockIssue, deliveryFieldCopy, deliveryFieldErrors } from "@/mobile/src/market-model.mjs";
 
 type Lang = "ka" | "en";
 type Category = "period-care" | "body-care" | "nutrition" | "accessories";
@@ -279,6 +280,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
   const [notice, setNotice] = useState("");
   const [deliveryFeeTetri, setDeliveryFeeTetri] = useState(0);
   const [recipientPhone, setRecipientPhone] = useState("");
+  const [checkDelivery, setCheckDelivery] = useState(false);
   const authVersion = useRef(0),
     pendingCheckout = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -303,6 +305,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
           setNotice("");
           setRecipientName("");
           setRecipientPhone("");
+          setCheckDelivery(false);
           setAddress("");
           setPin(null);
         }
@@ -372,6 +375,8 @@ export default function Marketplace({ lang }: { lang: Lang }) {
     0,
   );
   const cartCount = cart.reduce((sum, row) => sum + row.quantity, 0);
+  const fieldErrors = deliveryFieldErrors(recipientName, recipientPhone, address);
+  const fieldError = (field: keyof typeof fieldErrors) => checkDelivery && fieldErrors[field];
   const quantities = new Map(cart.map(row => [row.product.id, row.quantity]));
   function add(product: Product) {
     const existing = cart.find((row) => row.product.id === product.id);
@@ -411,6 +416,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
     );
   }
   async function checkout() {
+    if (busy) return;
     if (!signedIn) {
       setNotice(
         ka
@@ -419,6 +425,8 @@ export default function Marketplace({ lang }: { lang: Lang }) {
       );
       return;
     }
+    setCheckDelivery(true);
+    if (Object.values(fieldErrors).some(Boolean) || cart.some(row => cartStockIssue(row.product, row.quantity))) return;
     setBusy(true);
     setNotice("");
     const version = authVersion.current;
@@ -449,6 +457,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
           latitude: pin?.latitude ?? null,
           longitude: pin?.longitude ?? null,
           deliveryFeeTetri,
+          expectedTotalTetri: total + deliveryFeeTetri,
           items: cart.map((row) => ({
             productId: row.product.id,
             quantity: row.quantity,
@@ -469,8 +478,22 @@ export default function Marketplace({ lang }: { lang: Lang }) {
         current?.user.id !== session.user.id
       )
         return;
-      if (response.status === 409 && typeof data.deliveryFeeTetri === "number")
-        setDeliveryFeeTetri(data.deliveryFeeTetri);
+      if (response.status === 409) {
+        if (typeof data.deliveryFeeTetri === "number") setDeliveryFeeTetri(data.deliveryFeeTetri);
+        try {
+          const refreshed = await fetch("/api/market/products", { cache: "no-store", signal: controller.signal });
+          if (refreshed.ok) {
+            const catalog = await refreshed.json() as { products?: Product[]; deliveryFeeTetri?: number };
+            if (version !== authVersion.current || controller.signal.aborted) return;
+            if (catalog.products) {
+              const fresh = new Map(catalog.products.map(product => [product.id, product]));
+              setProducts(catalog.products);
+              setCart(rows => rows.map(row => ({ ...row, product: fresh.get(row.product.id) ?? { ...row.product, stock_quantity: 0 } })));
+            }
+            if (typeof catalog.deliveryFeeTetri === "number") setDeliveryFeeTetri(catalog.deliveryFeeTetri);
+          }
+        } catch { /* Keep the cart and original checkout error if refreshing fails. */ }
+      }
       if (!response.ok || !data.checkoutUrl)
         throw new Error(
           data.error ||
@@ -617,6 +640,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
             <div className="market-cart-lines">
               {cart.map((row) => {
                 const thumbnail = row.product.image_urls?.[0] || row.product.image_url;
+                const stockIssue = cartStockIssue(row.product, row.quantity);
                 return (
                 <article key={row.product.id}>
                   <div className="market-cart-item">
@@ -626,6 +650,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                     <small>
                       {(row.product.price_tetri / 100).toFixed(2)} ₾
                     </small>
+                    {stockIssue && <small role="status" className="checkout-field-error">{cartStockCopy[stockIssue][ka ? 0 : 1]}</small>}
                     </div>
                   </div>
                   <div className="market-quantity">
@@ -691,11 +716,16 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                   value={recipientName}
                   onChange={(event) => setRecipientName(event.target.value)}
                   autoComplete="name"
+                  aria-invalid={fieldError("recipient") || undefined}
+                  aria-describedby={fieldError("recipient") ? "checkout-recipient-error" : undefined}
                 />
+                {fieldError("recipient") && <small id="checkout-recipient-error" className="checkout-field-error" role="alert">{deliveryFieldCopy.recipient[ka ? 0 : 1]}</small>}
               </label>
               <label>
                 {ka ? "ტელეფონის ნომერი" : "Phone number"}
-                <input required type="tel" autoComplete="tel" maxLength={32} value={recipientPhone} onChange={event => setRecipientPhone(event.target.value)} />
+                <input required type="tel" autoComplete="tel" maxLength={32} value={recipientPhone} onChange={event => setRecipientPhone(event.target.value)}
+                  aria-invalid={fieldError("phone") || undefined} aria-describedby={fieldError("phone") ? "checkout-phone-error" : undefined} />
+                {fieldError("phone") && <small id="checkout-phone-error" className="checkout-field-error" role="alert">{deliveryFieldCopy.phone[ka ? 0 : 1]}</small>}
               </label>
               <label>
                 <SiteCopyText id="market.address" lang={lang}/>
@@ -705,6 +735,8 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                   maxLength={500}
                   rows={3}
                   value={address}
+                  aria-invalid={fieldError("address") || undefined}
+                  aria-describedby={fieldError("address") ? "checkout-address-error" : undefined}
                   onChange={(event) => setAddress(event.target.value)}
                   placeholder={
                     ka
@@ -712,6 +744,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
                       : "City, street, building, entrance"
                   }
                 />
+                {fieldError("address") && <small id="checkout-address-error" className="checkout-field-error" role="alert">{deliveryFieldCopy.address[ka ? 0 : 1]}</small>}
               </label>
               <div className="market-pin-label">
                 <strong>
@@ -743,9 +776,7 @@ export default function Marketplace({ lang }: { lang: Lang }) {
               type="button"
               className="market-pay-button"
               disabled={
-                busy || !recipientName.trim() || address.trim().length < 5 ||
-                !/^\+?[0-9]{7,15}$/.test(recipientPhone.replace(/[\s()-]/g, "")) ||
-                cart.some(row => row.quantity > (row.product.stock_quantity ?? 20))
+                busy || cart.some(row => cartStockIssue(row.product, row.quantity) !== null)
               }
               onClick={() => void checkout()}
             >

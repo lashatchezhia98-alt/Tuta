@@ -88,8 +88,17 @@ test("calendar export uses generic all-day reminders without health details", ()
   const result = reminderCalendar(["2026-12-01"]);
   assert.match(result, /DTSTART;VALUE=DATE:20261201/);
   assert.match(result, /SUMMARY:Tuta check-in/);
-  assert.doesNotMatch(result, /private|period|ovulation|symptom/i);
+  assert.match(result, /CLASS:PRIVATE/);
+  assert.doesNotMatch(result.replace("CLASS:PRIVATE", ""), /private|period|ovulation|symptom/i);
   assert.ok(result.endsWith("END:VCALENDAR\r\n"));
+});
+test("the reminder schedule can cover one or every estimate, with a private optional alarm", () => {
+  const dates = ["2026-12-01", "2026-12-27"];
+  const once = reminderCalendar(dates, { repeat: "next", lead: "none" });
+  assert.equal([...once.matchAll(/BEGIN:VEVENT/g)].length, 1);
+  assert.doesNotMatch(once, /VALARM|20261227/);
+  const all = reminderCalendar(dates, { repeat: "all", lead: "24h" });
+  assert.equal([...all.matchAll(/TRIGGER:-P1D/g)].length, 2);
 });
 test("CMS validates complete translations, bounds and schedule", () => {
   const valid = {

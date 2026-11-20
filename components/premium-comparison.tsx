@@ -1,8 +1,11 @@
+"use client";
+
 import { Check, Minus } from "lucide-react";
 import { SiteCopyText } from "@/components/site-copy-provider";
 import type { CopyLanguage } from "@/lib/site-copy";
 import styles from "./premium-comparison.module.css";
 import { premiumComparisonFeatures } from "@/lib/premium-comparison";
+import { useSiteFeatures, useSiteFeaturesStatus } from "@/lib/site-features";
 
 function Availability({ included, lang }: { included: boolean; lang: CopyLanguage }) {
   return (
@@ -18,6 +21,8 @@ function Availability({ included, lang }: { included: boolean; lang: CopyLanguag
 }
 
 export default function PremiumComparison({ lang }: { lang: CopyLanguage }) {
+  const flags = useSiteFeatures();
+  const status = useSiteFeaturesStatus();
   return (
     <section className={`inner-container ${styles.section}`} aria-labelledby="premium-comparison-title">
       <h2 id="premium-comparison-title"><SiteCopyText id="premium.compare.title" lang={lang} /></h2>
@@ -33,11 +38,13 @@ export default function PremiumComparison({ lang }: { lang: CopyLanguage }) {
             </tr>
           </thead>
           <tbody>
-            {premiumComparisonFeatures.map(({ id, free }) => (
+            {premiumComparisonFeatures.map(({ id, free, feature }) => (
               <tr key={id}>
                 <th scope="row"><SiteCopyText id={`premium.compare.${id}`} lang={lang} /></th>
-                <td><Availability included={free} lang={lang} /></td>
-                <td><Availability included lang={lang} /></td>
+                {status === "ready" && flags[feature] === false ? <td colSpan={2}><SiteCopyText id="premium.compare.unavailable" lang={lang} /></td> : <>
+                  <td><Availability included={free} lang={lang} /></td>
+                  <td><Availability included lang={lang} /></td>
+                </>}
               </tr>
             ))}
           </tbody>

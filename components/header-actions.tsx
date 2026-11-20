@@ -10,6 +10,8 @@ import type { Session } from "@supabase/supabase-js";
 
 import { SiteCopyText } from "@/components/site-copy-provider";
 import { burgerLanguage, burgerMenuGroups } from "@/mobile/src/burger-menu";
+import { activityBadgeText } from "@/mobile/src/activity.mjs";
+import { useActivityCount } from "@/lib/use-activity-count";
 
 const icons = { book: BookOpen, services: Grid2X2, care: Stethoscope,
   spark: Sparkles, periodMoon: Moon, communityStars: Sparkles, market: Store,
@@ -27,12 +29,33 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
   const pathname=usePathname();
   const features=useSiteFeatures();
   const language=burgerLanguage[lang];
-  const [signedIn,setSignedIn]=useState(false);
+  const [owner,setOwner]=useState<string | null>(null);
+  const signedIn=Boolean(owner);
+  const unread=useActivityCount(owner, pathname);
   const [doctorAccount,setDoctorAccount]=useState(false);
   const authSequence=useRef(0);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
-  useEffect(()=>{let alive=true,observed=false;const apply=async(session:Session|null)=>{const turn=++authSequence.current;const member=Boolean(session&&!session.user.is_anonymous);if(alive){setSignedIn(member);setDoctorAccount(false)}if(!member||!session)return;try{const response=await fetch("/api/care",{headers:{Authorization:`Bearer ${session.access_token}`},cache:"no-store"});const value=await response.json();if(alive&&turn===authSequence.current)setDoctorAccount(Boolean(response.ok&&value.isDoctor))}catch{if(alive&&turn===authSequence.current)setDoctorAccount(false)}};try{const client=getSupabaseBrowserClient();const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{observed=true;void apply(session)});void client.auth.getSession().then(({data:{session}})=>{if(alive&&!observed)void apply(session)}).catch(()=>{});return()=>{alive=false;authSequence.current++;subscription.unsubscribe()}}catch{return()=>{alive=false;authSequence.current++}}},[]);
+  useEffect(()=>{
+    let alive=true, observed=false;
+    const apply=async(session:Session|null)=>{
+      const turn=++authSequence.current;
+      const member=session && !session.user.is_anonymous ? session.user.id : null;
+      if(alive){setOwner(member);setDoctorAccount(false)}
+      if(!member||!session)return;
+      try {
+        const response=await fetch("/api/care?role=1",{headers:{Authorization:`Bearer ${session.access_token}`},cache:"no-store"});
+        const value=await response.json();
+        if(alive&&turn===authSequence.current)setDoctorAccount(Boolean(response.ok&&value.isDoctor));
+      } catch { if(alive&&turn===authSequence.current)setDoctorAccount(false); }
+    };
+    try {
+      const client=getSupabaseBrowserClient();
+      const {data:{subscription}}=client.auth.onAuthStateChange((_event,session)=>{observed=true;void apply(session)});
+      void client.auth.getSession().then(({data:{session}})=>{if(alive&&!observed)void apply(session)}).catch(()=>{});
+      return()=>{alive=false;authSequence.current++;subscription.unsubscribe()};
+    } catch { return()=>{alive=false;authSequence.current++}; }
+  },[]);
   async function signOut() {
     if (signingOut) return;
     setSigningOut(true);
@@ -55,7 +78,7 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
           ? ["/app/dashboard", "/app/log", "/app/insights", "/app/reminders", "/app/report"].includes(pathname)
           : pathname === href || pathname.startsWith(href + "/");
         return <Link key={href} href={href} aria-current={active ? "page" : undefined}>
-          {copy ? <SiteCopyText id={copy} lang={lang}/> : ka ? "საზოგადოება" : "Community"}
+          {copy ? <SiteCopyText id={copy} lang={lang}/> : href === "/consultation/doctor" ? (ka ? "ექიმის კაბინეტი" : "Doctor workspace") : (ka ? "საზოგადოება" : "Community")}
         </Link>;
       })}
     </nav>}
@@ -78,7 +101,9 @@ export default function HeaderActions({lang,setLang}:{lang:'ka'|'en';setLang:(la
         </SheetContent>
       </Sheet>
     </>}
-    {signedIn && <Link className="header-activity" href="/app/activity" aria-label={ka ? "შეტყობინებები" : "Activity notifications"}><Bell size={23} aria-hidden="true"/></Link>}
+    {signedIn && <Link className="header-activity" href="/app/activity" aria-label={ka ? `შეტყობინებები${unread ? `, ${unread} წაუკითხავი` : ""}` : `Notifications${unread ? `, ${unread} unread` : ""}`}>
+      <Bell size={23} aria-hidden="true"/>{unread > 0 && <span className="activity-badge" aria-hidden="true">{activityBadgeText(unread)}</span>}
+    </Link>}
     <Sheet>
       <SheetTrigger asChild><button className="header-burger" aria-label={ka?'მენიუს გახსნა':'Open menu'}><Menu size={22}/></button></SheetTrigger>
       <SheetContent className="tuta-menu-sheet" showCloseButton={false}>

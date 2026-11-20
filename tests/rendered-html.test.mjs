@@ -72,8 +72,10 @@ test("every bilingual shared service has a real built web page", async () => {
 test("Premium compares both tiers and mobile navigation keeps services in the burger menu", async () => {
   const { getCopyText, emptyCopy } = sourceModule("lib/site-copy.ts");
   const sharedComparison = sourceModule("lib/premium-comparison.ts");
+  let disabledDoctor = false;
   const Comparison = await loadComponent("components/premium-comparison.tsx", {
     "@/lib/premium-comparison": sharedComparison,
+    "@/lib/site-features": { useSiteFeatures: () => ({ doctorConsultation: !disabledDoctor }), useSiteFeaturesStatus: () => "ready" },
     "@/components/site-copy-provider": {
       SiteCopyText: ({ id, lang }) => createElement("span", { "data-site-copy": id }, getCopyText(emptyCopy(), id, lang)),
     },
@@ -92,6 +94,9 @@ test("Premium compares both tiers and mobile navigation keeps services in the bu
     assert.doesNotMatch(table, /premium\.compare\.report|ანგარიში ექიმისთვის|Report for your doctor/);
   }
   assert.equal(sharedComparison.premiumComparisonFeatures.filter(row => row.free).length, 6);
+  disabledDoctor = true;
+  const paused = renderToStaticMarkup(createElement(Comparison, { lang: "en" }));
+  assert.equal([...paused.matchAll(/colSpan="2"[^>]*><span[^>]*>Currently unavailable/g)].length, 2);
   const native = await readFile(new URL("mobile/src/ServiceScreens.tsx", sourceRoot), "utf8");
   assert.match(native, /premiumComparisonFeatures\.map/);
   assert.match(native, /<PremiumComparison lang=\{lang\} \/>/);

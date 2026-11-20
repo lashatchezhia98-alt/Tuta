@@ -1,11 +1,23 @@
 "use client";
 import { SiteCopyText } from "@/components/site-copy-provider";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { useSiteFeatures } from "@/lib/site-features";
-import { useChatMessages } from "@/mobile/src/useChatMessages";
+import { useChatMessages, useChatReceipts } from "@/mobile/src/useChatMessages";
+import { careOverview } from "@/mobile/src/care-presentation.mjs";
+function subscribeToCareVisibility(notify: () => void) {
+  document.addEventListener("visibilitychange", notify);
+  window.addEventListener("focus", notify);
+  window.addEventListener("blur", notify);
+  return () => {
+    document.removeEventListener("visibilitychange", notify);
+    window.removeEventListener("focus", notify);
+    window.removeEventListener("blur", notify);
+  };
+}
+const careVisible = () => document.visibilityState === "visible" && document.hasFocus();
 type Doctor = {
   user_id: string;
   specialty: string;
@@ -24,6 +36,7 @@ type Thread = {
   doctor_id: string;
   patient_id: string;
   patient_label: string;
+  has_unread?: boolean;
 };
 type Booking = {
   id: string;
@@ -95,6 +108,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
     viewport.addEventListener("scroll", align);
     return () => { viewport.removeEventListener("resize", align); viewport.removeEventListener("scroll", align); };
   }, []);
+  useEffect(() => () => { if (typingTimer.current) clearTimeout(typingTimer.current); }, [thread]);
   useEffect(() => {
     let alive = true;
     fetch("/api/doctor-demos", { cache: "no-store" })
@@ -175,6 +189,13 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
     data && thread ? `${data.userId}:${thread}` : "",
     loadMessages,
   );
+  const visible = useSyncExternalStore(subscribeToCareVisibility, careVisible, () => false);
+  const confirmReceipts = useCallback(async (messageIds: string[], visible: boolean) => {
+    if (!thread || selected.current !== thread) return;
+    await careRequest("", { action: "receipts", id: thread, messageIds, visible });
+    if (visible) void load();
+  }, [thread, load]);
+  useChatReceipts(thread, data?.userId, chat.messages, visible, confirmReceipts);
   async function action(body: Record<string, unknown>) {
     const epoch = authEpoch.current;
     setBusy(true);
@@ -183,6 +204,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
       const r = await careRequest("", body);
       if (epoch !== authEpoch.current) return;
       if (body.action === "message") {
+        if (typingTimer.current) clearTimeout(typingTimer.current);
         setText("");
         void careRequest("", { action: "typing", id: body.id, typing: false }).catch(() => {});
         await chat.refresh();
@@ -218,6 +240,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
   const professionalView = doctorWorkspace || Boolean(data?.isDoctor);
   const bookings = data?.bookings.filter(b => !professionalView || b.consultation_slots?.doctor_id === data.userId) ?? [];
   const threads = data?.threads.filter(t => !professionalView || t.doctor_id === data.userId) ?? [];
+  const overview = professionalView && data?.isDoctor ? careOverview(threads, bookings, data.slots.filter(slot => slot.doctor_id === data.userId)) : null;
   return (
     <div className="inner-container">
       <section className="workspace-card">
@@ -271,10 +294,21 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
       </section>
       {data && (!doctorWorkspace || data.isDoctor) && (
         <>
-          {professionalView && <section className="workspace-card workspace-form">
-            <h2>{ka ? "ჯანმრთელობის ბლოგის ახალი ჩანაწერი" : "Write a health article"}</h2>
+          {overview && <section className="workspace-card care-dashboard" aria-label={ka ? "ექიმის სამუშაო სივრცე" : "Doctor overview"}>
+            <h2>{ka ? "სამუშაო მიმოხილვა" : "Work overview"}</h2>
+            <div className="care-dashboard-grid">
+              <div><Link href="#care-inbox">{ka ? "წაუკითხავი საუბრები" : "Unread conversations"}</Link><strong>{overview.unread}</strong></div>
+              <div><Link href="#care-visits">{ka ? "უახლოესი ვიზიტი" : "Next appointment"}</Link><strong>{overview.nextVisit?.consultation_slots ? date(overview.nextVisit.consultation_slots.starts_at) : (ka ? "დაგეგმილი არ არის" : "None scheduled")}</strong></div>
+              <div><h3>{ka ? "თავისუფალი დროები" : "Open appointment times"}</h3>
+                {overview.openSlots.length > 0 ? <ul>{overview.openSlots.slice(0, 3).map(slot => <li key={slot.starts_at}>{date(slot.starts_at)}</li>)}</ul> : <p>{ka ? "თავისუფალი დრო არ არის." : "No open times."}</p>}
+                {overview.openSlots.length > 3 && <details><summary>{ka ? "სხვა დროები" : "More times"}</summary><ul>{overview.openSlots.slice(3).map(slot => <li key={slot.starts_at}>{date(slot.starts_at)}</li>)}</ul></details>}
+              </div>
+            </div>
+          </section>}
+          {professionalView && <details className="workspace-card">
+            <summary>{ka ? "ჯანმრთელობის ბლოგის ახალი ჩანაწერი" : "Write a health article"}</summary>
             <p>{ka ? "გამოქვეყნებისთანავე სტატია საჯარო ბიბლიოთეკაში გამოჩნდება შენივე სახელით." : "Your article will be published in the public library under your name."}</p>
-            <form onSubmit={async (event) => {
+            <form className="workspace-form" onSubmit={async (event) => {
               event.preventDefault();
               setBusy(true); setNotice("");
               try {
@@ -291,7 +325,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
               <label>{ka ? "სტატიის ტექსტი" : "Article"}<textarea required maxLength={6000} rows={8} value={blogBody} onChange={e => setBlogBody(e.target.value)} /></label>
               <button disabled={busy}>{ka ? "გამოქვეყნება" : "Publish"}</button>
             </form>
-          </section>}
+          </details>}
           {!professionalView && <><div className="workspace-grid">
             {data.doctors
               .filter((d) => d.user_id !== data.userId)
@@ -370,7 +404,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                 : "No doctors are available yet."}
             </p>
           )}</>}
-          <section className="workspace-card">
+          <section id="care-visits" className="workspace-card">
             <h2><SiteCopyText id="care.bookings" lang={lang}/></h2>
             {!bookings.length && (
               <p><SiteCopyText id="care.noBookings" lang={lang}/></p>
@@ -408,7 +442,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
               </article>
             ))}
           </section>
-          <section className="workspace-card workspace-form">
+          <section id="care-inbox" className="workspace-card workspace-form">
             <h2><SiteCopyText id="care.messages" lang={lang}/></h2>
             <label>
               <SiteCopyText id="care.conversation" lang={lang}/>
@@ -427,6 +461,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                     {t.doctor_id === data.userId
                       ? t.patient_label
                       : doctorName(t.doctor_id)}
+                    {t.has_unread ? (ka ? " · წაუკითხავი" : " · Unread") : ""}
                   </option>
                 ))}
               </select>
@@ -480,6 +515,7 @@ export default function CareWorkspace({ lang, doctorWorkspace = false }: { lang:
                         setText(value);
                         if (typingTimer.current) clearTimeout(typingTimer.current);
                         typingTimer.current = setTimeout(() => {
+                          if (selected.current !== thread || !careVisible()) return;
                           void careRequest("", { action: "typing", id: thread, typing: Boolean(value.trim()) }).catch(() => {});
                         }, 250);
                       }}

@@ -17,6 +17,7 @@ import {
   canEditCommunityPost,
   communityAuthorInitials,
   communityPhotoUrl,
+  communityVisibilityCopy,
   memberDisplayName,
   normalizePost,
   POST_TOPICS,
@@ -838,6 +839,9 @@ export function CommunityFeed({
                 : t("ეს პოსტი შენი სახელითაა", "This post uses your name")}
             </T>
           )}
+          <T style={[s.muted, { marginBottom: 12 }]}>
+            {communityVisibilityCopy.members[ka ? 0 : 1]} {communityVisibilityCopy[anonymousPost ? "anonymous" : "named"][ka ? 0 : 1]}
+          </T>
           <T weight="bold" style={{ marginBottom: 8 }}>
             {t("რას ეხება პოსტი?", "What is this post about?")}
           </T>
@@ -1084,8 +1088,8 @@ export function CommunityFeed({
               <View style={{ flex: 1 }}>
                 <T weight="bold" accessibilityLabel={doctor && !post.is_anonymous ? `${name}, ${t("დადასტურებული ექიმი", "Verified doctor")}` : name}>
                   {name}
-                  {doctor && !post.is_anonymous ? " ✓" : ""}
                 </T>
+                {doctor && !post.is_anonymous && <T style={{ color: "#624386", fontSize: 12 }}>✓ {communityVisibilityCopy.verified[ka ? 0 : 1]}</T>}
                 <T style={s.muted}>
                   {friendlyDate(post.created_at, lang)} ·{" "}
                   {topicLabels[post.topic]
@@ -1251,9 +1255,9 @@ export function CommunityFeed({
                         </View>
                         <T weight="bold" style={{ flexShrink: 1 }} accessibilityLabel={commentDoctor && !comment.is_anonymous ? `${commentName}, ${t("დადასტურებული ექიმი", "Verified doctor")}` : commentName}>
                           {commentName}
-                          {commentDoctor && !comment.is_anonymous ? " ✓" : ""}
                         </T>
                       </View>
+                      {commentDoctor && !comment.is_anonymous && <T style={{ color: "#624386", fontSize: 12 }}>✓ {communityVisibilityCopy.verified[ka ? 0 : 1]}</T>}
                       {comment.is_post_author ||
                       (!post.is_anonymous && !comment.is_anonymous &&
                         post.public_author_id && post.public_author_id === comment.public_author_id) ? (

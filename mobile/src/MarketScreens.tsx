@@ -21,6 +21,10 @@ import {
   changeCart,
   project,
   unproject,
+  cartStockCopy,
+  cartStockIssue,
+  deliveryFieldCopy,
+  deliveryFieldErrors,
 } from "./market-model.mjs";
 import type { Lang, Tab } from "./types";
 import { fulfillmentLabels, paymentLabels } from "./market-orders";
@@ -396,6 +400,7 @@ export function CartScreen({
     [pin, setPin] = useState<Pin | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [checkDelivery, setCheckDelivery] = useState(false);
   const alive = useRef(true);
   useEffect(
     () => () => {
@@ -413,8 +418,12 @@ export function CartScreen({
       0,
     );
   const deliveryFeeTetri = resource.data?.deliveryFeeTetri ?? 0;
+  const fieldErrors = deliveryFieldErrors(recipientName, phone, address);
+  const fieldError = (field: keyof typeof fieldErrors) => checkDelivery && fieldErrors[field];
   async function checkout() {
-    if (!session) return;
+    if (!session || busy) return;
+    setCheckDelivery(true);
+    if (Object.values(fieldErrors).some(Boolean) || lines.some(row => cartStockIssue(row.product, row.quantity))) return;
     setBusy(true);
     setMessage("");
     try {
@@ -428,6 +437,7 @@ export function CartScreen({
           latitude: pin?.latitude ?? null,
           longitude: pin?.longitude ?? null,
           deliveryFeeTetri,
+          expectedTotalTetri: total + deliveryFeeTetri,
           items: cart.rows.map((row) => ({
             productId: row.id,
             quantity: row.quantity,
@@ -456,6 +466,7 @@ export function CartScreen({
       <ResourceStatus {...resource} lang={lang} />
       {lines.map((r) => {
         const thumbnail = r.product?.image_urls?.[0] || r.product?.image_url;
+        const stockIssue = resource.data ? cartStockIssue(r.product, r.quantity) : null;
         const canIncrease = Boolean(r.product) &&
           r.quantity < Math.min(20, r.product?.stock_quantity ?? 20);
         return (
@@ -470,6 +481,7 @@ export function CartScreen({
                 : (ka ? "პროდუქტი მიუწვდომელია" : "Product unavailable"))}
           </T>
           </View>
+          {stockIssue && <T accessibilityRole="alert" style={s.error}>{cartStockCopy[stockIssue][ka ? 0 : 1]}</T>}
           <View
             style={[s.row, { justifyContent: "space-between", marginTop: 12 }]}
           >
@@ -526,12 +538,14 @@ export function CartScreen({
             accessibilityLabel={ka ? "მიმღების სახელი" : "Recipient name"}
             autoComplete="name"
             maxLength={120}
-            style={s.input}
+            style={[s.input, fieldError("recipient") && { borderColor: "#A12D47" }]}
             value={recipientName}
             onChangeText={setRecipientName}
           />
+          {fieldError("recipient") && <T accessibilityRole="alert" style={s.error}>{deliveryFieldCopy.recipient[ka ? 0 : 1]}</T>}
           <FieldLabel>{ka ? "ტელეფონის ნომერი" : "Phone number"}</FieldLabel>
-          <TextInput accessibilityLabel={ka ? "ტელეფონის ნომერი" : "Phone number"} style={s.input} keyboardType="phone-pad" autoComplete="tel" maxLength={32} value={phone} onChangeText={setPhone}/>
+          <TextInput accessibilityLabel={ka ? "ტელეფონის ნომერი" : "Phone number"} style={[s.input, fieldError("phone") && { borderColor: "#A12D47" }]} keyboardType="phone-pad" autoComplete="tel" maxLength={32} value={phone} onChangeText={setPhone}/>
+          {fieldError("phone") && <T accessibilityRole="alert" style={s.error}>{deliveryFieldCopy.phone[ka ? 0 : 1]}</T>}
           <FieldLabel>
             {ka ? "სრული მისამართი" : "Full delivery address"}
           </FieldLabel>
@@ -541,10 +555,11 @@ export function CartScreen({
             }
             multiline
             maxLength={500}
-            style={s.input}
+            style={[s.input, fieldError("address") && { borderColor: "#A12D47" }]}
             value={address}
             onChangeText={setAddress}
           />
+          {fieldError("address") && <T accessibilityRole="alert" style={s.error}>{deliveryFieldCopy.address[ka ? 0 : 1]}</T>}
           <DeliveryMap lang={lang} pin={pin} onChange={setPin} />
           <T style={s.muted}>
             {ka
@@ -555,12 +570,8 @@ export function CartScreen({
             disabled={
               busy ||
               !session ||
-              !recipientName.trim() ||
-              !/^\+?[0-9]{7,15}$/.test(phone.replace(/[\s()-]/g, "")) ||
-              address.trim().length < 5 ||
               resource.loading ||
-              validLines.length !== cart.rows.length ||
-              validLines.some(row => row.quantity > (row.product!.stock_quantity ?? 20))
+              lines.some(row => cartStockIssue(row.product, row.quantity) !== null)
             }
             title={ka ? "სატესტო გადახდა" : "Test checkout"}
             onPress={() => void checkout()}

@@ -4,7 +4,7 @@ import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { loadCommentPage, mergeComments } from "@/mobile/src/comment-pages.mjs";
 import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
-import { canEditCommunityPost, communityAuthorInitials } from "@/mobile/src/community.mjs";
+import { canEditCommunityPost, communityAuthorInitials, communityVisibilityCopy } from "@/mobile/src/community.mjs";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import Image from "next/image";
@@ -769,6 +769,9 @@ export default function CommunityPage() {
                         )}
                   </p>
                 )}
+                <p className="mt-3 text-sm text-[#6F687D]">
+                  {communityVisibilityCopy.members[lang === "ka" ? 0 : 1]} {communityVisibilityCopy[anonymousPost ? "anonymous" : "named"][lang === "ka" ? 0 : 1]}
+                </p>
                 <fieldset className="mt-5">
                   <legend className="mb-2 font-semibold">
                     {<SiteCopyText id="feed.topic" lang={lang}/>}
@@ -991,19 +994,8 @@ export default function CommunityPage() {
                           {!post.is_anonymous &&
                           post.public_author_id &&
                           doctors[post.public_author_id] ? (
-                            <span
-                              role="img"
-                              aria-label={t(
-                                "დადასტურებული ექიმი",
-                                "Verified doctor",
-                              )}
-                              title={t(
-                                "დადასტურებული ექიმი",
-                                "Verified doctor",
-                              )}
-                              className="ml-1 text-[#5E4780]"
-                            >
-                              ✓
+                            <span className="community-doctor-badge">
+                              <span aria-hidden="true">✓</span> {communityVisibilityCopy.verified[lang === "ka" ? 0 : 1]}
                             </span>
                           ) : null}
                         </div>
@@ -1205,19 +1197,8 @@ export default function CommunityPage() {
                               {!comment.is_anonymous &&
                               comment.public_author_id &&
                               doctors[comment.public_author_id] ? (
-                                <span
-                                  role="img"
-                                  aria-label={t(
-                                    "დადასტურებული ექიმი",
-                                    "Verified doctor",
-                                  )}
-                                  title={t(
-                                    "დადასტურებული ექიმი",
-                                    "Verified doctor",
-                                  )}
-                                  className="ml-1 text-[#5E4780]"
-                                >
-                                  ✓
+                                <span className="community-doctor-badge">
+                                  <span aria-hidden="true">✓</span> {communityVisibilityCopy.verified[lang === "ka" ? 0 : 1]}
                                 </span>
                               ) : null}
                             </div>

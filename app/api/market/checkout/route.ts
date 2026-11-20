@@ -41,6 +41,9 @@ export async function POST(request: Request) {
     }, { status: 409 });
     const total = snapshot.reduce((sum, item) => sum + item.price_tetri * item.quantity, deliveryFeeTetri);
     if (!Number.isSafeInteger(total) || total < 1 || total > 100_000_000) throw new ApiError(400, "შეკვეთის ჯამი არასწორია.");
+    if (body.expectedTotalTetri !== undefined &&
+        (!Number.isSafeInteger(body.expectedTotalTetri) || body.expectedTotalTetri !== total))
+      throw new ApiError(409, "შეკვეთის ჯამი შეიცვალა. გადაამოწმე თანხა და თავიდან დაადასტურე. / Order total changed. Review the amount and try again.");
     const orderId = `tuta-market-${crypto.randomUUID()}`;
     const order = await clients.admin.from("market_orders").insert({ order_id: orderId, user_id: user.id, items: snapshot, total_tetri: total, delivery_fee_tetri: deliveryFeeTetri, recipient_name: recipient, recipient_phone: phone, address, latitude: lat, longitude: lon, status: "pending", mode: "test" });
     if (order.error?.code === "P0001") throw new ApiError(409, "ერთ-ერთი პროდუქტის მარაგი შეიცვალა. განაახლე კალათა.");

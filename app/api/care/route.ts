@@ -15,7 +15,13 @@ import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
 export async function GET(request: Request) {
   try {
     const { db, user } = await requireUser(request);
-    const threadId = new URL(request.url).searchParams.get("thread");
+    const params = new URL(request.url).searchParams;
+    if (params.get("role") === "1") {
+      const ownDoctor = checked(await db.from("doctor_profiles").select("user_id")
+        .eq("user_id", user.id).eq("active", true).maybeSingle());
+      return result({ isDoctor: Boolean(ownDoctor) });
+    }
+    const threadId = params.get("thread");
     if (threadId) {
       try {
         uuid(threadId);
@@ -40,15 +46,9 @@ export async function GET(request: Request) {
           .order("created_at", { ascending: false })
           .limit(100),
       );
-      const now = new Date().toISOString();
-      const incoming = (messages || []).filter((message) => message.sender_id !== user.id);
-      for (const message of incoming) {
-        if (!message.delivered_at) checked(await db.from("consultation_messages").update({ delivered_at: now }).eq("id", message.id).is("delivered_at", null));
-        else if (!message.read_at) checked(await db.from("consultation_messages").update({ read_at: now }).eq("id", message.id).is("read_at", null));
-      }
       return result({
-        messages: (messages || []).map(message => message.sender_id !== user.id && !message.delivered_at ? { ...message, delivered_at: now } : message).reverse(),
-        typing: thread.typing_user_id !== user.id && Boolean(thread.typing_at && Date.now() - Date.parse(thread.typing_at) < 5000),
+        messages: (messages || []).reverse(),
+        typing: Boolean(thread.typing_user_id && thread.typing_user_id !== user.id && thread.typing_at && Date.now() - Date.parse(thread.typing_at) < 5000),
         userId: user.id,
         serverNow: new Date().toISOString(),
       });
@@ -64,8 +64,12 @@ export async function GET(request: Request) {
       db.from("doctor_demo_profiles").select("id,first_name,last_name,specialty,bio,photo_url").eq("active", true).order("created_at").limit(50),
       db
         .from("consultation_threads")
-        .select("id,doctor_id,patient_id,patient_label")
+        .select("id,doctor_id,patient_id,patient_label,unread:consultation_messages(id)")
         .or(`patient_id.eq.${user.id},doctor_id.eq.${user.id}`)
+        .neq("unread.sender_id", user.id)
+        .is("unread.read_at", null)
+        .gt("unread.created_at", chatCutoff())
+        .limit(1, { referencedTable: "unread" })
         .order("created_at", { ascending: false })
         .limit(100),
       premiumExpiry(db, user.id),
@@ -106,15 +110,13 @@ export async function GET(request: Request) {
         [...patientBookings, ...doctorBookings].map((b) => [b.id, b]),
       ).values(),
     ];
-    const slots = profiles.length
+    const slotDoctorIds = isDoctor ? [user.id] : profiles.map(d => d.user_id);
+    const slots = slotDoctorIds.length
       ? checked(
           await db
             .from("consultation_slots")
             .select("id,doctor_id,starts_at,location")
-            .in(
-              "doctor_id",
-              profiles.map((d) => d.user_id),
-            )
+            .in("doctor_id", slotDoctorIds)
             .gte("starts_at", new Date().toISOString())
             .order("starts_at")
             .limit(200),
@@ -142,7 +144,9 @@ export async function GET(request: Request) {
         ),
       })),
       demoDoctors: checked(demoDoctors) || [],
-      threads: checked(threads),
+      threads: (checked(threads) || []).map(({ unread, ...thread }) => ({
+        ...thread, has_unread: Boolean(unread?.length),
+      })),
       premium: active,
       isDoctor,
       bookings,
@@ -205,14 +209,31 @@ export async function POST(request: Request) {
       if (!booking) throw new ApiError(404, "ჯავშანი ვერ მოიძებნა.");
       return result({ ok: true });
     }
-    if (body.action === "typing") {
+    if (body.action === "receipts" || body.action === "typing") {
       const thread = checked(await db.from("consultation_threads").select("id")
         .eq("id", id).or(`patient_id.eq.${user.id},doctor_id.eq.${user.id}`).maybeSingle());
       if (!thread) throw new ApiError(404, "ჩატი ვერ მოიძებნა.");
-      checked(await db.from("consultation_threads").update({
+      if (body.action === "receipts") {
+        if (!Array.isArray(body.messageIds) || !body.messageIds.length || body.messageIds.length > 100)
+          throw new ApiError(400, "არასწორი შეტყობინებები.");
+        let ids: string[];
+        try { ids = [...new Set(body.messageIds.map(uuid))]; }
+        catch { throw new ApiError(400, "არასწორი შეტყობინებები."); }
+        const now = new Date().toISOString();
+        const cutoff = chatCutoff();
+        checked(await db.from("consultation_messages").update({ delivered_at: now })
+          .eq("thread_id", id).neq("sender_id", user.id).in("id", ids).gt("created_at", cutoff).is("delivered_at", null));
+        if (body.visible === true)
+          checked(await db.from("consultation_messages").update({ read_at: now })
+            .eq("thread_id", id).neq("sender_id", user.id).in("id", ids).gt("created_at", cutoff).is("read_at", null));
+        return result({ ok: true });
+      }
+      let typing = db.from("consultation_threads").update({
         typing_user_id: body.typing === true ? user.id : null,
         typing_at: body.typing === true ? new Date().toISOString() : null,
-      }).eq("id", id));
+      }).eq("id", id);
+      if (body.typing !== true) typing = typing.eq("typing_user_id", user.id);
+      checked(await typing);
       return result({ ok: true });
     }
     await requireFeature(db, "doctorConsultation");
