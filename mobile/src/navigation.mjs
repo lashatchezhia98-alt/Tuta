@@ -11,8 +11,8 @@ export const destinations = [
   {
     id: "cycle",
     group: "cycle",
-    ka: "შეჯამება",
-    en: "Overview",
+    ka: "პერიოდი",
+    en: "Period",
     icon: "cycle",
     feature: "period",
   },
@@ -35,8 +35,8 @@ export const destinations = [
   {
     id: "insights",
     group: "cycle",
-    ka: "ანალიზი",
-    en: "Insights",
+    ka: "ციკლის ანალიზი",
+    en: "Cycle analysis",
     icon: "insights",
     feature: "insights",
   },

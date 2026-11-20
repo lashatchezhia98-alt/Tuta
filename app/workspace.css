@@ -125,24 +125,62 @@
   font-size: 12px;
   padding: 10px 0;
 }
-.period-grid .day {
+.period-grid button.day {
   position: relative;
   min-width: 0;
-  padding: 4px;
-  min-height: 44px;
-  border-color: transparent;
+  min-height: 52px;
+  padding: 4px 0 13px;
+  border: 2px solid transparent;
+  background: #f7f5fa;
+  font-size: .92rem;
 }
+.period-grid button.day[aria-pressed="true"] { box-shadow: inset 0 0 0 1px #725a90; }
+.period-grid button.day.period { background: #f8dce6; }
+.period-grid button.day.predicted { border: 2px dashed #a64065; background: #fff; }
+.period-grid button.day.fertile::after {
+  content: ""; display: block; position: absolute; inset-inline: 17%; bottom: 3px;
+  height: 3px; background: #4f8267; border-radius: 999px;
+}
+.period-date-number { display: inline-grid; place-items: center; width: 1.65em; height: 1.65em; border: 1.5px solid transparent; border-radius: 50%; }
+.period-grid [aria-current="date"] .period-date-number { border-color: #1e1b2e; font-weight: 800; }
 .period-day-markers {
   position: absolute;
   inset-inline: 0;
-  bottom: 2px;
-  font-size: 0.63rem;
+  bottom: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  font-size: .56rem;
   line-height: 1;
   pointer-events: none;
 }
-.period-legend {
-  margin-top: 0.75rem;
-}
+.period-day-markers [data-mark="draft"] { font-weight: 900; color: #45236e; }
+.period-calendar, .period-history, .period-more { margin-block: 16px; }
+.period-today { background: #eee6f7; margin-block: 16px; }
+.period-forecast { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 8px; margin: 12px 0 16px; }
+.period-forecast > div { padding: 10px 12px; background: #fff; border-radius: 12px; }
+.period-forecast dt, .period-day-info li, .period-legend li { display: flex; align-items: center; gap: 6px; }
+.period-forecast dd { font-weight: 700; margin: 3px 0 0; }
+.workspace-card button.period-primary { color: #fff; background: #1e1b2e; border-color: #1e1b2e; }
+.period-estimates { margin-top: 12px; font-size: .92rem; }
+.period-estimates summary, .period-history summary { cursor: pointer; }
+.period-month { flex-wrap: nowrap; margin-block: 8px; }
+.period-month h3 { flex: 1; text-align: center; font-weight: 700; }
+.period-legend { margin-top: 14px; }
+.period-legend h3, .period-day-detail h3 { font-weight: 700; }
+.period-legend ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 172px), 1fr)); gap: 8px 10px; margin: 8px 0 0; font-size: .8rem; }
+.calendar-key-mark { display: inline-grid; place-items: center; width: 15px; height: 15px; flex: 0 0 15px; color: #1e1b2e; font-size: .75rem; line-height: 1; }
+.calendar-key-mark[data-mark="period"] { background: #f8dce6; border: 1px solid #a64065; border-radius: 4px; }
+.calendar-key-mark[data-mark="predicted"] { border: 2px dashed #a64065; border-radius: 4px; }
+.calendar-key-mark[data-mark="fertile"] { background: #4f8267; height: 3px; border-radius: 999px; }
+.calendar-key-mark[data-mark="today"] { border: 1.5px solid #1e1b2e; border-radius: 50%; }
+.period-day-detail { border-top: 1px solid #e4e0eb; margin-top: 14px; padding-top: 12px; }
+.period-day-detail .workspace-row { justify-content: flex-start; margin-top: 8px; }
+.period-day-detail a, .period-related-link { display: inline-flex; align-items: center; min-height: 44px; text-decoration: underline; text-underline-offset: 3px; }
+.period-day-info:empty { display: none; }
+.period-history ul, .period-day-detail ul { padding-left: 0; list-style: none; }
+.period-history li + li { margin-top: 4px; }
+.period-history .history-entry { text-align: start; width: 100%; }
 .period-shortcuts {
   display: flex;
   flex-wrap: wrap;
@@ -157,20 +195,7 @@
   border: 1px solid #e1d3f1;
   border-radius: 12px;
 }
-#period-calendar, #journal-activity { scroll-margin-top: 6rem; }
-.period-grid .period {
-  background: #e3d8f1;
-}
-.period-grid .predicted {
-  border: 2px dashed #a293b5;
-}
-.period-grid .fertile {
-  background: #fdf0cc;
-}
-.period-grid .selected {
-  outline: 2px solid #1e1b2e;
-  outline-offset: 1px;
-}
+#period-calendar, #journal-activity, #cycle-settings { scroll-margin-top: 6rem; }
 .symptom-choices {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -322,7 +347,7 @@
 .landing-mobile { display: none; }
 .community-mobile-heading { display: none; }
 .mobile-app-tabbar { display: none; }
-.mobile-cycle-summary, .period-mobile-heading, .header-activity { display: none; }
+.period-mobile-heading, .header-activity { display: none; }
 .header-actions .desktop-member-nav { display: none; }
 .tuta-menu-sign-out { border-top: 1px solid #e6e2ec; margin-top: 10px; padding-top: 8px; }
 .tuta-menu-sign-out .tuta-menu-row { color: #92384b; }
@@ -340,37 +365,10 @@
   .period-dashboard > .workspace-nav { position: sticky; top: 98px; align-self: start; padding: 12px; border-radius: 20px; background: #fff; border: 1px solid #e6e2ec; }
   .period-dashboard > .workspace-nav a { border: 0; background: transparent; }
   .period-dashboard > .workspace-nav a:hover, .period-dashboard > .workspace-nav a[aria-current="page"] { background: #eee6f7; }
-  .period-dashboard .workspace-main:has(.period-mobile-heading) > .period-desktop-heading,
-  .period-dashboard .desktop-cycle-summary { display: none; }
+  .period-dashboard .workspace-main:has(.period-mobile-heading) > .period-desktop-heading { display: none; }
   .period-dashboard .period-mobile-heading { display: block; margin-bottom: 22px; }
   .period-mobile-heading p { color: #6f687d; margin: 0; }
   .workspace-main .period-mobile-heading h1 { margin: 5px 0 0; font-weight: 800; line-height: 1.2; }
-  .period-dashboard .mobile-cycle-summary { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
-  .mobile-cycle-card { grid-row: span 2; background: #eee6f7; border: 1px solid #e1d3f1; border-radius: 24px; padding: clamp(16px, 2.4vw, 28px); color: #6f687d; }
-  .mobile-cycle-card-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 10px; font-size: 14px; }
-  .mobile-cycle-card-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 48%); align-items: center; gap: 12px; margin: 12px 0; }
-  .mobile-cycle-card-body svg { width: 100%; max-width: 174px; justify-self: end; }
-  .mobile-cycle-day { display: block; font-size: clamp(44px, 5vw, 70px); line-height: 1.1; color: #1e1b2e; }
-  .mobile-cycle-phase { display: inline-block; max-width: 100%; overflow-wrap: anywhere; margin-top: 8px; padding: 6px 10px; border-radius: 12px; background: #fff; color: #1e1b2e; font-size: 14px; font-weight: 750; }
-  .mobile-cycle-card > p { font-size: 14px; margin: 0; }
-  .mobile-cycle-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; padding: 16px; border-radius: 20px; border: 1px solid #ebe7ef; background: #fff; text-align: start; color: #1e1b2e; }
-  .mobile-cycle-action svg { flex: none; }
-  .mobile-cycle-action:hover { border-color: #a597b7; }
-  .mobile-cycle-next { display: grid; align-content: center; background: #fdf0cc; border-color: #f1e2b7; }
-  .mobile-cycle-next > span { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .mobile-cycle-next > b { font-size: clamp(22px, 3vw, 32px); line-height: 1.2; }
-  .mobile-cycle-next > small { color: #625a6d; }
-  .mobile-cycle-week { grid-column: 1 / -1; padding: 16px; border-radius: 22px; border: 1px solid #ebe7ef; background: #fff; }
-  .mobile-cycle-week h2 { font-weight: 750; margin: 0 0 12px; }
-  .mobile-cycle-week > div { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-  .mobile-cycle-week button { position: relative; display: grid; align-content: center; min-height: 62px; border-radius: 12px; background: #f9f8fc; }
-  .mobile-cycle-week button.period, .mobile-cycle-week button.predicted { background: #eee6f7; }
-  .mobile-cycle-week button.fertile { background: #fdf0cc; }
-  .mobile-cycle-week button[aria-current] { background: #1e1b2e; color: white; }
-  .mobile-cycle-week button > span { position: absolute; inset-inline: 0; bottom: 1px; font-size: 10px; }
-  .period-dashboard .mobile-period-controls:not(:empty) { display: block; }
-  .period-dashboard .mobile-period-controls > p:empty { display: none; }
-  .period-dashboard .period-grid .marked-bleeding-day { background: #e3d8f1; border-color: #725a90; font-weight: 750; }
   .period-dashboard #period-calendar > .workspace-row { justify-content: space-between; flex-wrap: nowrap; }
   .period-dashboard #period-calendar > .workspace-row h2 { margin: 0; text-align: center; }
 }
@@ -378,7 +376,7 @@
 @media (min-width: 1100px) {
   .period-dashboard .workspace-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
 }
-.mobile-period-nav, .mobile-period-controls, .mobile-cycle-reference { display: none; }
+.mobile-period-nav { display: none; }
 
 [data-slot="sheet-content"].tuta-menu-sheet {
   z-index: 110;
@@ -443,7 +441,7 @@
   .landing-mobile { display: block; }
   .header-auth-links { display: none; }
   .header-mobile-auth-trigger { display: inline-flex; }
-  .workspace:has(.mobile-period-nav) > .workspace-nav, .desktop-cycle-reference, .desktop-period-status { display: none; }
+  .workspace:has(.mobile-period-nav) > .workspace-nav { display: none; }
   .mobile-period-nav {
     display: flex;
     gap: 8px;
@@ -465,33 +463,10 @@
   .period-dashboard { gap: 24px; padding: 16px 14px 48px; }
   .period-dashboard .mobile-period-nav { margin-inline: 0 -14px; padding-inline: 6px 14px; }
   .period-dashboard .mobile-period-nav a { padding-inline: 13px; font-size: 16px; border-color: #e4e0eb; }
-  .period-dashboard .workspace-main:has(.period-mobile-heading) > .period-desktop-heading,
-  .period-dashboard .workspace-main .desktop-cycle-summary { display: none; }
+  .period-dashboard .workspace-main:has(.period-mobile-heading) > .period-desktop-heading { display: none; }
   .period-mobile-heading { display: block; margin-bottom: 18px; }
   .period-mobile-heading p { font-size: 15px; color: #746d80; }
   .workspace-main .period-mobile-heading h1 { font-size: 32px; font-weight: 800; line-height: 1.25; margin: 7px 0 0; }
-  .mobile-cycle-summary { display: grid; gap: 14px; }
-  .mobile-cycle-card { background: #eee6f7; border: 1px solid #e1d3f1; border-radius: 22px; padding: 20px; color: #746d80; }
-  .mobile-cycle-card-top { display: flex; justify-content: space-between; flex-wrap: wrap; column-gap: 8px; row-gap: 4px; font-size: 14px; }
-  .mobile-cycle-card-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 44%); gap: 10px; align-items: center; margin-block: 17px; }
-  .mobile-cycle-card-body svg { width: 100%; max-width: 146px; justify-self: end; }
-  .mobile-cycle-day { display: block; font-size: 69px; line-height: 1.14; color: #1e1b2e; }
-  .mobile-cycle-phase { display: inline-block; max-width: 100%; overflow-wrap: anywhere; background: #fff; border-radius: 12px; padding: 7px 10px; margin-top: 5px; color: #1e1b2e; font-size: 14px; font-weight: 750; }
-  .mobile-cycle-card > p { font-size: 14px; line-height: 1.55; margin: 0; }
-  .mobile-cycle-action { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 58px; padding: 16px 18px; border: 1px solid #ebe7ef; border-radius: 22px; background: #fff; text-align: start; color: #1e1b2e; }
-  .mobile-cycle-action svg { flex: none; }
-  .mobile-cycle-next { display: grid; justify-content: stretch; }
-  .mobile-cycle-next > span { display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
-  .mobile-cycle-next > b { font-size: 27px; line-height: 1.33; }
-  .mobile-cycle-next > small { color: #746d80; font-size: 14px; }
-  .mobile-cycle-week { background: white; border: 1px solid #ebe7ef; border-radius: 22px; padding: 14px 10px; }
-  .mobile-cycle-week > h2 { margin: 0 5px 10px; font-size: 18px; font-weight: 750; }
-  .mobile-cycle-week > div { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-  .mobile-cycle-week button { position: relative; display: grid; align-content: center; min-width: 0; min-height: 62px; border-radius: 13px; background: #f3f1f6; }
-  .mobile-cycle-week button.period, .mobile-cycle-week button.predicted { background: #eee6f7; }
-  .mobile-cycle-week button.fertile { background: #fdf0cc; }
-  .mobile-cycle-week button[aria-current] { background: #1e1b2e; color: white; }
-  .mobile-cycle-week button > span { position: absolute; inset-inline: 0; bottom: 1px; font-size: 9px; }
   .period-inner-header { background: #f7f5fa; border: 0; padding: 0; height: 66px; min-height: 66px; }
   .period-inner-header .inner-nav { width: calc(100% - 28px); flex-wrap: nowrap; gap: 8px; }
   .period-inner-header .inner-logo { gap: 8px; }
@@ -505,15 +480,8 @@
   body:has(.period-dashboard) .mobile-app-tab-label { font-size: 11px; }
   @media (max-width: 359px) {
     .workspace-main .period-mobile-heading h1 { font-size: 27px; }
-    .mobile-cycle-card { padding: 15px; }
-    .mobile-cycle-day { font-size: 58px; }
     .period-inner-header .inner-logo strong { font-size: 22px; }
   }
-  .mobile-period-controls, .mobile-cycle-reference { display: block; }
-  .mobile-cycle-reference > summary { min-height: 44px; cursor: pointer; font-weight: 700; }
-  .mobile-cycle-reference > .workspace-card { margin: 0; border: 0; padding: 0; }
-  .period-grid .day.marked-bleeding-day { background: #e3d8f1; border-color: #725a90; font-weight: 750; }
-  .mobile-period-controls > p:empty { display: none; }
 
   .mobile-app-tabbar {
     position: fixed;

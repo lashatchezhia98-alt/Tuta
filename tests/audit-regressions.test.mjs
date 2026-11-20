@@ -35,30 +35,97 @@ test('native cart opens with saved items before or without a matching catalog re
   assert.equal(nodes(tree,'image')[0].props.source.uri,stock===2?'primary.png':'legacy.png');
  }
 });
-test('period number fields can be cleared and replaced without saving a zero',async()=>{
+test('cycle settings accepts a cleared number field without saving a zero',async()=>{
  const slots=[],writes=[];let cursor=0;
  const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return [slots[i],value=>{slots[i]=value}]},useRef:()=>({current:null}),useEffect(){}};
- const {PeriodCalendar}=sourceModule('components/health-workspace.tsx',{react});
- const data={version:1,lang:'en',name:'',cycleLength:28,periods:[],logs:[]};
+ const data={version:1,lang:'en',name:'',cycleLength:28,periods:[{start:'2020-01-01',duration:2}],logs:[]};
+ const {ProfileHealthTools}=sourceModule('components/health-workspace.tsx',{
+  react,
+  '@/lib/site-features':{useSiteFeatures:()=>({period:true})},
+  '@/app/use-health-state':{useHealthState:()=>({loaded:true,error:'',session:{user:{id:'fixture'}},data,save:async next=>writes.push(next)})}
+ });
  const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
- const render=()=>{cursor=0;return PeriodCalendar({data,lang:'en',save:async next=>writes.push(next)})};
- const fields=()=>nodes(render(),'input').filter(input=>input.props.type==='number');
+ const render=()=>{cursor=0;const section=ProfileHealthTools({lang:'en'});return section.type(section.props)};
+ const field=()=>nodes(render(),'input').find(input=>input.props.type==='number');
  const submit=()=>nodes(render(),'form')[0].props.onSubmit({preventDefault(){}});
- assert.deepEqual(fields().map(field=>Number(field.props.value)),[1,28]);
- fields().forEach(field=>field.props.onChange({target:{value:''}}));
- assert.deepEqual(fields().map(field=>field.props.value),['','']);
+ assert.equal(field().props.value,28);
+ field().props.onChange({target:{value:''}});
+ assert.equal(field().props.value,'');
  submit();await tick();assert.equal(writes.length,0);
- const [duration,length]=fields();
- duration.props.onChange({target:{value:'2'}});
- length.props.onChange({target:{value:'30'}});
- const date=nodes(render(),'input').find(input=>input.props.type==='date');
- // Two days of bleeding cannot be saved if the period starts today.
- date.props.onChange({target:{value:'2020-01-01'}});
- fields()[0].props.onChange({target:{value:'2'}});
+ field().props.onChange({target:{value:'30'}});
  submit();await tick();
  assert.equal(writes.length,1);
  assert.equal(writes[0].cycleLength,30);
- assert.deepEqual(writes[0].periods,[{start:'2020-01-01',duration:2}]);
+ assert.deepEqual(writes[0].periods,data.periods);
+});
+
+test('web calendar uses one grid, previews multiple months, and edits a saved period from history',async()=>{
+ const slots=[],writes=[];let cursor=0;
+ const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=initial;return[slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}]},useRef:()=>({current:null}),useEffect(){}};
+ const cycle=sourceModule('mobile/src/cycle.mjs');
+ const {PeriodCalendar}=sourceModule('components/health-workspace.tsx',{
+  react,
+  '@/lib/site-features':{useSiteFeatures:()=>({dailyLog:true,insights:true})},
+  '../mobile/src/cycle.mjs':{...cycle,periodCalendarModel:data=>cycle.periodCalendarModel(data,'2026-11-20')}
+ });
+ let data={version:1,lang:'en',name:'',cycleLength:28,periods:[{start:'2026-09-07',duration:3}],logs:[{date:'2026-11-20',flow:'none'}]};
+ const nodes=(tree,test)=>!tree||typeof tree!=='object'?[]:[...(test(tree)?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,test))];
+ const render=()=>{cursor=0;return PeriodCalendar({data,lang:'en',save:async next=>{writes.push(next);data=next}})};
+ const buttons=()=>nodes(render(),node=>node.type==='button');
+ const click=label=>buttons().find(b=>b.props['aria-label']===label||b.props.children===label).props.onClick();
+ const day=date=>buttons().find(b=>b.props['aria-label']?.startsWith(date));
+ assert.match(day('2026-11-20').props['aria-label'],/Journal entry, Today/);
+ assert.equal(nodes(render(),node=>node.props?.className==='period-grid').length,1);
+ const summary=nodes(render(),node=>node.type?.name==='CycleOverview')[0];
+ summary.props.onMark();
+ day('2026-11-10').props.onClick();
+ day('2026-11-12').props.onClick();
+ click('Previous month');
+ day('2026-10-10').props.onClick();
+ day('2026-10-13').props.onClick();
+ assert.match(day('2026-10-12').props['aria-label'],/Selected, not yet saved/);
+ assert.equal(nodes(render(),node=>node.type==='h3'&&node.props.children==='This is what will be saved').length,1);
+ click('Save');await tick();
+ assert.deepEqual(writes[0].periods,[{start:'2026-09-07',duration:3},{start:'2026-10-10',duration:4},{start:'2026-11-10',duration:3}]);
+ assert.deepEqual(writes[0].logs,[{date:'2026-11-20',flow:'none'}]);
+ buttons().find(b=>b.props.className==='history-entry').props.onClick();
+ assert.match(day('2026-11-12').props['aria-label'],/Recorded period, Selected, not yet saved/);
+ day('2026-11-12').props.onClick();
+ click('Save');await tick();
+ assert.deepEqual(writes[1].periods,[{start:'2026-09-07',duration:3},{start:'2026-10-10',duration:4},{start:'2026-11-10',duration:2}]);
+});
+test('native calendar keeps month selections and the preview when saving fails',async()=>{
+ const slots=[],writes=[];let cursor=0;
+ const react={useState(initial){const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return[slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value}]},useRef(initial){const i=cursor++;return slots[i]??={current:initial}}};
+ const cycle=sourceModule('mobile/src/cycle.mjs');
+ const {PeriodWorkspace}=sourceModule('mobile/src/PeriodWorkspace.tsx',{
+  react,'react-native':{View:'view',Pressable:'press'},
+  './ui':{C:{},s:{},T:'text',CTA:'cta'},'./CycleSupport':{CycleEducation:'education'},
+  './PeriodDaysPicker':{PeriodDaysPicker:'picker',CalendarKeyMark:'mark'},
+  './useJourneyEnabled':{useAppFeatures:()=>({features:{dailyLog:true,insights:true}})},
+  './cycle.mjs':{...cycle,periodCalendarModel:data=>cycle.periodCalendarModel(data,'2026-11-20')}
+ });
+ let data={version:1,lang:'en',name:'',cycleLength:28,periods:[],logs:[]},fail=true;
+ const nodes=(tree,type)=>!tree||typeof tree!=='object'?[]:[...(tree.type===type?[tree]:[]),...[tree.props?.children].flat(Infinity).flatMap(node=>nodes(node,type))];
+ const render=()=>{cursor=0;return PeriodWorkspace({data,initialDate:'2026-11-20',summary:true,scrollToCalendar(){},save:async next=>{writes.push(next);if(fail)return false;data=next;return true}})};
+ const picker=()=>nodes(render(),'picker')[0].props;
+ const click=title=>nodes(render(),'cta').find(item=>item.props.title===title).props.onPress();
+ click('Log period');
+ picker().onPressDay('2026-11-10');
+ picker().onPressDay('2026-11-12');
+ picker().setMonth(new Date(2026,9,1));
+ picker().onPressDay('2026-10-02');
+ picker().onPressDay('2026-10-05');
+ assert.equal(nodes(render(),'picker').length,1);
+ assert.ok(nodes(render(),'text').some(item=>item.props.children==='This is what will be saved'));
+ click('Save');await tick();
+ assert.equal(picker().days.length,7);
+ assert.ok(nodes(render(),'text').some(item=>String(item.props.children).includes('Your selection is preserved')));
+ fail=false;
+ click('Save');await tick();
+ assert.equal(picker().days,undefined);
+ assert.deepEqual(writes[0],writes[1]);
+ assert.deepEqual(data.periods,[{start:'2026-10-02',duration:4},{start:'2026-11-10',duration:3}]);
 });
 test('private sharing and pregnancy forms remount on account changes, not token refreshes',()=>{
  for(const file of ['partner-workspace','pregnancy-workspace']){

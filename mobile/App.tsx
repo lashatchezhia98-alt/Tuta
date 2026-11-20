@@ -26,33 +26,22 @@ import { useFonts } from "expo-font";
 import { Fredoka_600SemiBold } from "@expo-google-fonts/fredoka/600SemiBold";
 import { NotoSansGeorgian_400Regular } from "@expo-google-fonts/noto-sans-georgian/400Regular";
 import { NotoSansGeorgian_700Bold } from "@expo-google-fonts/noto-sans-georgian/700Bold";
-import { Icon, MoonFlower, Face, CycleOrbit } from "./src/Art";
+import { Icon, Face } from "./src/Art";
 import { C, T, CTA, Chip, DateField, FieldLabel, NumberWheel, Scale, s } from "./src/ui";
 import PasswordInput from "./src/PasswordInput";
-import { PeriodDaysPicker } from "./src/PeriodDaysPicker";
+import { PeriodWorkspace } from "./src/PeriodWorkspace";
 import EmailCodeScreen from "./src/EmailCodeScreen";
 import { EMAIL_RESEND_WAIT_MS, emailNotConfirmed } from "./src/email-verification.mjs";
 import type { PendingEmail } from "./src/use-email-verification";
 import { Data, Log, Tab, emptyData, validData } from "./src/types";
 import { sexualActivityOptions } from "./src/sexual-activity";
 import {
-  dateKey,
   stamp,
-  addDays,
-  validSetup,
-  periodFromSelectedDays,
-  periodsFromHistorySelection,
   validBirthDate,
-  cycleAt,
-  periodCalendarModel,
-  periodDayMarkers,
-  periodDayLabel,
   predictionDateKey,
   averages,
   predictions,
   forecast,
-  distance,
-  monthLabel,
   symptomPatterns,
 } from "./src/cycle.mjs";
 import { isSupabaseConfigured, supabase } from "./src/supabase";
@@ -65,7 +54,6 @@ import { watchPushTaps } from "./src/push-device";
 import { AccountDeletion, SymptomReview } from "./src/ServiceAccessScreens";
 import { PregnancyScreen, PartnerScreen } from "./src/HealthFeatureScreens";
 import { CycleEducation, GuidedJourney } from "./src/CycleSupport";
-import { overlapsPeriod } from "./src/cycle.mjs";
 import {
   initialTab,
   mainTabs,
@@ -157,7 +145,7 @@ function Shell() {
     [logActivityOnly, setLogActivityOnly] = useState(false),
     [libraryCategory, setLibraryCategory] = useState(""),
     [calendarDate, setCalendarDate] = useState(predictionDateKey()),
-    [calendarEditing, setCalendarEditing] = useState(false),
+    [profileCycleSettings, setProfileCycleSettings] = useState(false),
     [dirty, setDirty] = useState(false),
     [pending, setPending] = useState<Tab | null>(null);
   const [session, setSession] = useState<Session | null>(null),
@@ -203,6 +191,8 @@ function Shell() {
   const headerWidth = Math.min(width, 520) - insets.left - insets.right;
   const stackedHeader = headerWidth < 300 + 180 * Math.max(0, fontScale - 1);
   const scroll = useRef<ScrollView>(null);
+  // React Native's innerViewRef type omits the null value used before mounting.
+  const scrollContent = useRef<View>(null) as NonNullable<ScrollView["props"]["innerViewRef"]>;
   const communityFeed = useRef<CommunityFeedHandle>(null);
   const refreshRequest = useRef(false);
   const [refreshingMember, setRefreshingMember] = useState<string | null>(null);
@@ -502,7 +492,7 @@ function Shell() {
   };
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
-  const nav = (next: Tab, options?: { date?: string; activityOnly?: boolean; editing?: boolean; category?: string }) => {
+  const nav = (next: Tab, options?: { date?: string; activityOnly?: boolean; category?: string; cycleSettings?: boolean }) => {
     if (next === tab) return;
     if (tab === "log" && dirty) {
       setPending(next);
@@ -514,8 +504,8 @@ function Shell() {
     }
     if (next === "calendar") {
       setCalendarDate(options?.date ?? predictionDateKey());
-      setCalendarEditing(options?.editing ?? false);
     }
+    if (next === "profile") setProfileCycleSettings(!!options?.cycleSettings);
     if (next === "blog") setLibraryCategory(options?.category ?? "");
     setTrail((history) => [...history.slice(-19), tab]);
     setTab(next);
@@ -571,8 +561,9 @@ function Shell() {
   const openLog = (date = predictionDateKey(), activityOnly = false) => {
     nav("log", { date, activityOnly });
   };
-  const openCalendar = (date = predictionDateKey(), editing = false) => {
-    nav("calendar", { date, editing });
+  const scrollToSection = (ref: React.RefObject<View | null>) => {
+    const content = scrollContent.current;
+    if (content) ref.current?.measureLayout(content, (_x, y) => scroll.current?.scrollTo({ y: Math.max(0, y - 8), animated: true }));
   };
   const canPullToRefresh = tab === "home" && !authMode && !!memberId
     && activityTarget?.userId !== memberId && pageAllowed(tab, features.features);
@@ -670,12 +661,13 @@ function Shell() {
         <Profile
           data={data}
           save={save}
-          birthDate={session.user.user_metadata?.date_of_birth}
           session={session}
           authEnabled={isSupabaseConfigured}
           authBusy={authBusy}
           setAuthBusy={setAuthBusy}
           onNavigate={nav}
+          showCycleSettings={profileCycleSettings}
+          scrollToSection={scrollToSection}
         />
       );
     if (healthError.current)
@@ -712,33 +704,19 @@ function Shell() {
     if (tab === "report")
       return <ReportScreen data={data} session={session} onNavigate={nav} />;
     if (tab === "notifications") return <RemindersScreen data={data} />;
-    if (needsSetup && ["cycle", "calendar"].includes(tab))
+    if (tab === "cycle" || tab === "calendar")
       return (
-        <Setup
+        <PeriodWorkspace
+          initialDate={tab === "cycle" ? predictionDateKey() : calendarDate}
+          summary={tab === "cycle"}
           data={data}
           save={save}
-          birthDate={session.user.user_metadata?.date_of_birth}
-        />
-      );
-    if (tab === "cycle")
-      return (
-        <Home
-          data={data}
-          openCalendar={openCalendar}
           openLog={openLog}
+          openInsights={() => nav("insights")}
+          openSettings={() => nav("profile", { cycleSettings: true })}
           openPregnancy={() => nav("pregnancy")}
           birthDate={session.user.user_metadata?.date_of_birth}
-        />
-      );
-    if (tab === "calendar")
-      return (
-        <Calendar
-          key={`${calendarDate}-${calendarEditing}`}
-          initialDate={calendarDate}
-          initiallyEditing={calendarEditing}
-          data={data}
-          save={save}
-          openLog={openLog}
+          scrollToCalendar={scrollToSection}
         />
       );
     if (tab === "log")
@@ -759,6 +737,7 @@ function Shell() {
           birthDate={session.user.user_metadata?.date_of_birth}
           token={session.access_token}
           onPremium={() => nav("premium")}
+          onReport={features.features.doctorReport ? () => nav("report") : undefined}
         />
       );
     return <ServicesScreen {...props} />;
@@ -769,7 +748,6 @@ function Shell() {
         <ActivityIndicator />
       </View>
     );
-  const needsSetup = data.periods.length === 0 && !data.pregnancy?.active;
   return (
     <View style={s.root}>
       <View style={s.frame}>
@@ -860,6 +838,7 @@ function Shell() {
               </View>
             ) : <ScrollView
               ref={scroll}
+              innerViewRef={scrollContent}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "none"}
               automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
@@ -1029,402 +1008,25 @@ function Shell() {
   );
 }
 
-function Setup({
-  data,
-  save,
-  editing = false,
-  birthDate,
-}: { editing?: boolean } & Shared) {
+function CycleSettings({ data, save }: Shared) {
   const ka = data.lang === "ka";
-  const t = (a: string, b: string) => (ka ? a : b);
-  const latest = editing ? data.periods.at(-1) : undefined;
-  const [days, setDays] = useState(() =>
-      latest ? Array.from({ length: latest.duration }, (_, index) => addDays(latest.start, index)) : [],
-    ),
-    [length, setLength] = useState(String(data.cycleLength)),
-    [name, setName] = useState(data.name),
-    [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
-  const submit = async () => {
-    if (data.pregnancy?.active) {
-      setMessage(
-        t(
-          "პერიოდის დასამატებლად ჯერ გამორთე ორსულობის რეჟიმი.",
-          "Turn off pregnancy mode before logging a period.",
-        ),
-      );
-      return;
-    }
-    const period = periodFromSelectedDays(days);
-    if (!period || !validSetup(period.start, Number(length), period.duration)) {
-      setMessage(
-        t(
-          "მონიშნე სისხლდენის 1–10 ზედიზედ დღე და აირჩიე ციკლის ხანგრძლივობა.",
-          "Select 1–10 consecutive bleeding days and choose your cycle length.",
-        ),
-      );
-      return;
-    }
-    const { start } = period;
-    if (
-      overlapsPeriod(
-        data.periods,
-        period,
-        latest?.start ?? start,
-      )
-    ) {
-      setMessage(
-        t(
-          "სისხლდენის დღეები არსებულ ჩანაწერს ემთხვევა. შესასწორებლად აირჩიე მისი დაწყების თარიღი.",
-          "Bleeding days overlap another entry. Use its start date to edit it.",
-        ),
-      );
-      return;
-    }
-    setBusy(true);
-    const periods = [
-      ...data.periods.filter((p) => p.start !== (latest?.start ?? start)),
-      period,
-    ].sort((a, b) => a.start.localeCompare(b.start));
-    if (
-      await save({
-        ...data,
-        name: name.trim(),
-        cycleLength: Number(length),
-        periods,
-      })
-    ) {
-      setMessage(t("შენახულია ✓", "Saved ✓"));
-    }
-    setBusy(false);
-  };
-  return (
-    <View style={s.content}>
-      {!editing && (
-        <>
-          <View
-            style={{
-              alignItems: "center",
-              backgroundColor: C.lav,
-              borderRadius: 32,
-              marginBottom: 24,
-            }}
-          >
-            <MoonFlower size={170} />
-          </View>
-          <T weight="display" style={s.title}>
-            {t("შენი რიტმით.", "In your rhythm.")}
-          </T>
-          <T style={[s.muted, { marginBottom: 24 }]}>
-            {t(
-              "დავიწყოთ შენი ციკლით. ჩანაწერები შენს ანგარიშში შეინახება.",
-              "Let’s start with your cycle. Entries will be saved to your account.",
-            )}
-          </T>
-        </>
-      )}
-      <View style={s.section}>
-        <FieldLabel>
-          {t("სახელი (სურვილისამებრ)", "Name (optional)")}
-        </FieldLabel>
-        <TextInput
-          accessibilityLabel="Name"
-          style={s.input}
-          value={name}
-          onChangeText={setName}
-          maxLength={40}
-        />
-      </View>
-      <View style={s.section}>
-        <FieldLabel>{t("პერიოდის დაწყება", "Period start")}</FieldLabel>
-        <T style={[s.muted, { marginBottom: 10 }]}>
-          {t("მონიშნე სისხლდენის დღეები და ერთხელ შეინახე.", "Select bleeding days and save them together.")}
-        </T>
-        <PeriodDaysPicker
-          ka={ka}
-          initialDate={latest?.start ?? dateKey()}
-          days={days}
-          onToggle={(date) => {
-            setDays((current) => current.includes(date) ? current.filter((day) => day !== date) : [...current, date]);
-            setMessage("");
-          }}
-        />
-      </View>
-      <View style={s.section}>
-        <NumberWheel
-          label={t("ციკლის ხანგრძლივობა (დღე)", "Cycle length (days)")}
-          value={Number(length) || 28}
-          min={21}
-          max={45}
-          onChange={(value) => setLength(String(value))}
-          ka={ka}
-        />
-      </View>
-      {message ? (
-        <T accessibilityLiveRegion="polite" style={s.error}>
-          {message}
-        </T>
-      ) : null}
-      <CTA
-        title={
-          busy
-            ? t("ინახება…", "Saving…")
-            : editing
-              ? t("შენახვა", "Save period")
-              : t("დავიწყოთ", "Find my rhythm")
-        }
-        onPress={() => void submit()}
-        disabled={busy}
-      />
-      <T style={[s.muted, { marginTop: 20 }]}>
-        {t(
-          "შენახული ჩანაწერები სინქრონდება შენს ანგარიშთან.",
-          "Saved entries sync with your account.",
-        )}
-      </T>
-      <CycleEducation data={data} birthDate={birthDate} />
-    </View>
-  );
-}
-function Home({
-  data,
-  openCalendar,
-  openLog,
-  openPregnancy,
-  birthDate,
-}: {
-  data: Data;
-  openCalendar: (date?: string, editing?: boolean) => void;
-  openLog: (date?: string, activityOnly?: boolean) => void;
-  openPregnancy: () => void;
-  birthDate?: string;
-}) {
-  const ka = data.lang === "ka";
-  const t = (a: string, b: string) => (ka ? a : b);
-  const { width, fontScale } = useWindowDimensions();
-  const stackCycle = width < 365 || fontScale > 1.25;
-  if (data.pregnancy?.active)
-    return (
-      <View style={s.content}>
-        <T weight="display" style={s.title}>
-          {t("ორსულობის რეჟიმი", "Pregnancy mode")}
-        </T>
-        <T style={s.muted}>
-          {t(
-            "პერიოდისა და ნაყოფიერი დღეების პროგნოზები შეჩერებულია.",
-            "Period and fertile-day estimates are paused.",
-          )}
-        </T>
-        <CTA
-          title={t("ორსულობის გვერდი", "Pregnancy page")}
-          onPress={openPregnancy}
-        />
-      </View>
-    );
-  const model = periodCalendarModel(data);
-  const { today, nextWindow } = model;
-  const c = cycleAt(data.periods, data.cycleLength, today, today);
-  if (!c) return null;
-  const left = nextWindow ? distance(today, nextWindow.start) : 0;
-  const week = Array.from({ length: 7 }, (_, i) => addDays(today, i - 3));
-  const phase =
-    model.status === "overdue" ||
-    (model.reliability === "low" && c.phase !== "menstruation")
-      ? "unknown"
-      : c.phase;
-  const reliability =
-    model.reliability === "consistent"
-      ? t("ისტორიაზე დაფუძნებული", "Based on your history")
-      : model.reliability === "low"
-        ? t("სიზუსტე შეზღუდულია", "Limited accuracy")
-        : t("საწყისი შეფასება", "Initial estimate");
-  const cycleCard = (
-      <View
-        style={[
-          s.card,
-          {
-            backgroundColor: "#EEE6F7",
-            borderColor: "#E1D3F1",
-            padding: 20,
-            overflow: "hidden",
-          },
-        ]}
-      >
-        <View style={[s.topBar, { flexWrap: "wrap" }]}>
-          <T weight="bold" style={{ fontSize: 14, color: C.muted }}>
-            {t("მიმდინარე ციკლი", "CURRENT CYCLE")}
-          </T>
-          <T style={{ fontSize: 14, color: C.muted }}>
-            {t(`${c.length} დღიანი შეფასება`, `${c.length}-day estimate`)}
-          </T>
-        </View>
-        <View style={stackCycle ? { gap: 12, alignItems: "center" } : [s.row, { gap: 10 }]}>
-          <View style={stackCycle ? { alignSelf: "stretch" } : { flex: 1 }}>
-            <T style={s.muted}>{t("ციკლის დღე", "Cycle day")}</T>
-            <T weight="display" style={{ fontSize: 69, lineHeight: 78 }}>
-              {c.day}
-            </T>
-            <View
-              style={{
-                alignSelf: "flex-start",
-                backgroundColor: C.white,
-                borderRadius: 12,
-                paddingHorizontal: 10,
-                paddingVertical: 7,
-                marginTop: 5,
-                maxWidth: "100%",
-              }}
-            >
-              <T weight="bold" style={{ fontSize: 14 }}>
-                {phases[phase][ka ? 0 : 1]}
-              </T>
-            </View>
-          </View>
-          <View pointerEvents="none">
-            <CycleOrbit day={c.day} length={c.length} size={stackCycle ? 116 : 142} />
-          </View>
-        </View>
-        <T style={[s.muted, { marginTop: 17 }]}>
-          {t(
-            "ფაზა სავარაუდოა და ჩანაწერების მიხედვით იცვლება.",
-            "Phase is estimated and updates with your entries.",
-          )}
-        </T>
-      </View>
-  );
-  return (
-    <View style={s.content}>
-      <T style={[s.muted, { fontSize: 15 }]}>
-        {data.name
-          ? t(`გამარჯობა, ${data.name}`, `Hello, ${data.name}`)
-          : t("შენი სივრცე", "Your space")}
-      </T>
-      <T weight="display" style={[s.title, { marginTop: 3, marginBottom: 18 }]}>
-        {t("დღეს შენს რიტმში", "Today in your rhythm")}
-      </T>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t(
-          "შემდეგი პერიოდის კალენდარში ნახვა",
-          "View next period in calendar",
-        )}
-        onPress={() =>
-          openCalendar(
-            model.status === "active" && model.expected
-              ? model.expected
-              : today,
-          )
-        }
-        style={s.card}
-      >
-        <View style={s.topBar}>
-          <T weight="bold" style={{ fontSize: 18, flex: 1 }}>
-            {t("შემდეგი პერიოდი", "Next period")}
-          </T>
-          <Icon name="arrow" size={19} />
-        </View>
-        <T weight="display" style={{ fontSize: 27, lineHeight: 36 }}>
-          {model.status === "overdue"
-            ? t("პროგნოზი შეჩერებულია", "Estimate paused")
-            : left > 0
-              ? t(`${left} დღეში`, `In ${left} ${left === 1 ? "day" : "days"}`)
-              : t("სავარაუდოდ დღეს", "Estimated today")}
-        </T>
-        <T style={[s.muted, { marginTop: 5 }]}>
-          {nextWindow
-            ? `${nextWindow.start}${nextWindow.end !== nextWindow.start ? ` – ${nextWindow.end}` : ""} · ${reliability}`
-            : t(
-                "ჩაწერე დაწყების თარიღი კალენდარში.",
-                "Record the start date in Calendar.",
-              )}
-        </T>
-      </Pressable>
-      <View style={[s.wrap, { marginBottom: 12 }]}>
-        {[
-          { title: t("პერიოდის მონიშვნა", "Log period"), action: () => openCalendar(today, true) },
-          { title: t("დღიური", "Journal"), action: () => openLog() },
-          { title: t("კალენდარი", "Calendar"), action: () => openCalendar(today) },
-          { title: t("სქესობრივი აქტივობა", "Sexual activity"), action: () => openLog(today, true) },
-        ].map(({ title, action }) => <Pressable key={title} accessibilityRole="button" onPress={action} style={[s.card, { marginBottom: 0, minHeight: 44, padding: 10, justifyContent: "center" }]}>
-          <T weight="bold">{title}</T>
-        </Pressable>)}
-      </View>
-      <View style={s.card}>
-        <T weight="bold" style={{ fontSize: 18, marginBottom: 14 }}>
-          {t("შენი კვირა", "Your week")}
-        </T>
-        <View style={{ flexDirection: "row" }}>
-          {week.map((day) => {
-            const info = model.day(day);
-            const { state } = info;
-            const weekday = new Date(`${day}T12:00:00Z`).getUTCDay();
-            const labels = ka
-              ? ["კვ", "ორ", "სა", "ოთ", "ხუ", "პა", "შა"]
-              : ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-            return (
-              <Pressable
-                key={day}
-                accessibilityRole="button"
-                accessibilityLabel={periodDayLabel(info, day, ka)}
-                onPress={() => openCalendar(day)}
-                style={{
-                  flex: 1,
-                  minHeight: 62,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 13,
-                  backgroundColor:
-                    day === today
-                      ? C.ink
-                      : state === "period"
-                        ? C.lav
-                        : state === "fertile"
-                          ? C.yellow
-                          : state === "predicted" ? "#EEE6F7" : "#F3F1F6",
-                }}
-              >
-                <T
-                  style={{
-                    fontSize: 13,
-                    color: day === today ? C.white : C.muted,
-                  }}
-                >
-                  {labels[weekday]}
-                </T>
-                <T
-                  weight="bold"
-                  style={{
-                    fontSize: 16,
-                    color: day === today ? C.white : C.ink,
-                  }}
-                >
-                  {Number(day.slice(-2))}
-                </T>
-                <DayMarkers info={info} ka={ka} color={day === today ? C.white : C.ink} />
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      {cycleCard}
-      <T style={s.muted}>
-        {t(
-          "პროგნოზები შეფასებაა და არ წარმოადგენს კონტრაცეფციის მეთოდს.",
-          "Predictions are estimates and are not a method of contraception.",
-        )}
-      </T>
-      <CycleEducation data={data} birthDate={birthDate} />
-    </View>
-  );
-}
-
-function DayMarkers({ info, ka, color = C.ink }: {
-  info: ReturnType<ReturnType<typeof periodCalendarModel>["day"]>;
-  ka: boolean;
-  color?: string;
-}) {
-  const symbols = periodDayMarkers(ka).filter(marker => info[marker.key]).map(marker => marker.symbol).join("");
-  return symbols ? <T accessible={false} style={{ position: "absolute", bottom: 1, fontSize: 9, lineHeight: 10, color }}>{symbols}</T> : null;
+  const [length, setLength] = useState(data.cycleLength);
+  const [name, setName] = useState(data.name);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  return <View style={[s.card, { gap: 8 }]}>
+    <FieldLabel>{ka ? "სახელი (სურვილისამებრ)" : "Name (optional)"}</FieldLabel>
+    <TextInput accessibilityLabel={ka ? "სახელი" : "Name"} style={s.input} value={name} onChangeText={setName} maxLength={40}/>
+    <NumberWheel label={ka ? "ციკლის ხანგრძლივობა (დღე)" : "Cycle length (days)"} value={length} min={21} max={45} onChange={setLength} ka={ka}/>
+    <CTA title={busy ? (ka ? "ინახება…" : "Saving…") : (ka ? "შენახვა" : "Save")} disabled={busy} onPress={() => {
+      if (busy) return;
+      setBusy(true);
+      void save({ ...data, name: name.trim(), cycleLength: length }).then(ok => {
+        setMessage(ok ? (ka ? "პარამეტრები შენახულია." : "Settings saved.") : (ka ? "შენახვა ვერ მოხერხდა." : "Could not save."));
+      }).finally(() => setBusy(false));
+    }}/>
+    {!!message && <T accessibilityLiveRegion="polite">{message}</T>}
+  </View>;
 }
 
 function Daily({
@@ -1779,398 +1381,6 @@ function Daily({
   );
 }
 
-function Calendar({
-  data,
-  save,
-  openLog,
-  initialDate,
-  initiallyEditing = false,
-}: {
-  data: Data;
-  openLog: (date: string) => void;
-  initialDate: string;
-  initiallyEditing?: boolean;
-} & Shared) {
-  const ka = data.lang === "ka";
-  const t = (a: string, b: string) => (ka ? a : b);
-  const calendar = periodCalendarModel(data);
-  const { today } = calendar;
-  const [showKey, setShowKey] = useState(false);
-  const [month, setMonth] = useState(
-      () =>
-        new Date(
-          Number(initialDate.slice(0, 4)),
-          Number(initialDate.slice(5, 7)) - 1,
-          1,
-        ),
-    ),
-    [selected, setSelected] = useState(initialDate);
-  const recordedOn = (date: string) =>
-    data.periods.find((p) => date >= p.start && date < addDays(p.start, p.duration));
-  const initialPeriod = initiallyEditing ? recordedOn(initialDate) : undefined;
-  const [editing, setEditing] = useState(initiallyEditing && !data.pregnancy?.active),
-    [periodDays, setPeriodDays] = useState<string[]>(() =>
-      initialPeriod
-        ? Array.from({ length: initialPeriod.duration }, (_, index) => addDays(initialPeriod.start, index)).filter((day) => day <= today)
-        : [],
-    ),
-    [periodMessage, setPeriodMessage] = useState(""),
-    [confirmDelete, setConfirmDelete] = useState(false);
-  const first = (month.getDay() + 6) % 7;
-  const count = new Date(
-    month.getFullYear(),
-    month.getMonth() + 1,
-    0,
-  ).getDate();
-  const cells = Array.from(
-    { length: Math.ceil((first + count) / 7) * 7 },
-    (_, i) => i - first + 1,
-  );
-  const selectedLog = data.logs.find((l) => l.date === selected);
-  const selectedInfo = calendar.day(selected);
-  const c = cycleAt(data.periods, data.cycleLength, selected, today);
-  const recorded =
-    selected <= today
-      ? recordedOn(selected)
-      : undefined;
-  const changeDate = (key: string) => {
-    setSelected(key);
-    setEditing(false);
-    setPeriodMessage("");
-    setConfirmDelete(false);
-  };
-  const savePeriod = async () => {
-    if (data.pregnancy?.active) {
-      setPeriodMessage(
-        t(
-          "პერიოდის დასამატებლად ჯერ გამორთე ორსულობის რეჟიმი.",
-          "Turn off pregnancy mode before logging a period.",
-        ),
-      );
-      return;
-    }
-    const result = periodsFromHistorySelection(periodDays, data.periods, recorded?.start, today);
-    if (result.error === "selection") {
-      setPeriodMessage(
-        t(
-          "მონიშნე სისხლდენის დღეები. თითო პერიოდი მაქსიმუმ 10 ზედიზედ დღეა.",
-          "Select bleeding days. Each period can have at most 10 consecutive days.",
-        ),
-      );
-      return;
-    }
-    if (result.error === "overlap") {
-      setPeriodMessage(
-        t(
-          "სისხლდენის დღეები სხვა ჩანაწერს ემთხვევა.",
-          "Bleeding days overlap another entry.",
-        ),
-      );
-      return;
-    }
-    if (!result.periods || !result.start) return;
-    if (await save({ ...data, periods: result.periods })) {
-      setSelected(result.start);
-      setMonth(new Date(Number(result.start.slice(0,4)), Number(result.start.slice(5,7)) - 1, 1));
-      setEditing(false);
-      setPeriodMessage(t("პერიოდი შენახულია ✓", "Period saved ✓"));
-    } else setPeriodMessage(t("შენახვა ვერ მოხერხდა. მონიშნული დღეები დარჩა — სცადე ხელახლა.", "Could not save. Your selected days are preserved; please retry."));
-  };
-  const deletePeriod = async () => {
-    if (!recorded) return;
-    if (
-      await save({
-        ...data,
-        periods: data.periods.filter((p) => p.start !== recorded.start),
-      })
-    ) {
-      setEditing(false);
-      setConfirmDelete(false);
-      setPeriodMessage(t("პერიოდი წაიშალა", "Period removed"));
-    }
-  };
-  return (
-    <View style={s.content}>
-      <T style={[s.muted, { fontSize: 15 }]}>
-        {t("თვეების მიმოხილვა", "CYCLE CALENDAR")}
-      </T>
-      <T weight="display" style={[s.title, { marginTop: 4, marginBottom: 18 }]}>
-        {t("შენი კალენდარი", "Your calendar")}
-      </T>
-      {!editing && (
-      <>
-      <View style={[s.card, { paddingHorizontal: 8 }]}>
-        <View style={s.topBar}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("წინა თვე", "Previous month")}
-            style={s.round}
-            onPress={() =>
-              setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
-            }
-          >
-            <Icon name="back" />
-          </Pressable>
-          <View style={{ alignItems: "center", flex: 1 }}>
-            <T weight="bold" style={{ fontSize: 21, textAlign: "center" }}>
-              {monthLabel(month, ka)}
-            </T>
-            <T style={s.muted}>{month.getFullYear()}</T>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("შემდეგი თვე", "Next month")}
-            style={s.round}
-            onPress={() =>
-              setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
-            }
-          >
-            <Icon name="arrow" />
-          </Pressable>
-        </View>
-        <View style={{ flexDirection: "row" }}>
-          {(ka
-            ? ["ორ", "სა", "ოთ", "ხუ", "პა", "შა", "კვ"]
-            : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-          ).map((x) => (
-            <View
-              key={x}
-              style={[s.cell, { alignItems: "center", paddingVertical: 12 }]}
-            >
-              <T style={{ fontSize: 12 }}>{x}</T>
-            </View>
-          ))}
-        </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-          {cells.map((n, i) => {
-            if (n < 1 || n > count) return <View key={i} style={s.cell} />;
-            const key = dateKey(
-              new Date(month.getFullYear(), month.getMonth(), n),
-            );
-            const info = calendar.day(key);
-            const { state } = info;
-            return (
-              <View key={key} style={s.cell}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={periodDayLabel(info, key, ka)}
-                  accessibilityState={{ selected: selected === key }}
-                  onPress={() => changeDate(key)}
-                  style={[
-                    s.day,
-                    {
-                      backgroundColor:
-                        state === "period"
-                          ? C.lav
-                          : state === "fertile"
-                            ? C.yellow
-                            : state === "predicted"
-                              ? C.white
-                              : "#F4F2F7",
-                      borderColor:
-                        state === "predicted" ? "#A78BC9" : "transparent",
-                      borderStyle: state === "predicted" ? "dashed" : "solid",
-                    },
-                    selected === key && {
-                      borderColor: C.ink,
-                      borderWidth: 2,
-                      borderStyle: "solid",
-                    },
-                  ]}
-                >
-                  <T weight={key === today ? "bold" : "regular"}>{n}</T>
-                  <DayMarkers info={info} ka={ka} />
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded: showKey }} onPress={() => setShowKey(!showKey)} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}>
-          <T weight="bold">{t("კალენდრის ნიშნები", "Calendar key")} {showKey ? "−" : "+"}</T>
-        </Pressable>
-        {showKey && <View style={s.wrap}>
-          {[
-            [C.lav, t("ჩაწერილი პერიოდი", "Recorded period"), false],
-            [
-              C.yellow,
-              t("სავარაუდო ნაყოფიერი დღეები", "Estimated fertile days"),
-              false,
-            ],
-            [C.white, t("სავარაუდო პერიოდი", "Predicted period"), true],
-          ].map(([color, label, dashed]) => (
-            <View key={String(label)} style={s.row}>
-              <View
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 6,
-                  backgroundColor: String(color),
-                  borderWidth: dashed ? 1 : 0,
-                  borderColor: "#A78BC9",
-                  borderStyle: dashed ? "dashed" : "solid",
-                }}
-              />
-              <T style={{ fontSize: 12, flexShrink: 1 }}>{label}</T>
-            </View>
-          ))}
-          {periodDayMarkers(ka).map(({key, symbol, label}) => <T key={key} style={{ fontSize: 12 }}>{symbol} {label}</T>)}
-        </View>}
-      </View>
-      <View style={[s.card, { backgroundColor: C.ink }]}>
-        <T style={{ color: C.lav, marginBottom: 8 }}>{selected}</T>
-        <T weight="display" style={{ fontSize: 24, color: C.yellow }}>
-          {recorded
-            ? t("ჩაწერილი მენსტრუაცია", "Recorded period")
-            : selected > today
-              ? t("სავარაუდო თარიღი", "Estimated date")
-              : c
-                ? t(`ციკლის დღე ${c.day}`, `Cycle day ${c.day}`)
-                : t("ციკლი არ არის ჩაწერილი", "No cycle recorded")}
-        </T>
-        <T style={{ color: C.white, marginTop: 8 }}>
-          {recorded
-            ? t(
-                `დაიწყო ${recorded.start} · ${recorded.duration} დღე`,
-                `Started ${recorded.start} · ${recorded.duration} days`,
-              )
-            : selected > today
-              ? t("ეს მხოლოდ პროგნოზია.", "This is only an estimate.")
-              : c
-                ? phases[c.phase][ka ? 0 : 1]
-                : ""}
-        </T>
-        {selectedLog && (
-          <T numberOfLines={3} style={{ color: C.lav, marginTop: 12 }}>
-            {selectedLog.notes || t("დღიური შენახულია ✓", "Check-in saved ✓")}
-          </T>
-        )}
-        {periodDayMarkers(ka).filter(marker => selectedInfo[marker.key]).map(({key, label, symbol}) => (
-          <T key={key} style={{ color: C.white, marginTop: 5 }}>{symbol} {label}</T>
-        ))}
-      </View>
-      {selected <= today && (
-        <>
-          <CTA
-            title={
-              selectedLog
-                ? t("ჩანაწერის შეცვლა", "Edit check-in")
-                : t("დღიურის დამატება", "Add check-in")
-            }
-            onPress={() => openLog(selected)}
-          />
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setEditing(!editing);
-              setPeriodDays(
-                recorded
-                  ? Array.from({ length: recorded.duration }, (_, index) =>
-                      addDays(recorded.start, index),
-                    ).filter((day) => day <= today)
-                  : selected <= today
-                    ? [selected]
-                    : [],
-              );
-              setPeriodMessage("");
-            }}
-            style={{
-              minHeight: 52,
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <T weight="bold">
-              {recorded
-                ? t("პერიოდის შეცვლა", "Edit recorded period")
-                : t("+ მენსტრუაციის დაწყების ჩაწერა", "+ Record period start")}
-            </T>
-          </Pressable>
-        </>
-      )}
-      </>
-      )}
-      {editing && (
-        <View style={[s.card, { backgroundColor: C.lav }]}>
-          <T weight="bold">
-            {t("პერიოდის დღეები", "Period days")}
-          </T>
-          <T style={[s.muted, { marginVertical: 10 }]}>
-            {t(
-              "შეეხე პირველ და ბოლო დღეს. დღის მოსახსნელად შეეხე ისევ. წინა თვეებისთვის გამოიყენე ისარი.",
-              "Tap the first and last day. Tap again to unmark a day. Use the arrow for previous months.",
-            )}
-          </T>
-          <PeriodDaysPicker
-            ka={ka}
-            initialDate={recorded?.start ?? (selected <= today ? selected : today)}
-            days={periodDays}
-            onChangeDays={days => {
-              setPeriodDays(days);
-              setPeriodMessage("");
-            }}
-            onToggle={(date) => {
-              setPeriodDays((current) => current.includes(date) ? current.filter((day) => day !== date) : [...current, date]);
-              setPeriodMessage("");
-            }}
-          />
-          <View style={{ marginTop: 14 }}>
-            {periodMessage ? <T accessibilityRole="alert" style={{ marginBottom: 8 }}>{periodMessage}</T> : null}
-            <CTA
-              disabled={!periodDays.length}
-              title={t(`შენახვა · ${periodDays.length} დღე`, `Save · ${periodDays.length} days`)}
-              onPress={() => void savePeriod()}
-            />
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
-            onPress={() => {
-              setEditing(false);
-              setConfirmDelete(false);
-              setPeriodMessage("");
-            }}
-          >
-            <T>{t("მონიშვნის გაუქმება", "Cancel selection")}</T>
-          </Pressable>
-          {recorded && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setConfirmDelete(true)}
-              style={{ minHeight: 50, justifyContent: "center" }}
-            >
-              <T style={{ color: "#92384B" }}>
-                {t("ამ პერიოდის წაშლა", "Remove this period")}
-              </T>
-            </Pressable>
-          )}
-          {confirmDelete && (
-            <View style={s.wrap}>
-              <Chip
-                label={t("გაუქმება", "Cancel")}
-                selected={false}
-                onPress={() => setConfirmDelete(false)}
-              />
-              <Chip
-                label={t("წაშლის დადასტურება", "Confirm removal")}
-                selected
-                onPress={() => void deletePeriod()}
-              />
-            </View>
-          )}
-        </View>
-      )}
-      {!editing && periodMessage ? (
-        <T
-          accessibilityLiveRegion="polite"
-          style={[s.muted, { marginTop: 12 }]}
-        >
-          {periodMessage}
-        </T>
-      ) : null}
-    </View>
-  );
-}
-
 function PredictionNotice({ data }: { data: Data }) {
   if (data.pregnancy?.active)
     return (
@@ -2242,11 +1452,13 @@ function Insights({
   birthDate,
   token,
   onPremium,
+  onReport,
 }: {
   data: Data;
   birthDate?: string;
   token: string;
   onPremium: () => void;
+  onReport?: () => void;
 }) {
   const ka = data.lang === "ka";
   const t = (a: string, b: string) => (ka ? a : b);
@@ -2274,8 +1486,9 @@ function Insights({
         {t("შენი ჩანაწერების მიხედვით", "FROM YOUR ENTRIES")}
       </T>
       <T weight="display" style={[s.title, { marginTop: 4 }]}>
-        {t("ციკლის ანალიტიკა", "Cycle insights")}
+        {t("ციკლის ანალიზი", "Cycle analysis")}
       </T>
+      {onReport && <CTA light title={t("ექიმისთვის ანგარიში", "Report for your doctor")} onPress={onReport}/>}
       <View
         style={[s.card, { backgroundColor: "#EEE6F7", borderColor: "#E1D3F1" }]}
       >
@@ -2487,22 +1700,27 @@ function Insights({
 function Profile({
   data,
   save,
-  birthDate,
   session,
   authBusy,
   setAuthBusy,
   onNavigate,
+  showCycleSettings,
+  scrollToSection,
 }: {
   session: Session;
   authEnabled: boolean;
   authBusy: boolean;
   setAuthBusy: (value: boolean) => void;
   onNavigate: (tab: Tab) => void;
+  showCycleSettings: boolean;
+  scrollToSection: (ref: React.RefObject<View | null>) => void;
 } & Shared) {
   const ka = data.lang === "ka",
     t = (a: string, b: string) => (ka ? a : b);
-  const [editing, setEditing] = useState(false),
+  const [editing, setEditing] = useState(showCycleSettings),
     [message, setMessage] = useState("");
+  const cycleSettingsRef = useRef<View>(null);
+  const jumpedToSettings = useRef(false);
   const [socialLinks, setSocialLinks] = useState<SocialLinks>(EMPTY_SOCIAL_LINKS);
   useEffect(() => {
     let active = true;
@@ -2566,6 +1784,12 @@ function Profile({
           </Pressable>)}
         </View>
       </View>}
+      <View ref={cycleSettingsRef} collapsable={false} onLayout={() => {
+        if (showCycleSettings && !jumpedToSettings.current) {
+          jumpedToSettings.current = true;
+          scrollToSection(cycleSettingsRef);
+        }
+      }}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: editing }}
@@ -2580,8 +1804,9 @@ function Profile({
         <Icon name={editing ? "close" : "arrow"} />
       </Pressable>
       {editing && (
-        <Setup data={data} save={save} birthDate={birthDate} editing />
+        <CycleSettings data={data} save={save} />
       )}
+      </View>
       <View style={[s.card, { gap: 16 }]}>
         <FieldLabel>
           {t("მონაცემები და უსაფრთხოება", "Data & safety")}

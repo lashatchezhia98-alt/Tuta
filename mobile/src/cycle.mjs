@@ -114,6 +114,26 @@ export function periodsFromHistorySelection(days, existing, editingStart, today 
     return { error: 'selection' };
   }
 }
+// Preview the actual entries affected by the same transaction that will save them.
+export function periodSelectionReview(days, existing, editingStart, today = predictionDateKey()) {
+  const result = periodsFromHistorySelection(days, existing, editingStart, today);
+  const selected = new Set(days);
+  const entries = result.periods?.filter(period =>
+    Array.from({ length: period.duration }, (_, index) => addDays(period.start, index)).some(day => selected.has(day))
+  ) ?? [];
+  return { ...result, entries };
+}
+
+export function calendarDateLabel(date, ka, year = false) {
+  return new Intl.DateTimeFormat(ka ? 'ka-GE' : 'en-GB', {
+    day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC',
+  }).format(new Date(stamp(date)));
+}
+
+export function calendarRangeLabel(start, end, ka, year = false) {
+  return start === end ? calendarDateLabel(start, ka, year)
+    : `${calendarDateLabel(start, ka, year && start.slice(0, 4) !== end.slice(0, 4))} – ${calendarDateLabel(end, ka, year)}`;
+}
 export function ordered(periods) {
   const sorted = [...periods].sort((a,b)=>a.start.localeCompare(b.start));
   sorted.forEach((p,i)=>{
@@ -189,6 +209,10 @@ export function periodCalendarModel({ periods, cycleLength, logs = [], pregnancy
   const windows = model.starts.map(start => ({ start, end: addDays(start, duration - 1) }));
   const logByDate = new Map(logs.filter(log => log.date <= today).map(log => [log.date, log]));
   const recorded = ordered(periods).filter(p => p.start <= today);
+  const fertileWindows = model.fertilityAvailable ? [recorded.at(-1).start, ...model.starts].map(start => {
+    const ovulation = addDays(start, Math.round(model.averageLength) - 14);
+    return { start: addDays(ovulation, -5), end: addDays(ovulation, 1), ovulation };
+  }).filter(window => window.end >= today) : [];
   const recent = windows.length ? history(recorded).slice(-6) : [];
   // A date without a flow entry is not evidence of a light day.
   const heavierOffsets = windows.length ? new Set(Array.from({ length: duration }, (_, offset) => {
@@ -198,15 +222,22 @@ export function periodCalendarModel({ periods, cycleLength, logs = [], pregnancy
     return flows.length >= 3 && flows.filter(flow => flow === 'heavy').length * 3 >= flows.length * 2
       ? offset : -1;
   })) : new Set();
+  const nextFertile = fertileWindows[0];
   return {
     ...model, today, windows, nextWindow: windows[0] ?? null,
+    nextFertileWindow: nextFertile ? { start: nextFertile.start < today ? today : nextFertile.start, end: nextFertile.end } : null,
     day(date) {
       stamp(date);
       const window = windows.find(w => date >= w.start && date <= w.end);
-      const state = stateForCalendarDay(recorded, model, date, today, window);
+      const fertility = date >= today && fertileWindows.find(w => date >= w.start && date <= w.end);
+      const state = date <= today && recorded.some(p => date >= p.start && date < addDays(p.start, p.duration)) ? 'period'
+        : window ? 'predicted' : fertility ? 'fertile' : '';
       const log = logByDate.get(date);
       return {
         state,
+        today: date === today,
+        ovulation: state === 'fertile' && !!fertility && fertility.ovulation === date,
+        journal: !!log,
         expectedEnd: window?.end === date,
         expectedHeavy: !!window && heavierOffsets.has(distance(window.start, date)),
         heavy: log?.flow === 'heavy',
@@ -227,30 +258,30 @@ export function periodDayMarkers(ka) {
   ];
 }
 
-export function periodDayLabel(day, date, ka) {
-  const states = {
-    period: ka ? 'ჩაწერილი პერიოდი' : 'Recorded period',
-    predicted: ka ? 'სავარაუდო პერიოდი' : 'Estimated period',
-    fertile: ka ? 'სავარაუდო ნაყოფიერი დღე' : 'Estimated fertile day',
-  };
-  return [date, states[day.state], ...periodDayMarkers(ka).filter(marker => day[marker.key]).map(marker => marker.label)].filter(Boolean).join(', ');
+export const calendarColors = { period: '#F8DCE6', predicted: '#A64065', fertile: '#4F8267' };
+
+export function periodCalendarLegend(ka, marking = false) {
+  return [
+    { key: 'period', label: ka ? 'ჩაწერილი პერიოდი' : 'Recorded period' },
+    { key: 'predicted', label: ka ? 'მოსალოდნელი პერიოდი' : 'Estimated period' },
+    { key: 'fertile', label: ka ? 'სავარაუდო ნაყოფიერი დღეები' : 'Estimated fertile days' },
+    { key: 'ovulation', symbol: '◆', label: ka ? 'სავარაუდო ოვულაცია' : 'Estimated ovulation' },
+    { key: 'journal', symbol: '•', label: ka ? 'დღიურის ჩანაწერი' : 'Journal entry' },
+    { key: 'today', label: ka ? 'დღეს' : 'Today' },
+    ...(marking ? [{ key: 'draft', symbol: '✓', label: ka ? 'მონიშნულია, ჯერ შეუნახავია' : 'Selected, not yet saved' }] : []),
+    ...periodDayMarkers(ka),
+  ];
+}
+
+export function periodDayLabel(day, date, ka, marked = false) {
+  const descriptions = periodCalendarLegend(ka, marked).filter(({ key }) =>
+    day.state === key || key === 'draft' || (key in day && day[key])
+  );
+  return [date, ...descriptions.map(marker => marker.label)].join(', ');
 }
 
 export function calendarState(periods, fallback, date, asOf=dateKey(), pregnancyActive=false) {
   return periodCalendarModel({ periods, cycleLength: fallback, pregnancy: { active: pregnancyActive } }, asOf).day(date).state;
-}
-function stateForCalendarDay(recorded, model, date, today, window) {
-  if (date <= today && recorded.some(p => date >= p.start && date < addDays(p.start, p.duration))) return 'period';
-  if (window) return 'predicted';
-  // Fertility estimates are not recorded biological events.
-  if (date >= today && model.fertilityAvailable) {
-    const length = Math.round(model.averageLength);
-    const elapsed = distance(recorded.at(-1).start, date);
-    const offset = elapsed % length;
-    const ovulation = length - 14;
-    if (Math.floor(elapsed / length) <= 6 && offset >= ovulation - 5 && offset <= ovulation + 1) return 'fertile';
-  }
-  return '';
 }
 export function predictions(periods, fallback, asOf=dateKey()) {
   return forecast(periods,fallback,asOf).starts;

@@ -9,21 +9,21 @@ import Link from "next/link";
 import { useHealthState, type HealthData } from "@/app/use-health-state";
 import {
   addDays,
+  calendarDateLabel,
+  calendarRangeLabel,
+  periodCalendarLegend,
   periodCalendarModel,
-  periodDayMarkers,
   periodDayLabel,
   predictionDateKey,
   symptomPatterns,
-  distance,
-  overlapsPeriod,
   selectPeriodDay,
-  periodsFromHistorySelection,
+  periodSelectionReview,
 } from "../mobile/src/cycle.mjs";
 import { symptoms } from "../mobile/src/symptoms.mjs";
 import { healthReport, reminderCalendar } from "@/lib/health-report";
 import { sexualActivityOptions } from "@/mobile/src/sexual-activity";
 import { Check, ChevronDown, Heart, LockKeyhole, MoreHorizontal, ShieldCheck } from "lucide-react";
-import CycleOverview from "./cycle-overview";
+import CycleOverview, { CalendarKeyMark } from "./cycle-overview";
 import CycleEducation from "./cycle-education";
 
 const workspaceNavigation = [
@@ -88,7 +88,7 @@ export default function HealthWorkspace({
         {workspaceNavigation
           .filter(([href]) => {
             const id = featureForRoute(href);
-            return (kind !== "dashboard" || ["/app/dashboard", "/app/log", "/app/insights", "/app/report"].includes(href)) && (!id || features[id]);
+            return (kind !== "dashboard" || ["/app/dashboard", "/app/log", "/app/insights"].includes(href)) && (!id || features[id]);
           })
           .map(([href, id]) => (
             <Link
@@ -96,20 +96,17 @@ export default function HealthWorkspace({
               href={href}
               aria-current={href.endsWith("/" + kind) ? "page" : undefined}
             >
-              {kind === "dashboard" && href === "/app/dashboard" ? (ka ? "შეჯამება" : "Summary") : <SiteCopyText id={id} lang={lang}/>}
+              {href === "/app/dashboard" ? (ka ? "პერიოდი" : "Period") : href === "/app/insights" ? (ka ? "ციკლის ანალიზი" : "Cycle analysis") : <SiteCopyText id={id} lang={lang}/>}
             </Link>
           ))}
-        {kind === "dashboard" && features.period && <Link href="#period-calendar">{ka ? "კალენდარი" : "Calendar"}</Link>}
-        {kind === "dashboard" && features.notifications && <Link href="/app/reminders">{ka ? "შეხსენებები" : "Reminders"}</Link>}
       </nav>
       {["dashboard", "log", "insights"].includes(kind) && <nav className="mobile-period-nav" aria-label={ka ? "პერიოდის სექციები" : "Period sections"}>
         {workspaceNavigation.slice(1, 4).filter(([href]) => {
           const id = featureForRoute(href);
           return id && features[id];
-        }).map(([href, id]) => <Fragment key={href}>
-          <Link href={href} aria-current={href.endsWith("/" + kind) ? "page" : undefined}>{href === "/app/dashboard" ? (ka ? "შეჯამება" : "Summary") : <SiteCopyText id={id} lang={lang}/>}</Link>
-          {href === "/app/dashboard" && <Link href="/app/dashboard#period-calendar">{ka ? "კალენდარი" : "Calendar"}</Link>}
-        </Fragment>)}
+        }).map(([href, id]) => <Link key={href} href={href} aria-current={href.endsWith("/" + kind) ? "page" : undefined}>
+          {href === "/app/dashboard" ? (ka ? "პერიოდი" : "Period") : href === "/app/insights" ? (ka ? "ციკლის ანალიზი" : "Cycle analysis") : <SiteCopyText id={id} lang={lang}/>}
+        </Link>)}
       </nav>}
       <main className="workspace-main">
         <p className={kind === "dashboard" ? "inner-kicker period-desktop-heading" : "inner-kicker"}>
@@ -196,6 +193,13 @@ function ProfileHealthActions({ data, save, error, lang, period, reminders, acco
   const [length, setLength] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState("");
+  const cycleSettings = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (window.location.hash === "#cycle-settings" && cycleSettings.current) {
+      cycleSettings.current.open = true;
+      cycleSettings.current.scrollIntoView({ block: "start" });
+    }
+  }, []);
   async function persist(next: HealthData, cleared = false) {
     setPending(true);
     setNotice("");
@@ -217,7 +221,7 @@ function ProfileHealthActions({ data, save, error, lang, period, reminders, acco
       {reminders && <Link href="/app/reminders">{ka ? "კალენდრის შეხსენებები" : "Calendar reminders"}</Link>}
       {accountDeletion && <Link href="/app/account-deletion">{ka ? "ანგარიშის წაშლის მოთხოვნა" : "Request account deletion"}</Link>}
     </div>
-    {period && <details className="workspace-card">
+    {period && <details ref={cycleSettings} id="cycle-settings" className="workspace-card">
       <summary>{ka ? "ციკლის პარამეტრები" : "Cycle settings"}</summary>
       <form className="workspace-form" onSubmit={event => {
         event.preventDefault();
@@ -246,356 +250,188 @@ function ProfileHealthActions({ data, save, error, lang, period, reminders, acco
 }
 
 export function PeriodCalendar({ data, save, lang, birthDate }: Props) {
-  const ka = lang === "ka",
-    calendar = periodCalendarModel(data),
-    today = calendar.today,
-    markers = [...periodDayMarkers(ka), { key: "fertility" as const, symbol: "✦", label: ka ? "სავარაუდო ნაყოფიერი დღე" : "Estimated fertile day" }];
-  const [month, setMonth] = useState(today.slice(0, 7)),
-    [selected, setSelected] = useState(today),
-    [durationDraft, setDuration] = useState<number | string>(1),
-    [lengthDraft, setLength] = useState(String(data.cycleLength)),
-    [busy, setBusy] = useState(false),
-    [message, setMessage] = useState("");
-  const [selectedDays, setSelectedDays] = useState<string[] | null>(null);
-  const [rangeStart, setRangeStart] = useState<string | null>(null);
-  const [replacing, setReplacing] = useState<string | undefined>();
+  const ka = lang === "ka";
+  const t = (kaText: string, en: string) => ka ? kaText : en;
+  const features = useSiteFeatures();
+  const calendar = periodCalendarModel(data);
+  const { today } = calendar;
+  const [month, setMonth] = useState(today.slice(0, 7));
+  const [selected, setSelected] = useState(today);
+  const [draft, setDraft] = useState<{ days: string[]; anchor: string | null; replacing?: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
   const calendarSection = useRef<HTMLElement>(null);
+  const first = month + "-01";
+  const offset = (new Date(first + "T12:00:00Z").getUTCDay() + 6) % 7;
+  const dayCount = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 0)).getUTCDate();
+  const visibleDay = selected.startsWith(month) ? selected : null;
+  const recordedOn = (date: string) => data.periods.find(p => date >= p.start && date < addDays(p.start, p.duration));
+  const recorded = visibleDay ? recordedOn(visibleDay) : undefined;
+  const selectedInfo = visibleDay ? calendar.day(visibleDay) : null;
+  const labels = periodCalendarLegend(ka, !!draft);
+  const selectedDays = new Set(draft?.days);
+  const review = draft?.days.length ? periodSelectionReview(draft.days, data.periods, draft.replacing, today) : null;
+  const selectionError = review && !review.periods ? t("თითო პერიოდი მაქსიმუმ 10 ზედიზედ დღეა. გადაამოწმე მონიშნული დღეები.", "Each period can have up to 10 consecutive days. Check the selected dates.") : null;
+  const history = [...data.periods].sort((a, b) => b.start.localeCompare(a.start));
+  const formatPeriod = ({ start, duration }: { start: string; duration: number }) =>
+    `${calendarRangeLabel(start, addDays(start, duration - 1), ka, true)} · ${duration} ${t("დღე", duration === 1 ? "day" : "days")}`;
+  useUnsavedChanges(!!draft?.days.length, ka);
   useEffect(() => {
     if (window.location.hash === "#period-calendar") calendarSection.current?.focus();
   }, []);
-  const first = month + "-01",
-    start = addDays(
-      first,
-      -((new Date(first + "T12:00:00Z").getUTCDay() + 6) % 7),
-    );
-  const existing = data.periods.find((p) => p.start === selected);
-  const recorded = data.periods.find(p => selected >= p.start && selected < addDays(p.start, p.duration));
-  function viewCalendar(date: string, marking = false) {
-    const period = marking ? data.periods.find(p => date >= p.start && date < addDays(p.start, p.duration)) : undefined;
-    setSelected(date);
-    setDuration(data.periods.find(p => p.start === date)?.duration ?? 1);
-    setMonth(date.slice(0, 7));
-    setReplacing(period?.start);
-    setRangeStart(null);
-    setSelectedDays(marking ? (period ? Array.from({ length: period.duration }, (_, i) => addDays(period.start, i)).filter(day => day <= today) : []) : null);
-    setMessage("");
-    calendarSection.current?.focus();
+
+  function focusCalendar() {
+    calendarSection.current?.focus({ preventScroll: true });
+    calendarSection.current?.scrollIntoView({ block: "start" });
   }
-  async function saveDays() {
-    if (busy || data.pregnancy?.active || !selectedDays) return;
-    const result = periodsFromHistorySelection(selectedDays, data.periods, replacing, today);
-    if (!result.periods || !result.start) {
-      setMessage(result.error === "overlap" ? (ka ? "მონიშვნა უკვე შენახულ პერიოდს ემთხვევა." : "The selection overlaps a recorded period.") : (ka ? "თითო პერიოდი მაქსიმუმ 10 ზედიზედ დღეა." : "Each period can have up to 10 consecutive days."));
-      return;
+  function beginMarking(editDate?: string) {
+    if (!draft && !busy && !data.pregnancy?.active) {
+      const period = editDate ? recordedOn(editDate) : undefined;
+      const days = period
+        ? Array.from({ length: period.duration }, (_, index) => addDays(period.start, index)).filter(day => day <= today)
+        : [];
+      setDraft({ days, anchor: null, replacing: period?.start });
+      if (month > today.slice(0, 7)) setMonth(today.slice(0, 7));
+      setMessage("");
     }
-    setBusy(true);
-    setMessage("");
-    try {
-      await save({ ...data, periods: result.periods });
-      setSelected(result.start);
-      setMonth(result.start.slice(0, 7));
-      setDuration(result.periods.find(p => p.start === result.start)?.duration ?? 1);
-      setSelectedDays(null);
-      setRangeStart(null);
-      setMessage(ka ? "პერიოდი შენახულია" : "Period saved");
-    } catch {
-      setMessage(ka ? "შენახვა ვერ მოხერხდა. სცადე ხელახლა." : "Could not save. Please retry.");
-    } finally { setBusy(false); }
-  }
-  async function persist(remove = false) {
-    setBusy(true);
-    setMessage("");
-    try {
-      if (remove) {
-        await save({ ...data, periods: data.periods.filter(p => p.start !== selected) });
-        setMessage(ka ? "წაშლილია" : "Removed");
-        return;
-      }
-      if(data.pregnancy?.active){setMessage(ka?'პერიოდის ახალი ჩანაწერის დამატებამდე გამორთე ორსულობის რეჟიმი.':'Turn off pregnancy mode before adding a period entry.');return;}
-      const duration = Number(durationDraft);
-      const length = Number(lengthDraft);
-      if (
-        selected > today ||
-        duration < 1 ||
-        duration > 10 ||
-        !Number.isInteger(duration) ||
-        !Number.isInteger(length) ||
-        length < 21 ||
-        length > 45
-      )
-        throw Error();
-      if (duration > distance(selected, today) + 1) {
-        setMessage(
-          ka
-            ? "მომავალი სისხლდენის დღეებს დადასტურებულად ნუ მონიშნავ."
-            : "Do not mark future bleeding days as confirmed.",
-        );
-        return;
-      }
-      if (
-        overlapsPeriod(data.periods, { start: selected, duration })
-      ) {
-        setMessage(
-          ka
-            ? "ეს პერიოდი არსებულ ჩანაწერს ემთხვევა."
-            : "This period overlaps another entry.",
-        );
-        return;
-      }
-      await save({
-        ...data,
-        cycleLength: length,
-        periods: [
-          ...data.periods.filter((p) => p.start !== selected),
-          { start: selected, duration },
-        ].sort((a, b) => a.start.localeCompare(b.start)),
-      });
-      setMessage(ka ? "შენახულია" : "Saved");
-    } catch {
-      setMessage(
-        ka
-          ? "შენახვა ვერ მოხერხდა. შეამოწმე მონაცემები და კავშირი."
-          : "Could not save. Check your entries and connection.",
-      );
-    } finally {
-      setBusy(false);
-    }
+    focusCalendar();
   }
   function moveMonth(delta: number) {
-    const d = new Date(first + "T12:00:00Z");
-    d.setUTCMonth(d.getUTCMonth() + delta);
-    setMonth(d.toISOString().slice(0, 7));
+    const date = new Date(first + "T12:00:00Z");
+    date.setUTCMonth(date.getUTCMonth() + delta);
+    setMonth(date.toISOString().slice(0, 7));
   }
-  function markDay(date: string) {
+  async function saveDays() {
+    if (busy || !review?.periods || !review.start || data.pregnancy?.active) return;
+    setBusy(true);
     setMessage("");
-    const next = selectPeriodDay(selectedDays ?? [], rangeStart, date, today);
-    setSelectedDays(next.days);
-    setRangeStart(next.anchor);
+    try {
+      await save({ ...data, periods: review.periods });
+      setSelected(review.start);
+      setMonth(review.start.slice(0, 7));
+      setDraft(null);
+      setMessage(t("პერიოდის ჩანაწერები შენახულია.", "Period entries saved."));
+    } catch {
+      setMessage(t("შენახვა ვერ მოხერხდა. მონიშვნები დარჩა — სცადე ხელახლა.", "Could not save. Your selection is preserved; try again."));
+    } finally { setBusy(false); }
   }
-  return (
-    <>
-      <div className="period-mobile-heading">
-        <p>{data.name ? (ka ? `გამარჯობა, ${data.name}` : `Hello, ${data.name}`) : (ka ? "შენი სივრცე" : "Your space")}</p>
-        <h1>{ka ? "დღეს შენს რიტმში" : "Today in your rhythm"}</h1>
+  async function removePeriod(start: string) {
+    if (busy || !confirm(t("წაიშალოს ეს პერიოდი ყველა მოწყობილობაზე?", "Delete this period on all devices?"))) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      await save({ ...data, periods: data.periods.filter(p => p.start !== start) });
+      setMessage(t("პერიოდი წაიშალა.", "Period removed."));
+    } catch {
+      setMessage(t("წაშლა ვერ მოხერხდა.", "Could not remove the period."));
+    } finally { setBusy(false); }
+  }
+  function historyEntry(period: { start: string; duration: number }) {
+    return <li key={period.start}><button type="button" className="history-entry" disabled={!!draft || busy} onClick={() => {
+      if (data.pregnancy?.active) focusCalendar();
+      else beginMarking(period.start);
+      setMonth(period.start.slice(0, 7));
+      setSelected(period.start);
+      setMessage("");
+    }}>{formatPeriod(period)}</button></li>;
+  }
+
+  return <>
+    <div className="period-mobile-heading">
+      <p>{data.name ? t(`გამარჯობა, ${data.name}`, `Hello, ${data.name}`) : t("შენი სივრცე", "Your space")}</p>
+      <h1>{t("პერიოდი", "Period")}</h1>
+    </div>
+    <CycleOverview periods={data.periods} cycleLength={data.cycleLength} pregnancyActive={data.pregnancy?.active}
+      calendar={calendar} lang={lang} onMark={beginMarking}/>
+    {data.pregnancy?.active && <button type="button" disabled={busy} onClick={() => {
+      if (confirm(t("გამორთო ორსულობის რეჟიმი? ისტორია შენარჩუნდება.", "Turn off pregnancy mode? History will be preserved."))) {
+        void save({ ...data, pregnancy: { ...data.pregnancy!, active: false, updatedAt: new Date().toISOString() } })
+          .catch(() => setMessage(t("შენახვა ვერ მოხერხდა.", "Could not save.")));
+      }
+    }}>{t("ორსულობის რეჟიმის გამორთვა", "Turn off pregnancy mode")}</button>}
+
+    <section ref={calendarSection} id="period-calendar" className="workspace-card period-calendar" tabIndex={-1} aria-labelledby="period-calendar-title">
+      <h2 id="period-calendar-title">{t("კალენდარი", "Calendar")}</h2>
+      {draft && <p>{t("მონიშნე პირველი და ბოლო დღე. დღის მოსახსნელად დააჭირე ხელახლა. წინა თვეებისთვის გამოიყენე ისრები.", "Select the first and last day. Tap again to remove a day. Use the arrows for earlier months.")}</p>}
+      <div className="workspace-row period-month">
+        <button type="button" aria-label={t("წინა თვე", "Previous month")} disabled={busy} onClick={() => moveMonth(-1)}>‹</button>
+        <h3 aria-live="polite">{new Intl.DateTimeFormat(ka ? "ka-GE" : "en-GB", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(first))}</h3>
+        <button type="button" aria-label={t("შემდეგი თვე", "Next month")} disabled={busy || (!!draft && month >= today.slice(0, 7))} onClick={() => moveMonth(1)}>›</button>
       </div>
-      <CycleOverview
-        periods={data.periods}
-        cycleLength={data.cycleLength}
-        pregnancyActive={data.pregnancy?.active}
-        calendar={calendar}
-        lang={lang}
-        onMark={() => viewCalendar(today, true)}
-        onCalendar={viewCalendar}
-      />
-      <div className="period-shortcuts">
-        <a href="#period-calendar">{ka ? "კალენდარი" : "Calendar"}</a>
-        <Link href="/app/log">{ka ? "დღიური" : "Journal"}</Link>
-        <Link href="/app/log?section=activity#journal-activity">{ka ? "სქესობრივი აქტივობა" : "Sexual activity"}</Link>
-      </div>
-      <div className="desktop-cycle-reference"><CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} /></div>
-      {data.pregnancy?.active&&<button type="button" disabled={busy} onClick={()=>{if(confirm(ka?'გამორთო ორსულობის რეჟიმი? ისტორია შენარჩუნდება.':'Turn off pregnancy mode? History will be preserved.'))void save({...data,pregnancy:{...data.pregnancy!,active:false,updatedAt:new Date().toISOString()}}).catch(()=>setMessage(ka?'შენახვა ვერ მოხერხდა.':'Could not save.'))}}>{ka?'ორსულობის რეჟიმის გამორთვა':'Turn off pregnancy mode'}</button>}
-      <div className="workspace-grid">
-        <section ref={calendarSection} id="period-calendar" className="workspace-card" tabIndex={-1} aria-label={ka ? "კალენდარი" : "Calendar"}>
-          <div>
-            {selectedDays === null ? <button type="button" disabled={busy || data.pregnancy?.active} onClick={() => viewCalendar(selected > today ? today : selected, true)}>{ka ? "პერიოდის დღეების მონიშვნა" : "Mark period days"}</button>
-              : <p>{ka ? "მონიშნე პირველი და ბოლო დღე. დღის მოსახსნელად დააჭირე ხელახლა." : "Select the first and last day. Tap a marked day again to remove it."}</p>}
-          </div>
-          <div className="workspace-row">
-            <button
-              aria-label={ka ? "წინა თვე" : "Previous month"}
-              onClick={() => moveMonth(-1)}
-            >
-              ‹
-            </button>
-            <h2>
-              {new Intl.DateTimeFormat(ka ? "ka-GE" : "en-GB", {
-                month: "long",
-                year: "numeric",
-                timeZone: "UTC",
-              }).format(new Date(first))}
-            </h2>
-            <button
-              aria-label={ka ? "შემდეგი თვე" : "Next month"}
-              onClick={() => moveMonth(1)}
-            >
-              ›
-            </button>
-          </div>
-          <div className="period-grid">
-            {(ka
-              ? ["ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ", "კვ"]
-              : ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-            ).map((d) => (
-              <span key={d}>{d}</span>
-            ))}
-            {Array.from({ length: 42 }, (_, i) => {
-              const date = addDays(start, i),
-                day = calendar.day(date);
-              const fertile = day.state === "fertile";
-              const visibleMarkers = markers.filter(marker =>
-                marker.key === "fertility" ? fertile : day[marker.key]
-              );
-              return (
-                <button
-                  key={date}
-                  className={`day ${day.state} ${fertile ? "fertile" : ""} ${selectedDays === null && date === selected ? "selected" : ""} ${selectedDays?.includes(date) ? "marked-bleeding-day" : ""}`}
-                  aria-label={periodDayLabel(day, date, ka)}
-                  aria-pressed={selectedDays === null ? selected === date : selectedDays.includes(date)}
-                  disabled={selectedDays !== null && (date > today || busy)}
-                  onClick={() => {
-                    if (selectedDays !== null) {
-                      markDay(date);
-                      return;
-                    }
-                    setSelected(date);
-                    setDuration(
-                      data.periods.find((p) => p.start === date)?.duration || 1,
-                    );
-                  }}
-                  style={{ opacity: date.startsWith(month) ? 1 : 0.45 }}
-                >
-                  {Number(date.slice(-2))}
-                  <span className="period-day-markers" aria-hidden="true">{visibleMarkers.map(marker => marker.symbol).join("")}</span>
-                </button>
-              );
-            })}
-          </div>
-          <details className="period-legend">
-            <summary>{ka ? "კალენდრის ნიშნები" : "Calendar key"}</summary>
-            <p><SiteCopyText id="tracker.legend" lang={lang}/></p>
-            <ul>{markers.map(({key, symbol, label}) => <li key={key}>{symbol} {label}</li>)}</ul>
-          </details>
-          <p className="period-selected-status" aria-live="polite">{periodDayLabel(calendar.day(selected), selected, ka)}</p>
-          <div>
-            {selectedDays !== null && <div className="workspace-row">
-              <button type="button" disabled={busy || !selectedDays.length} onClick={() => void saveDays()}>{ka ? `შენახვა · ${selectedDays.length} დღე` : `Save · ${selectedDays.length} days`}</button>
-              <button type="button" disabled={busy} onClick={() => { setSelectedDays(null); setMessage(""); }}>{ka ? "გაუქმება" : "Cancel"}</button>
-            </div>}
-            <p role="status">{message}</p>
-          </div>
-        </section>
-        <section className="workspace-card">
-          <h2>
-            <SiteCopyText id={existing ? "tracker.edit" : "tracker.add"} lang={lang}/>
-          </h2>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void persist();
-            }}
-            className="workspace-form"
-          >
-            <label>
-              <SiteCopyText id="tracker.startDate" lang={lang}/>
-              <input
-                type="date"
-                required
-                max={today}
-                value={selected}
-                onChange={(e) => {
-                  setSelected(e.target.value);
-                  setDuration(
-                    data.periods.find((p) => p.start === e.target.value)
-                      ?.duration || 1,
-                  );
-                }}
-              />
-            </label>
-            <label>
-              <SiteCopyText id="tracker.bleedingDays" lang={lang}/>
-              <input
-                type="number"
-                min={1}
-                max={10}
-                required
-                value={durationDraft}
-                onChange={(e) => setDuration(e.target.value)}
-              />
-            </label>
-            <label>
-              <SiteCopyText id="tracker.initialLength" lang={lang}/>
-              <input
-                type="number"
-                min={21}
-                max={45}
-                required
-                value={lengthDraft}
-                onChange={(e) => setLength(e.target.value)}
-              />
-            </label>
-            <p><SiteCopyText id="tracker.initialNote" lang={lang}/></p>
-            <button disabled={busy || selected > today}>
-              <SiteCopyText id="tracker.save" lang={lang}/>
-            </button>
-            {existing && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  if (
-                    confirm(
-                      ka
-                        ? "წაიშალოს ეს პერიოდი ყველა მოწყობილობაზე?"
-                        : "Delete this period on all devices?",
-                    )
-                  )
-                    void persist(true);
-                }}
-              >
-                <SiteCopyText id="tracker.delete" lang={lang}/>
-              </button>
-            )}
-          </form>
-          <p className="desktop-period-status" role="status">{message}</p>
-          <Link href={`/app/log?date=${selected}`}>
-            <SiteCopyText id="tracker.dayJournal" lang={lang}/>
-          </Link>
-        </section>
-      </div>
-      <section className="workspace-card">
-        <h2><SiteCopyText id="tracker.reminders" lang={lang}/></h2>
-        <p>
-          <SiteCopyText id="tracker.reminderNote" lang={lang}/>
-        </p>
-        <button
-          disabled={
-            !calendar.starts.length
-          }
-          onClick={() =>
-            download(
-              reminderCalendar(
-                calendar.starts,
-              ),
-              "tuta-reminders.ics",
-              "text/calendar",
-            )
-          }
-        >
-          <SiteCopyText id="tracker.download" lang={lang}/>
-        </button>
-      </section>
-      <section className="workspace-card">
-        <h2><SiteCopyText id="tracker.history" lang={lang}/></h2>
-        {[...data.periods].reverse().map((p) => (
-          <button
-            key={p.start}
-            className="history-entry"
+      <div className="period-grid">
+        {(ka ? ["ორშ", "სამ", "ოთხ", "ხუთ", "პარ", "შაბ", "კვ"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]).map(d => <span key={d}>{d}</span>)}
+        {Array.from({ length: Math.ceil((offset + dayCount) / 7) * 7 }, (_, index) => {
+          const number = index - offset + 1;
+          if (number < 1 || number > dayCount) return <span key={index} aria-hidden="true"/>;
+          const date = addDays(first, number - 1);
+          const day = calendar.day(date);
+          const marked = selectedDays.has(date);
+          const symbols = labels.filter(item => item.symbol && (item.key === "draft" ? marked : day[item.key as keyof typeof day] === true));
+          return <button key={date} type="button" className={`day ${day.state}`} aria-current={day.today ? "date" : undefined}
+            aria-label={periodDayLabel(day, date, ka, marked)}
+            aria-pressed={draft ? marked : visibleDay === date}
+            disabled={busy || (!!draft && date > today)}
             onClick={() => {
-              setSelected(p.start);
-              setDuration(p.duration);
-              setMonth(p.start.slice(0, 7));
-            }}
-          >
-            {p.start} · {p.duration} {ka ? "დღე" : "days"}
+              setMessage("");
+              if (draft) setDraft(current => current && ({ ...current, ...selectPeriodDay(current.days, current.anchor, date, today) }));
+              else setSelected(date);
+            }}>
+            <span className="period-date-number">{number}</span>
+            {symbols.length > 0 && <span className="period-day-markers" aria-hidden="true">{symbols.map(item => <span key={item.key} data-mark={item.key}>{item.symbol}</span>)}</span>}
+          </button>;
+        })}
+      </div>
+      <div className="period-legend">
+        <h3>{t("კალენდრის ნიშნები", "Calendar key")}</h3>
+        <ul>{labels.map(({ key, symbol, label }) => <li key={key}><CalendarKeyMark kind={key} symbol={symbol}/>{label}</li>)}</ul>
+      </div>
+      {draft ? <div className="period-day-detail">
+        {review?.entries.length ? <div aria-live="polite"><h3>{t("ასე შეინახება", "This is what will be saved")}</h3>
+          <ul>{review.entries.map(period => <li key={period.start}>{formatPeriod(period)}</li>)}</ul>
+        </div> : null}
+        {selectionError && <p role="status">{selectionError}</p>}
+        <div className="workspace-row">
+          <button type="button" className="period-primary" disabled={busy || !review?.periods} onClick={() => void saveDays()}>
+            {busy ? t("ინახება…", "Saving…") : t("შენახვა", "Save")}
           </button>
-        ))}
-      </section>
-      <details className="mobile-cycle-reference workspace-card">
-        <summary>{ka ? "საცნობარო ინფორმაცია" : "Reference information"}</summary>
-        <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />
+          <button type="button" disabled={busy} onClick={() => { setDraft(null); setMessage(""); }}>{t("გაუქმება", "Cancel")}</button>
+        </div>
+      </div> : visibleDay && selectedInfo && <div className="period-day-detail" aria-live="polite">
+        <h3>{calendarDateLabel(visibleDay, ka, true)}</h3>
+        <ul className="period-day-info">{labels.filter(({ key }) => selectedInfo.state === key || selectedInfo[key as keyof typeof selectedInfo] === true)
+          .map(({ key, symbol, label }) => <li key={key}><CalendarKeyMark kind={key} symbol={symbol}/>{label}</li>)}</ul>
+        {recorded && <p>{formatPeriod(recorded)}</p>}
+        {visibleDay <= today && <div className="workspace-row">
+          {features.dailyLog && <Link href={`/app/log?date=${visibleDay}`}>{selectedInfo.journal ? t("დღიურის გახსნა", "Open journal entry") : t("სიმპტომების ჩაწერა", "Log symptoms")}</Link>}
+          {recorded && !data.pregnancy?.active && <button type="button" disabled={busy} onClick={() => beginMarking(visibleDay)}>{t("პერიოდის რედაქტირება", "Edit period")}</button>}
+        </div>}
+        {recorded && <details className="period-estimates">
+          <summary>{t("ჩანაწერის მართვა", "Manage entry")}</summary>
+          <button type="button" disabled={busy} onClick={() => void removePeriod(recorded.start)}>{t("ჩანაწერის წაშლა", "Delete entry")}</button>
+        </details>}
+      </div>}
+      {message && <p role="status">{message}</p>}
+    </section>
+
+    <section className="workspace-card period-history" aria-labelledby="period-history-title">
+      <h2 id="period-history-title">{t("ციკლის ისტორია", "Cycle history")}</h2>
+      {history.length ? <>
+        <ul>{history.slice(0, 3).map(historyEntry)}</ul>
+        {history.length > 3 && <details><summary>{t("ძველი ჩანაწერები", "Earlier entries")}</summary><ul>{history.slice(3).map(historyEntry)}</ul></details>}
+      </> : <p>{t("შენახული პერიოდები აქ გამოჩნდება.", "Saved periods will appear here.")}</p>}
+    </section>
+    <section className="workspace-card period-more">
+      <h2>{t("დამატებით", "More")}</h2>
+      <div className="period-shortcuts">
+        {features.dailyLog && <Link href="/app/log?section=activity#journal-activity">{t("სქესობრივი აქტივობა", "Sexual activity")}</Link>}
+        {features.insights && <Link href="/app/insights">{t("ციკლის ანალიზი", "Cycle analysis")}</Link>}
+        <Link href="/app/settings#cycle-settings">{t("ციკლის პარამეტრები", "Cycle settings")}</Link>
+      </div>
+      <details className="period-estimates"><summary>{t("საცნობარო ინფორმაცია", "Reference information")}</summary>
+        <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang}/>
       </details>
-    </>
-  );
+    </section>
+  </>;
 }
 
 function JournalFace({ mood }: { mood: string }) {
@@ -935,8 +771,10 @@ function HealthInsights({
     summary = healthReport(data, undefined, report && includeActivity),
     patterns = symptomPatterns(data.periods, data.logs);
   const membership=useMembership();
+  const features = useSiteFeatures();
   return (
     <div className={report ? "health-report" : ""}>
+      {!report && features.doctorReport && <Link className="period-related-link" href="/app/report">{ka ? "ექიმისთვის ანგარიში" : "Report for your doctor"} →</Link>}
       {!report && <CycleEducation periods={data.periods} birthDate={birthDate} lang={lang} />}
       <p>
         {summary.from} / {summary.today}

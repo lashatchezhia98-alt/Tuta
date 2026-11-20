@@ -18,24 +18,25 @@ test("article search matches either language's title or body and respects catego
   assert.deepEqual(filterLibrary([article], "cycle", "Pregnancy"), []);
 });
 
-test("mobile period summary mirrors the app and opens the real calendar date", () => {
-  const { periodCalendarModel } = sourceModule("mobile/src/cycle.mjs");
+test("the period summary shows the same forecast ranges and symbols as the calendar, with one primary action", () => {
+  const { periodCalendarModel, calendarRangeLabel } = sourceModule("mobile/src/cycle.mjs");
   const CycleOverview = sourceModule("components/cycle-overview.tsx", {
     "@/components/site-copy-provider": { SiteCopyText: ({ id }) => id },
   }).default;
-  const periods = [{ start: "2026-11-13", duration: 4 }];
-  const calendar = periodCalendarModel({ periods, cycleLength: 30 }, "2026-11-17");
+  const periods = ["2026-01-10", "2026-02-07", "2026-03-07", "2026-04-04"].map(start => ({ start, duration: 5 }));
+  const calendar = periodCalendarModel({ periods, cycleLength: 30 }, "2026-04-29");
   const opened = [];
-  const props = { periods, cycleLength: 30, lang: "ka", calendar, onMark: () => opened.push("mark"), onCalendar: date => opened.push(date) };
+  const props = { periods, cycleLength: 30, lang: "ka", calendar, onMark: () => opened.push("mark") };
   const html = renderToStaticMarkup(createElement(CycleOverview, props));
-  assert.match(html, /mobile-cycle-card[\s\S]*მიმდინარე ციკლი[\s\S]*mobile-cycle-day">5[\s\S]*ფოლიკულური[\s\S]*<svg/);
-  assert.match(html, /პერიოდის დღეების მონიშვნა[\s\S]*შემდეგი პერიოდი[\s\S]*26 დღეში[\s\S]*2026-12-13 – 2026-12-16/);
+  assert.match(html, /ციკლის დღე: 26/);
+  assert.match(html, /data-mark="predicted"[\s\S]*მოსალოდნელი პერიოდი[\s\S]*data-mark="fertile"[\s\S]*სავარაუდო ნაყოფიერი დღეები/);
+  for (const window of [calendar.nextWindow, calendar.nextFertileWindow]) assert.ok(html.includes(calendarRangeLabel(window.start, window.end, true)));
   function buttons(node) {
     if (!node || typeof node !== "object") return [];
     return node.type === "button" ? [node] : [node.props?.children].flat(Infinity).flatMap(buttons);
   }
   for (const button of buttons(CycleOverview(props))) button.props.onClick();
-  assert.deepEqual(opened, ["mark", "2026-12-13", "2026-11-14", "2026-11-15", "2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"]);
+  assert.deepEqual(opened, ["mark"]);
 });
 
 test("activity inbox is a separate member destination from announcements", async () => {

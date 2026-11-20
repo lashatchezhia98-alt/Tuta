@@ -119,18 +119,18 @@ export function PeriodNavigation({
       }}
       style={{ flexGrow: 0 }}
     >
-      {visibleDestinations("cycle", features).map((page) => (
+      {visibleDestinations("cycle", features).filter(page => page.id !== "calendar").map((page) => (
         <Pressable
           key={page.id}
           accessibilityRole="tab"
-          accessibilityState={{ selected: page.id === selected }}
+          accessibilityState={{ selected: page.id === (selected === "calendar" ? "cycle" : selected) }}
           onPress={() => onNavigate(page.id as Tab)}
           style={[
             s.chip,
-            { backgroundColor: page.id === selected ? C.lav : C.white },
+            { backgroundColor: page.id === (selected === "calendar" ? "cycle" : selected) ? C.lav : C.white },
           ]}
         >
-          <T weight={page.id === selected ? "bold" : "regular"}>
+          <T weight={page.id === (selected === "calendar" ? "cycle" : selected) ? "bold" : "regular"}>
             {lang === "ka" ? page.ka : page.en}
           </T>
         </Pressable>

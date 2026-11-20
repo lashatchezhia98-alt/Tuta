@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addDays, periodDaysBetween, periodsFromHistorySelection, selectPeriodDay } from "../src/cycle.mjs";
+import { addDays, periodDaysBetween, periodsFromHistorySelection, periodSelectionReview, selectPeriodDay } from "../src/cycle.mjs";
 
 const today = "2026-11-18";
 const run = (start, count) => Array.from({ length: count }, (_, i) => addDays(start, i));
@@ -60,4 +60,16 @@ test("a subset does not shorten history or duplicate dates; an unsafe merge leav
   assert.deepEqual(periodsFromHistorySelection(run("2026-10-20", 2), existing, undefined, today).periods, existing);
   assert.deepEqual(periodsFromHistorySelection([...run("2026-09-18", 5), ...run("2026-10-24", 6)], existing, undefined, today), { error: "selection" });
   assert.deepEqual(existing, [{ start: "2026-10-18", duration: 7 }]);
+});
+
+test("review lists the exact affected date ranges; independent history stays untouched", () => {
+  const existing = [{ start: "2026-08-16", duration: 4 }, { start: "2026-10-18", duration: 5 }];
+  const selected = [...run("2026-09-29", 5), ...run("2026-10-20", 4)];
+  const review = periodSelectionReview(selected, existing, undefined, today);
+  assert.deepEqual(review.entries, [{ start: "2026-09-29", duration: 5 }, { start: "2026-10-18", duration: 6 }]);
+  assert.deepEqual(review.periods, [existing[0], ...review.entries]);
+  const explicitEdit = periodSelectionReview(selected, existing, "2026-10-18", today);
+  assert.deepEqual(explicitEdit.entries.at(-1), { start: "2026-10-20", duration: 4 });
+  assert.equal(existing[1].duration, 5);
+  assert.equal(periodSelectionReview(run("2026-09-29", 11), existing, undefined, today).periods, undefined);
 });
