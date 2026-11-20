@@ -13,6 +13,7 @@ import BrandMark from "@/components/brand-mark";
 import AdminWebsiteCopy from "@/components/admin-website-copy";
 import AdminInvitations from "@/components/admin-invitations";
 import AdminSocialLinks from "@/components/admin-social-links";
+import AdminCommunityPost from "@/components/admin-community-post";
 import { AdminAnalytics, AdminBilling, AdminNotifications, AdminUsers } from "@/components/admin-operations";
 import { canAccessAdminSection, type AdminAccess, type AdminSection as Section } from "@/lib/admin-sections";
 
@@ -42,6 +43,7 @@ const nav: { section: Section; href: string; ka: string; en: string }[] = [
   { section: "social-links", href: "/admin/social-links", ka: "სოციალური ქსელები", en: "Social networks" },
   { section: "invitations", href: "/admin/invitations", ka: "ადმინის მოწვევები", en: "Admin invitations" },
   { section: "reports", href: "/admin/reports", ka: "საჩივრები", en: "Reports" },
+  { section: "community-posts", href: "/admin/community-posts", ka: "თუთას პოსტები", en: "Tuta posts" },
   { section: "content", href: "/admin/content", ka: "ბლოგები", en: "Articles" },
   { section: "doctors", href: "/admin/doctors", ka: "ექიმების რეგისტრაცია", en: "Doctor registration" },
   { section: "care", href: "/admin/care", ka: "ექიმები და ვიზიტები", en: "Doctors & appointments" },
@@ -127,6 +129,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     "social-links": ["სოციალური ქსელების ბმულები", "Social profile links"],
     invitations: ["ადმინის მოწვევები", "Admin invitations"],
     reports: ["საზოგადოების საჩივრები", "Community reports"],
+    "community-posts": ["თუთას პოსტები", "Tuta posts"],
     content: ["ბლოგები", "Articles"],
     care: ["ექიმები და ვიზიტები", "Doctors & appointments"],
     doctors: ["ექიმების რეგისტრაცია", "Doctor registration"],
@@ -145,6 +148,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
     "social-links": ["მართე Facebook-ის, Instagram-ის, YouTube-ისა და TikTok-ის ბმულები, რომლებიც საიტის ქვედა ნაწილში გამოჩნდება.", "Manage the Facebook, Instagram, YouTube and TikTok links shown in the website footer."],
     invitations: ["შექმენი ერთჯერადი ბმული, გაუზიარე მოწვეულ პირს და საჭიროებისას გააუქმე წვდომა.", "Create and share a one-time link, or revoke access."],
     reports: ["შეამოწმე მონიშნული პოსტები. მომჩივნის ვინაობა ადმინისტრატორს არ უჩანს.", "Review flagged posts. Reporter identity is not shown to admins."],
+    "community-posts": ["გამოაქვეყნე პოსტი საზოგადოებაში თუთას სახელით.", "Publish a community post as Tuta."],
     content: ["მართე სტატიები, კატეგორიები, ენები და გამოქვეყნების სტატუსი.", "Manage articles, categories, languages and publication status."],
     care: ["მართე გადამოწმებული ექიმების პროფილები და ხელმისაწვდომი ვიზიტის დროები.", "Manage verified doctor profiles and available appointment times."],
     doctors: ["დაამატე ექიმი, დააკავშირე ანგარიში და გადაამოწმე პროფესიული კვალიფიკაცია.", "Register a doctor, link their account and verify professional qualifications."],
@@ -201,6 +205,7 @@ export default function AdminFeaturePanel({ section = "overview", initialLang = 
       <div className="admin-notice"><strong>{ka ? "სინქრონიზაცია" : "Synchronization"}</strong><p>{ka ? "ცვლილებები ინახება Supabase-ში და მოქმედებს საიტის ყველა ვიზიტორზე." : "Changes are saved to Supabase and apply to all visitors."}</p></div>
     </>;
     if (current === "reports") return reportsView;
+    if (current === "community-posts") return <AdminCommunityPost lang={lang}/>;
     if (current === "content") return <Library lang={lang} admin/>;
     if (current === "doctors") return <DoctorEnrollment lang={lang}/>;
     if (current === "care") return <AdminCare lang={lang}/>;

@@ -4,7 +4,7 @@ import { SiteCopyText, useSiteCopyText } from "@/components/site-copy-provider";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { loadCommentPage, mergeComments } from "@/mobile/src/comment-pages.mjs";
 import { doctorPhotoUrl } from "@/mobile/src/doctor-photo.mjs";
-import { canEditCommunityPost, communityAuthorInitials, communityVisibilityCopy } from "@/mobile/src/community.mjs";
+import { canEditCommunityPost, communityAuthorInitials, communityVisibilityCopy, isOfficialCommunityPost } from "@/mobile/src/community.mjs";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import Image from "next/image";
@@ -961,7 +961,9 @@ export default function CommunityPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="mb-2 flex items-center gap-2">
-                        {doctorPhotoUrl(
+                        {isOfficialCommunityPost(post) ? (
+                          <span className="shrink-0"><BrandMark /></span>
+                        ) : doctorPhotoUrl(
                           cloudName,
                           doctors[post.public_author_id || ""],
                           post.is_anonymous,
@@ -985,13 +987,15 @@ export default function CommunityPage() {
                           </span>
                         )}
                         <div className="font-semibold">
-                          {author(
+                          {isOfficialCommunityPost(post) ? t("თუთა", "Tuta") : author(
                             post.public_author_id,
                             post.display_name,
                             post.is_anonymous,
                             post.author_initials,
                           )}
-                          {!post.is_anonymous &&
+                          {isOfficialCommunityPost(post) ? (
+                            <span className="community-doctor-badge">{t("ოფიციალური", "Official")}</span>
+                          ) : !post.is_anonymous &&
                           post.public_author_id &&
                           doctors[post.public_author_id] ? (
                             <span className="community-doctor-badge">

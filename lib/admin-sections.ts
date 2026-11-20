@@ -1,4 +1,4 @@
-export const adminSections = ["overview", "features", "reports", "content", "doctors", "care", "market", "orders", "tools", "website-copy", "social-links", "invitations", "users", "billing", "notifications", "analytics"] as const;
+export const adminSections = ["overview", "features", "reports", "community-posts", "content", "doctors", "care", "market", "orders", "tools", "website-copy", "social-links", "invitations", "users", "billing", "notifications", "analytics"] as const;
 export type AdminSection = (typeof adminSections)[number];
 export type AdminAccess = "owner" | "admin" | "content_editor" | "support";
 export const adminRoleLabels = { admin: ["ადმინი", "Administrator"], content_editor: ["კონტენტის რედაქტორი", "Content editor"], support: ["მხარდაჭერა", "Support agent"] } as const;

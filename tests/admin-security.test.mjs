@@ -2,6 +2,38 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAdminSession, verifyAdminSession, SESSION_SECONDS } from '../lib/admin-auth.ts';
 import { isSameOrigin, credentialsMatch, readAdminJson } from '../lib/admin-request.ts';
+import { canAccessAdminSection } from '../lib/admin-sections.ts';
+import { communityPhotoMime, officialPostInput } from '../lib/official-community-post.ts';
+import { isOfficialCommunityPost } from '../mobile/src/community.mjs';
+
+test('only the owner and administrators can access official publishing', () => {
+  for (const role of ['owner', 'admin', 'content_editor', 'support']) {
+    assert.equal(canAccessAdminSection(role, 'community-posts'), role === 'owner' || role === 'admin');
+  }
+});
+
+test('official community posts use the regular topic and body limits and ignore author fields', () => {
+  const form = new FormData();
+  form.set('body', '  გამარჯობა, ეს თუთაა!  ');
+  form.set('topic', 'wellbeing');
+  form.set('display_name', 'Different author');
+  assert.deepEqual(officialPostInput(form), { body: 'გამარჯობა, ეს თუთაა!', topic: 'wellbeing' });
+  form.set('topic', 'invalid');
+  assert.equal(officialPostInput(form), null);
+  form.set('topic', 'cycle');
+  for (const body of [' ', 'ა'.repeat(2001), 'a '.repeat(201)]) {
+    form.set('body', body);
+    assert.equal(officialPostInput(form), null);
+  }
+  assert.equal(communityPhotoMime(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0])), 'image/png');
+  assert.equal(communityPhotoMime(new TextEncoder().encode('<svg></svg>!')), null);
+});
+
+test('the official badge is based on the protected database identity, not a name', () => {
+  assert.equal(isOfficialCommunityPost({ public_author_id: null, is_anonymous: false }), true);
+  assert.equal(isOfficialCommunityPost({ public_author_id: null, is_anonymous: true }), false);
+  assert.equal(isOfficialCommunityPost({ public_author_id: 'member-id', is_anonymous: false, display_name: 'თუთა' }), false);
+});
 
 test('admin sessions reject tampering, expiration and invalid configuration', async () => {
   const originalEmail = process.env.ADMIN_EMAIL;

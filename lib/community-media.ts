@@ -4,7 +4,7 @@ export async function serveCommunityPhoto(publicId: string | null) {
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   const cloud = process.env.CLOUDINARY_CLOUD_NAME;
   const secret = process.env.CLOUDINARY_API_SECRET;
-  if (!publicId || !/^tuta-community\/(?:[0-9a-f-]{36}|anon)\/[a-zA-Z0-9_-]+$/.test(publicId))
+  if (!publicId || !/^tuta-community\/(?:(?:[0-9a-f-]{36}|anon)\/[a-zA-Z0-9_-]+|official\/private_[a-zA-Z0-9_-]+)$/.test(publicId))
     return new Response(null, { status: 404, headers });
   if (!cloud || !/^[a-zA-Z0-9_-]+$/.test(cloud) || !secret)
     return new Response(null, { status: 503, headers });

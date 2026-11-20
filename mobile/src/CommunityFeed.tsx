@@ -18,6 +18,7 @@ import {
   communityAuthorInitials,
   communityPhotoUrl,
   communityVisibilityCopy,
+  isOfficialCommunityPost,
   memberDisplayName,
   normalizePost,
   POST_TOPICS,
@@ -68,6 +69,9 @@ type Signature = {
   type?: "authenticated";
 };
 const PAGE = 20;
+// Metro needs a static asset require to bundle the app icon on both platforms.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const tutaLogo = require("../assets/app-icon.png");
 const apiUrl = process.env.EXPO_PUBLIC_TUTA_API_URL?.trim().replace(/\/$/, "");
 const cloudName = process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME?.trim() || "";
 // Enable only after the production block endpoint and its migration are live.
@@ -1061,7 +1065,8 @@ export function CommunityFeed({
           : entry.public_author_id && doctors[entry.public_author_id]
             ? `${t("ექიმი", "Dr.")} ${doctors[entry.public_author_id].first_name} ${doctors[entry.public_author_id].last_name}`
             : communityAuthorInitials(entry.author_initials, entry.display_name);
-        const name = authorName(post);
+        const official = isOfficialCommunityPost(post);
+        const name = official ? t("თუთა", "Tuta") : authorName(post);
         return (
           <View key={post.id} style={s.card}>
             <View style={[s.row, { marginBottom: 12 }]}>
@@ -1075,7 +1080,13 @@ export function CommunityFeed({
                   justifyContent: "center",
                 }}
               >
-                {avatar ? (
+                {official ? (
+                  <Image
+                    source={tutaLogo}
+                    accessible={false}
+                    style={{ width: 40, height: 40, borderRadius: 12 }}
+                  />
+                ) : avatar ? (
                   <Image
                     source={{ uri: avatar }}
                     accessibilityLabel={name}
@@ -1090,6 +1101,7 @@ export function CommunityFeed({
                   {name}
                 </T>
                 {doctor && !post.is_anonymous && <T style={{ color: "#624386", fontSize: 12 }}>✓ {communityVisibilityCopy.verified[ka ? 0 : 1]}</T>}
+                {official && <T style={{ color: "#624386", fontSize: 12 }}>{t("ოფიციალური", "Official")}</T>}
                 <T style={s.muted}>
                   {friendlyDate(post.created_at, lang)} ·{" "}
                   {topicLabels[post.topic]

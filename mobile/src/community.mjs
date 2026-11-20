@@ -32,6 +32,11 @@ export function validTopic(topic) {
   return POST_TOPICS.includes(topic);
 }
 
+// The database enforces that only official posts may be named without a member author.
+export function isOfficialCommunityPost(post) {
+  return post.is_anonymous === false && post.public_author_id === null;
+}
+
 export function validComment(text) {
   const body = normalizePost(text);
   return body.length > 0 && body.length <= 1000;
